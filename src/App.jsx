@@ -74,6 +74,20 @@ function App() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [orderFilterStatus, setOrderFilterStatus] = useState("Todos");
 
+  // User Personal Orders History
+  const [userOrders, setUserOrders] = useState([]);
+  const [userOrdersLoading, setUserOrdersLoading] = useState(false);
+  const [isMyOrdersOpen, setIsMyOrdersOpen] = useState(false);
+
+  // Email/Password Auth Modal states
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState("login"); // "login" | "signup"
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+
   // Admin Passcode Lock state
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
   const [adminPasscode, setAdminPasscode] = useState("");
@@ -113,30 +127,59 @@ function App() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchUserProfile(session.user.id);
+        fetchUserProfile(session.user.id, session.user);
+        fetchUserOrders(session.user.id);
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchUserProfile(session.user.id);
+        fetchUserProfile(session.user.id, session.user);
+        fetchUserOrders(session.user.id);
       } else {
         setProfile(null);
+        setUserOrders([]); // Clear orders on sign out
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch public profile from Supabase
-  const fetchUserProfile = async (userId) => {
+  // Fetch public profile from Supabase with client-side fallback
+  const fetchUserProfile = async (userId, currentUser = null) => {
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
+      
+      // Fallback: If profile doesn't exist yet, insert it directly from user metadata
+      if (!data && currentUser) {
+        const meta = currentUser.user_metadata || {};
+        const newProfile = {
+          id: userId,
+          full_name: meta.full_name || meta.name || currentUser.email?.split('@')[0] || 'Cliente',
+          email: currentUser.email,
+          avatar_url: meta.avatar_url || meta.picture || '',
+          phone: '',
+          address: '',
+          city: 'Santa Cruz'
+        };
+        const { data: insertedData, error: insertError } = await supabase
+          .from('profiles')
+          .insert([newProfile])
+          .select()
+          .single();
+        
+        if (!insertError && insertedData) {
+          data = insertedData;
+        } else {
+          console.error("Error creating fallback profile:", insertError);
+        }
+      }
+
       if (data) {
         setProfile(data);
         setFormData(prev => ({
@@ -164,7 +207,8 @@ function App() {
         })
         .eq('id', user.id);
       if (!error) {
-        fetchUserProfile(user.id);
+        fetchUserProfile(user.id, user);
+        fetchUserOrders(user.id);
       }
     } catch (err) {
       console.error("Error saving user profile:", err);
@@ -219,6 +263,68 @@ function App() {
       if (error) throw error;
     } catch (err) {
       alert("Error al iniciar sesión con Google: " + err.message);
+    }
+  };
+
+  // Email Sign-In helper
+  const handleEmailLogin = async (e) => {
+    e.preventDefault();
+    if (!authEmail || !authPassword) {
+      setAuthError("Por favor, ingresa tu correo y contraseña.");
+      return;
+    }
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: authEmail,
+        password: authPassword
+      });
+      if (error) throw error;
+      setIsAuthModalOpen(false);
+      setAuthPassword("");
+      setAuthEmail("");
+    } catch (err) {
+      setAuthError(err.message === "Invalid login credentials" ? "Credenciales incorrectas. Verifica tu correo y contraseña." : err.message);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // Email Sign-Up helper
+  const handleEmailSignup = async (e) => {
+    e.preventDefault();
+    if (!authEmail || !authPassword || !authName) {
+      setAuthError("Por favor, rellena todos los campos obligatorios.");
+      return;
+    }
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: authEmail,
+        password: authPassword,
+        options: {
+          data: {
+            full_name: authName
+          }
+        }
+      });
+      if (error) throw error;
+      window.Swal.fire({
+        title: '¡Registro completado!',
+        text: 'Tu cuenta ha sido creada. Si la confirmación de correo está activa, verifica tu correo; de lo contrario, tu sesión se iniciará automáticamente.',
+        icon: 'success',
+        confirmButtonColor: 'var(--primary-green)'
+      });
+      setIsAuthModalOpen(false);
+      setAuthPassword("");
+      setAuthEmail("");
+      setAuthName("");
+    } catch (err) {
+      setAuthError(err.message);
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -364,6 +470,25 @@ function App() {
       console.error("Error loading orders:", err);
     } finally {
       setOrdersLoading(false);
+    }
+  };
+
+  // Fetch personal orders from Supabase (User view)
+  const fetchUserOrders = async (userId) => {
+    if (!userId) return;
+    setUserOrdersLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setUserOrders(data || []);
+    } catch (err) {
+      console.error("Error loading user orders:", err);
+    } finally {
+      setUserOrdersLoading(false);
     }
   };
 
@@ -2224,32 +2349,50 @@ Presentación de envío: Bolsa Kraft eco-amigable con termosellado manual de seg
         <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           {user ? (
             <div className="user-badge-container" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="Avatar" className="user-avatar" style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
-              ) : (
-                <div className="user-avatar-placeholder" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-gold)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
-                  {profile?.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
-                </div>
-              )}
+              <div 
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                onClick={() => { setIsMyOrdersOpen(true); fetchUserOrders(user.id); }}
+                title="Ver mis pedidos"
+              >
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="Avatar" className="user-avatar" style={{ width: '32px', height: '32px', borderRadius: '50%', border: '2px solid var(--accent-gold)' }} />
+                ) : (
+                  <div className="user-avatar-placeholder" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-gold)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                    {profile?.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
               <div className="user-info-text-desktop" style={{ fontSize: '0.85rem' }}>
-                <span style={{ display: 'block', fontWeight: 700, color: 'var(--primary-green)' }}>{profile?.full_name || "Cliente"}</span>
-                <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', padding: 0, textDecoration: 'underline', fontSize: '0.75rem' }}>Cerrar Sesión</button>
+                <span 
+                  style={{ display: 'block', fontWeight: 700, color: 'var(--primary-green)', cursor: 'pointer' }}
+                  onClick={() => { setIsMyOrdersOpen(true); fetchUserOrders(user.id); }}
+                >
+                  {profile?.full_name || "Cliente"}
+                </span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button 
+                    onClick={() => { setIsMyOrdersOpen(true); fetchUserOrders(user.id); }} 
+                    style={{ background: 'none', border: 'none', color: 'var(--accent-gold)', cursor: 'pointer', padding: 0, textDecoration: 'underline', fontSize: '0.75rem', fontWeight: 600 }}
+                  >
+                    Mis Pedidos
+                  </button>
+                  <span style={{ color: 'var(--border-color)', fontSize: '0.75rem' }}>|</span>
+                  <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', padding: 0, textDecoration: 'underline', fontSize: '0.75rem' }}>Salir</button>
+                </div>
               </div>
             </div>
           ) : (
             <button 
               className="btn-google-login" 
-              onClick={handleGoogleLogin}
-              title="Iniciar sesión con Google"
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.5rem 0.8rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'white', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}
+              onClick={() => { setIsAuthModalOpen(true); setAuthError(""); setAuthMode("login"); }}
+              title="Iniciar sesión / Registrarse"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'white', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
               </svg>
-              <span>Entrar con Gmail</span>
+              <span>Iniciar Sesión</span>
             </button>
           )}
 
@@ -2365,7 +2508,7 @@ Presentación de envío: Bolsa Kraft eco-amigable con termosellado manual de seg
                     <div className="section-title-wrapper">
                       <h2 className="section-title" style={{ fontSize: '1.7rem', fontWeight: 800 }}>Kits Recomendados</h2>
                     </div>
-                    <div className="products-grid" style={{ marginTop: '1rem' }}>
+                    <div className="recommended-container" style={{ marginTop: '1rem' }}>
                       {pinnedCombos.map(combo => (
                         <article 
                           className="product-card pinned animate-fade-in" 
@@ -2423,17 +2566,42 @@ Presentación de envío: Bolsa Kraft eco-amigable con termosellado manual de seg
                               <strong>Incluye:</strong> {combo.includes}
                             </p>
 
-                            <div className="product-price-row">
-                              <span className="price-original">Bs. {parseFloat(combo.original_price_bs).toFixed(1)}</span>
-                              <span className="price-current">Bs. {parseFloat(combo.price_bs).toFixed(1)}</span>
+                            <div className="product-price-row-container" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              <div className="product-price-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid rgba(235, 220, 201, 0.2)' }}>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                  <span className="price-original">Bs. {parseFloat(combo.original_price_bs).toFixed(1)}</span>
+                                  <span className="price-current">Bs. {parseFloat(combo.price_bs).toFixed(1)}</span>
+                                </div>
+                                
+                                <div className="mobile-add-action">
+                                  {getComboTotalStock(combo.id) > 0 ? (
+                                    <button 
+                                      className="btn-add-cart-circle" 
+                                      onClick={(e) => { 
+                                        e.stopPropagation();
+                                        addToCart(combo); 
+                                      }}
+                                      title="Añadir al pedido"
+                                      aria-label="Añadir al pedido"
+                                    >
+                                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                      </svg>
+                                    </button>
+                                  ) : (
+                                    <span className="mobile-badge-soldout">Agotado</span>
+                                  )}
+                                </div>
+                              </div>
                               {getComboTotalStock(combo.id) > 0 && getComboTotalStock(combo.id) <= 5 && (
-                                <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--offer-orange)', fontWeight: 'bold' }}>
-                                  ⚠️ ¡Solo {getComboTotalStock(combo.id)} disp.!
-                                </span>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--offer-orange)', fontWeight: 'bold', textAlign: 'left' }}>
+                                  ⚠️ ¡Solo {getComboTotalStock(combo.id)} disponibles!
+                                </div>
                               )}
                             </div>
 
-                            <div className="card-actions-row">
+                            <div className="card-actions-row desktop-only-actions">
                               {getComboTotalStock(combo.id) > 0 ? (
                                 <button 
                                   className="btn-add-cart" 
@@ -2456,17 +2624,17 @@ Presentación de envío: Bolsa Kraft eco-amigable con termosellado manual de seg
                                 </button>
                               )}
                               <button 
-                                className="btn-share"
-                                style={{ padding: '0.8rem', fontSize: '0.9rem' }}
-                                title="Ver detalles"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openComboDetails(combo);
-                                }}
-                              >
-                                Detalles
-                              </button>
-                            </div>
+                                  className="btn-share"
+                                  style={{ padding: '0.8rem', fontSize: '0.9rem' }}
+                                  title="Ver detalles"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openComboDetails(combo);
+                                  }}
+                                >
+                                  Detalles
+                                </button>
+                              </div>
                           </div>
                         </article>
                       ))}
@@ -2533,17 +2701,42 @@ Presentación de envío: Bolsa Kraft eco-amigable con termosellado manual de seg
                               <strong>Incluye:</strong> {combo.includes}
                             </p>
 
-                            <div className="product-price-row">
-                              <span className="price-original">Bs. {parseFloat(combo.original_price_bs).toFixed(1)}</span>
-                              <span className="price-current">Bs. {parseFloat(combo.price_bs).toFixed(1)}</span>
+                            <div className="product-price-row-container" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              <div className="product-price-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid rgba(235, 220, 201, 0.2)' }}>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                  <span className="price-original">Bs. {parseFloat(combo.original_price_bs).toFixed(1)}</span>
+                                  <span className="price-current">Bs. {parseFloat(combo.price_bs).toFixed(1)}</span>
+                                </div>
+                                
+                                <div className="mobile-add-action">
+                                  {getComboTotalStock(combo.id) > 0 ? (
+                                    <button 
+                                      className="btn-add-cart-circle" 
+                                      onClick={(e) => { 
+                                        e.stopPropagation();
+                                        addToCart(combo); 
+                                      }}
+                                      title="Añadir al pedido"
+                                      aria-label="Añadir al pedido"
+                                    >
+                                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                      </svg>
+                                    </button>
+                                  ) : (
+                                    <span className="mobile-badge-soldout">Agotado</span>
+                                  )}
+                                </div>
+                              </div>
                               {getComboTotalStock(combo.id) > 0 && getComboTotalStock(combo.id) <= 5 && (
-                                <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--offer-orange)', fontWeight: 'bold' }}>
-                                  ⚠️ ¡Solo {getComboTotalStock(combo.id)} disp.!
-                                </span>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--offer-orange)', fontWeight: 'bold', textAlign: 'left' }}>
+                                  ⚠️ ¡Solo {getComboTotalStock(combo.id)} disponibles!
+                                </div>
                               )}
                             </div>
 
-                            <div className="card-actions-row">
+                            <div className="card-actions-row desktop-only-actions">
                               {getComboTotalStock(combo.id) > 0 ? (
                                 <button 
                                   className="btn-add-cart" 
@@ -3042,6 +3235,219 @@ Presentación de envío: Bolsa Kraft eco-amigable con termosellado manual de seg
 
         </div>
       </div>
+
+      {/* MY ORDERS HISTORICAL DRAWER */}
+      <div className={`cart-drawer-overlay ${isMyOrdersOpen ? 'open' : ''}`} onClick={() => setIsMyOrdersOpen(false)}>
+        <div className="cart-drawer orders-drawer" onClick={(e) => e.stopPropagation()}>
+          <div className="cart-drawer-header">
+            <h3 className="cart-drawer-title">Mis Pedidos 📦</h3>
+            <button className="btn-close-cart" onClick={() => setIsMyOrdersOpen(false)} aria-label="Cerrar">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+
+          <div className="cart-items-container" style={{ padding: '1rem' }}>
+            {userOrdersLoading ? (
+              <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--text-muted)' }}>
+                <p>Cargando tu historial de pedidos...</p>
+              </div>
+            ) : userOrders.length === 0 ? (
+              <div className="cart-empty-state" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+                <p style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '8px' }}>No tienes pedidos registrados</p>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Tus compras en Kaldirev Bolivia aparecerán aquí automáticamente.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {userOrders.map(order => (
+                  <div 
+                    key={order.id} 
+                    className="order-history-card" 
+                    style={{ 
+                      background: 'white', 
+                      border: '1px solid var(--border-color)', 
+                      borderRadius: '12px', 
+                      padding: '1rem',
+                      boxShadow: 'var(--shadow-sm)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      textAlign: 'left'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                        {new Date(order.created_at).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <span 
+                        className={`order-status-badge ${order.status}`} 
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 800,
+                          padding: '4px 10px',
+                          borderRadius: '12px',
+                          background: order.status === 'Completado' ? '#eef6f2' : order.status === 'Cancelado' ? '#ffeeee' : '#fff9eb',
+                          color: order.status === 'Completado' ? 'var(--primary-green)' : order.status === 'Cancelado' ? '#d32f2f' : '#b89047',
+                          border: `1px solid ${order.status === 'Completado' ? 'rgba(26, 77, 58, 0.2)' : order.status === 'Cancelado' ? 'rgba(211, 47, 47, 0.2)' : 'rgba(184, 144, 71, 0.2)'}`
+                        }}
+                      >
+                        {order.status}
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary-green)' }}>
+                      Total: Bs. {parseFloat(order.total_bs).toFixed(1)}
+                    </div>
+
+                    <div style={{ fontSize: '0.8rem', background: '#faf9f6', padding: '8px', borderRadius: '6px', border: '1px solid rgba(235,220,201,0.4)' }}>
+                      <span style={{ fontWeight: 600, display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Items:</span>
+                      {order.items && Array.isArray(order.items) ? (
+                        order.items.map((item, idx) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem' }}>
+                            <span>{item.quantity}x {item.name}</span>
+                            <span>Bs. {(item.price * item.quantity).toFixed(1)}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <p style={{ fontSize: '0.78rem' }}>Detalle no disponible</p>
+                      )}
+                    </div>
+
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-dark)', lineHeight: '1.4' }}>
+                      <strong>Dirección:</strong> {order.address} ({order.city})
+                      {order.tracking_id && (
+                        <div style={{ marginTop: '4px', background: '#eef6f2', color: 'var(--primary-green)', padding: '4px 8px', borderRadius: '4px', display: 'inline-block', fontWeight: 600 }}>
+                          ID Courier/Tracking: {order.tracking_id}
+                        </div>
+                      )}
+                    </div>
+
+                    {order.status === 'Pendiente' && (
+                      <button
+                        className="btn-whatsapp-submit"
+                        style={{ padding: '0.6rem', fontSize: '0.82rem', marginTop: '6px', width: '100%', fontWeight: 700 }}
+                        onClick={() => {
+                          const trackingMsg = `Hola Kaldirev Bolivia, quería consultar el estado de mi pedido pendiente:\n- ID Pedido: ${order.id}\n- Cliente: ${order.customer_name}\n- Dirección: ${order.address} (${order.city})\n- Total: Bs. ${parseFloat(order.total_bs).toFixed(1)}`;
+                          const waUrl = `https://api.whatsapp.com/send?phone=${config.whatsappNumber}&text=${encodeURIComponent(trackingMsg)}`;
+                          window.open(waUrl, '_blank');
+                        }}
+                      >
+                        Coordinar Despacho por WhatsApp 💬
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* AUTHENTICATION MODAL (GOOGLE + EMAIL/PASSWORD) */}
+      {isAuthModalOpen && (
+        <div className="auth-modal-overlay open" onClick={() => setIsAuthModalOpen(false)}>
+          <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="auth-modal-close" onClick={() => setIsAuthModalOpen(false)} aria-label="Cerrar modal">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+
+            <div className="auth-modal-header">
+              <h2>Kaldirev Bolivia</h2>
+              <p>Únete o ingresa para registrar tus datos de envío e historial de compras.</p>
+            </div>
+
+            <div className="auth-modal-tabs">
+              <button 
+                type="button"
+                className={`auth-tab ${authMode === 'login' ? 'active' : ''}`}
+                onClick={() => { setAuthMode('login'); setAuthError(""); }}
+              >
+                Iniciar Sesión
+              </button>
+              <button 
+                type="button"
+                className={`auth-tab ${authMode === 'signup' ? 'active' : ''}`}
+                onClick={() => { setAuthMode('signup'); setAuthError(""); }}
+              >
+                Crear Cuenta
+              </button>
+            </div>
+
+            {authError && <div className="auth-error-banner">{authError}</div>}
+
+            <form onSubmit={authMode === 'login' ? handleEmailLogin : handleEmailSignup} className="auth-modal-form">
+              {authMode === 'signup' && (
+                <div className="form-group">
+                  <label className="form-label" htmlFor="authName">Nombre Completo *</label>
+                  <input
+                    type="text"
+                    id="authName"
+                    required
+                    className="form-input"
+                    placeholder="Ej. Juan Pérez"
+                    value={authName}
+                    onChange={(e) => setAuthName(e.target.value)}
+                  />
+                </div>
+              )}
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="authEmail">Correo Electrónico *</label>
+                <input
+                  type="email"
+                  id="authEmail"
+                  required
+                  className="form-input"
+                  placeholder="ejemplo@correo.com"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="authPassword">Contraseña *</label>
+                <input
+                  type="password"
+                  id="authPassword"
+                  required
+                  minLength="6"
+                  className="form-input"
+                  placeholder="Mínimo 6 caracteres"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                />
+              </div>
+
+              <button type="submit" className="btn-auth-submit" disabled={authLoading}>
+                {authLoading ? 'Procesando...' : authMode === 'login' ? 'Ingresar con Correo' : 'Registrar Cuenta'}
+              </button>
+            </form>
+
+            <div className="auth-divider">
+              <span>O</span>
+            </div>
+
+            <button 
+              type="button" 
+              className="btn-google-login-modal" 
+              onClick={() => { handleGoogleLogin(); setIsAuthModalOpen(false); }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '8px', verticalAlign: 'middle', display: 'inline-block' }}>
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+              </svg>
+              <span>Acceder rápido con Gmail</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* SUCCESS MODAL */}
       <div className={`success-modal-overlay ${showSuccessModal ? 'open' : ''}`}>

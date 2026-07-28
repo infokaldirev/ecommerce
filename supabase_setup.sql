@@ -166,8 +166,13 @@ begin
     new.id,
     coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', ''),
     new.email,
-    coalesce(new.raw_user_meta_data->>'avatar_url', '')
-  );
+    coalesce(new.raw_user_meta_data->>'avatar_url', new.raw_user_meta_data->>'picture', '')
+  )
+  on conflict (id) do update set
+    full_name = excluded.full_name,
+    email = excluded.email,
+    avatar_url = excluded.avatar_url,
+    updated_at = now();
   return new;
 end;
 $$;
