@@ -55,6 +55,7 @@ function App() {
   // UI Navigation states
   const [view, setView] = useState("catalog"); // "catalog", "details", or "admin"
   const [selectedCombo, setSelectedCombo] = useState(null);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [activeCategory, setActiveCategory] = useState("Todos");
@@ -386,11 +387,18 @@ function App() {
         .order('id', { ascending: true });
       if (combosErr) throw combosErr;
       
-      const mappedData = (combosData || []).map(c => ({
-        ...c,
-        price_bs: parseFloat(c.price_bs || c.usd_price) || 0,
-        original_price_bs: parseFloat(c.original_price_bs || c.original_usd_price) || 0
-      }));
+      const mappedData = (combosData || []).map(c => {
+        let imageUrl = c.image_url || "";
+        if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:') && !imageUrl.startsWith('/products/') && !imageUrl.startsWith('/src/')) {
+          imageUrl = `/products/${imageUrl.replace(/^\//, '')}`;
+        }
+        return {
+          ...c,
+          image_url: imageUrl,
+          price_bs: parseFloat(c.price_bs || c.usd_price) || 0,
+          original_price_bs: parseFloat(c.original_price_bs || c.original_usd_price) || 0
+        };
+      });
       const finalCombos = mappedData.length > 0 ? mappedData : DEFAULT_COMBOS;
       setCombos(finalCombos);
 
@@ -601,6 +609,62 @@ function App() {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Get current GPS location using Geolocation API and auto-fill link
+  const handleGetGPSLocation = () => {
+    if (!navigator.geolocation) {
+      alert("La geolocalización no está soportada por tu navegador.");
+      return;
+    }
+    
+    window.Swal.fire({
+      title: 'Obteniendo tu ubicación actual...',
+      text: 'Por favor, acepta los permisos de ubicación en tu navegador.',
+      allowOutsideClick: false,
+      didOpen: () => {
+        window.Swal.showLoading();
+      }
+    });
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const mapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+        setFormData(prev => ({
+          ...prev,
+          gpsCoordinates: mapsLink
+        }));
+        window.Swal.fire({
+          title: '📍 ¡Ubicación Obtenida!',
+          text: 'Se ha completado el enlace de Google Maps con tus coordenadas actuales.',
+          icon: 'success',
+          timer: 2500,
+          showConfirmButton: false
+        });
+      },
+      (error) => {
+        let msg = "No pudimos obtener tu ubicación.";
+        if (error.code === error.PERMISSION_DENIED) {
+          msg = "Permiso denegado. Habilita los permisos de ubicación en tu navegador e inténtalo de nuevo.";
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          msg = "La ubicación no está disponible actualmente.";
+        } else if (error.code === error.TIMEOUT) {
+          msg = "Se agotó el tiempo de espera al buscar tu ubicación.";
+        }
+        window.Swal.fire({
+          title: 'Error de Ubicación',
+          text: msg,
+          icon: 'error',
+          confirmButtonColor: 'var(--primary-green)'
+        });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 0
+      }
+    );
   };
 
   const handleAdminInputChange = (e) => {
@@ -1004,28 +1068,25 @@ Presentación: Bolsa Kraft eco-amigable con termosellado manual de seguridad.`;
     }
   };
 
-  // Save Order in Supabase & Redirect to WhatsApp
-  const handleWhatsAppSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.name || !formData.phone || !formData.address || !formData.city) {
-      alert("Por favor rellena todos los campos obligatorios.");
-      return;
-    }
-
+  // Save Order in Supabase & Redirect to WhatsApp directly
+  const handleDirectWhatsAppCheckout = async () => {
+    if (cart.length === 0) return;
+    
     setIsSubmittingOrder(true);
     const subtotal = getCartTotal();
-    const shipping = getShippingCost();
-    const total = getFinalTotal();
-    const selectedBranchId = selectedBranch ? selectedBranch.id : 1;
 
     try {
+      // 1. Deduct Stock immediately from default branch (Santa Cruz)
+      await deductStockObj(1, cart);
+
+      // 2. Prepare payload for database registry
       const orderPayload = {
-        customer_name: formData.name,
-        phone: formData.phone,
-        address: formData.address,
-        city: formData.city,
-        payment_method: formData.paymentMethod,
-        total_bs: parseFloat(total),
+        customer_name: profile?.full_name || user?.email || "Cliente de WhatsApp",
+        phone: profile?.phone || "Coordinar por WhatsApp",
+        address: profile?.address || "Coordinar por WhatsApp",
+        city: profile?.city || "Coordinar por WhatsApp",
+        payment_method: "WhatsApp",
+        total_bs: parseFloat(subtotal),
         items: cart.map(item => ({
           id: item.id,
           name: item.name,
@@ -1033,14 +1094,15 @@ Presentación: Bolsa Kraft eco-amigable con termosellado manual de seguridad.`;
           quantity: item.quantity
         })),
         user_id: user?.id || null,
-        branch_id: selectedBranchId,
-        shipping_cost: parseFloat(shipping),
-        delivery_method: formData.deliveryMethod,
-        gps_coordinates: formData.gpsCoordinates || null,
-        qr_payment_status: formData.paymentMethod === 'QR Libelula' ? 'Pendiente' : 'No Aplica',
+        branch_id: 1, // Default main branch
+        shipping_cost: 0,
+        delivery_method: "WhatsApp",
+        gps_coordinates: null,
+        qr_payment_status: "No Aplica",
         tracking_id: null
       };
 
+      // 3. Insert order in Supabase so user can see it in "Mis Pedidos" and Admin dashboard
       const { data: orderData, error: orderErr } = await supabase
         .from('orders')
         .insert([orderPayload])
@@ -1048,70 +1110,185 @@ Presentación: Bolsa Kraft eco-amigable con termosellado manual de seguridad.`;
 
       if (orderErr) throw orderErr;
 
-      const createdOrder = orderData ? orderData[0] : null;
+      // 4. Construct pre-filled WhatsApp message
+      const itemsText = cart.map(item => 
+        `• *${item.quantity}x ${item.name}* - Bs. ${(item.price * item.quantity).toFixed(1)}`
+      ).join("\n");
 
-      if (user) {
-        saveUserProfile({
-          phone: formData.phone,
-          address: formData.address,
-          city: formData.city,
-          full_name: formData.name
-        });
+      const message = `¡Hola Kaldirev! Deseo realizar un pedido de combos:
+
+Detalle del Pedido:
+${itemsText}
+
+*Total a Pagar: Bs. ${subtotal.toFixed(1)}*
+*(Envío en bolsa Kraft eco-amigable con termosellado manual de seguridad)*
+
+Por favor, ayúdenme a coordinar el envío completando estos datos:
+- Nombre Completo: ${profile?.full_name || '[Escribe tu nombre aquí]'}
+- Teléfono / WhatsApp: ${profile?.phone || '[Escribe tu número de celular]'}
+- Ciudad de Entrega (ej. Santa Cruz/La Paz/Cochabamba): ${profile?.city || '[Escribe la ciudad]'}
+- Dirección de Entrega (calle, nro, zona): ${profile?.address || '[Escribe tu dirección]'}
+- Ubicación GPS (Adjunta tu ubicación en este chat o escribe el link): [Adjunta tu ubicación de Google Maps aquí]
+- Método de Pago preferido (Contraentrega / QR / Transferencia): [Contraentrega]`;
+
+      const encodedMessage = encodeURIComponent(message);
+      const whatsappUrl = `https://api.whatsapp.com/send?phone=${config.whatsappNumber}&text=${encodedMessage}`;
+
+      // 5. Open WhatsApp in a new tab
+      window.open(whatsappUrl, '_blank');
+
+      // 6. Reset cart and view
+      setCart([]);
+      setIsCheckingOut(false);
+      setShowSuccessModal(true);
+
+    } catch (err) {
+      console.error("Direct WhatsApp checkout failed:", err);
+      alert("Hubo un problema al procesar su pedido en la base de datos. De todas formas lo coordinaremos por WhatsApp.");
+      const itemsText = cart.map(item => `• *${item.quantity}x ${item.name}*`).join("\n");
+      window.open(`https://api.whatsapp.com/send?phone=${config.whatsappNumber}&text=${encodeURIComponent("Deseo ordenar:\n" + itemsText)}`, '_blank');
+    } finally {
+      setIsSubmittingOrder(false);
+    }
+  };
+
+  // Synchronize city selection with the active branch (Added by Antigravity)
+  const handleCityChange = (cityName) => {
+    setFormData(prev => ({ ...prev, city: cityName }));
+    const matchingBranch = branches.find(b => b.name.toLowerCase().includes(cityName.toLowerCase()));
+    if (matchingBranch) {
+      setSelectedBranch(matchingBranch);
+    }
+  };
+
+  // Handle detailed interactive checkout submission (Added by Antigravity)
+  const handleCreateOrderCheckout = async (e) => {
+    if (e) e.preventDefault();
+    if (cart.length === 0) return;
+
+    if (!formData.name || !formData.name.trim() || !formData.phone || !formData.phone.trim() || !formData.address || !formData.address.trim()) {
+      window.Swal.fire({
+        title: 'Campos Incompletos',
+        text: 'Por favor, complete todos los campos obligatorios (*)',
+        icon: 'warning',
+        confirmButtonColor: 'var(--primary-green)'
+      });
+      return;
+    }
+
+    const outOfStockItems = getOutOfStockItemsForCity(formData.city);
+    if (outOfStockItems.length > 0) {
+      window.Swal.fire({
+        title: 'Sin Stock Suficiente',
+        text: `Algunos productos de su carrito no cuentan con stock suficiente en la sucursal de ${formData.city}. Por favor, modifique su cantidad o cambie de sucursal.`,
+        icon: 'error',
+        confirmButtonColor: 'var(--primary-green)'
+      });
+      return;
+    }
+
+    setIsSubmittingOrder(true);
+    const selectedBranchObj = branches.find(b => b.name.toLowerCase().includes(formData.city.toLowerCase())) || branches[0];
+    const shippingCost = formData.deliveryMethod === 'Retiro en Oficina' ? 0 : (selectedBranchObj ? parseFloat(selectedBranchObj.shipping_cost_bs) : 15);
+    const subtotal = getCartTotal();
+    const totalOrderAmount = subtotal + shippingCost;
+
+    try {
+      // 1. Deduct Stock immediately from selected branch (if not paying via QR, which deducts on webhook confirmation)
+      if (formData.paymentMethod !== 'Pago QR Directo') {
+        await deductStockObj(selectedBranchObj.id, cart);
       }
 
-      // Dynamic Flow: QR Pasarela vs Standard Checkout
-      if (formData.paymentMethod === 'QR Libelula') {
-        if (createdOrder) {
-          setQrModalOrder(createdOrder);
-          setQrTimer(300);
-          setIsQrModalOpen(true);
-          setIsCartOpen(false);
-        } else {
-          throw new Error("No se pudo generar los detalles del pedido QR.");
-        }
-      } else {
-        // Direct Checkout (Cash or Manual Transfer)
-        // Deduct Stock immediately
-        await deductStockObj(selectedBranchId, cart);
+      // 2. Prepare order payload
+      const orderPayload = {
+        customer_name: formData.name,
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+        payment_method: formData.paymentMethod,
+        total_bs: parseFloat(totalOrderAmount),
+        items: cart.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity
+        })),
+        user_id: user?.id || null,
+        branch_id: selectedBranchObj.id,
+        shipping_cost: parseFloat(shippingCost),
+        delivery_method: formData.deliveryMethod,
+        gps_coordinates: formData.gpsCoordinates || null,
+        qr_payment_status: formData.paymentMethod === 'Pago QR Directo' ? 'Pendiente' : 'No Aplica',
+        tracking_id: null
+      };
 
-        const itemsText = cart.map(item => 
-          `• *${item.quantity}x ${item.name}* - Bs. ${(item.price * item.quantity).toFixed(1)}`
-        ).join("\n");
+      // 3. Insert order in Supabase
+      const { data: orderData, error: orderErr } = await supabase
+        .from('orders')
+        .insert([orderPayload])
+        .select()
+        .single();
 
-        const message = `¡Hola Kaldirev! Deseo realizar un pedido de combos:
+      if (orderErr) throw orderErr;
+
+      // 4. Handle QR Payment flow
+      if (formData.paymentMethod === 'Pago QR Directo') {
+        setQrModalOrder(orderData);
+        setIsQrModalOpen(true);
+        setIsCartOpen(false); // Close cart drawer
+        setQrTimer(300); // 5 min timer
+        setIsSubmittingOrder(false);
+        return;
+      }
+
+      // 5. Normal checkout (Contraentrega or Transferencia) -> WhatsApp Redirect
+      const itemsText = cart.map(item => 
+        `• *${item.quantity}x ${item.name}* - Bs. ${(item.price * item.quantity).toFixed(1)}`
+      ).join("\n");
+
+      const message = `¡Hola Kaldirev Bolivia! Deseo confirmar mi pedido de combos:
 
 Detalle del Pedido:
 ${itemsText}
 
 Subtotal: Bs. ${subtotal.toFixed(1)}
-Costo de Envío (${formData.deliveryMethod}): Bs. ${shipping.toFixed(1)}
-*Total a Pagar: Bs. ${total.toFixed(1)}*
+Costo de Envío (${formData.deliveryMethod}): Bs. ${shippingCost.toFixed(1)}
+*Total a Pagar: Bs. ${totalOrderAmount.toFixed(1)}*
+*(Envío en bolsa Kraft eco-amigable con termosellado manual de seguridad)*
 
-Datos para el Envío:
-- Almacén de Despacho: ${selectedBranch ? selectedBranch.name : 'Santa Cruz'}
-- Nombre: ${formData.name}
-- Teléfono de contacto: ${formData.phone}
-- Dirección de entrega: ${formData.address}
-- Ciudad/Destino: ${formData.city}
-${formData.gpsCoordinates ? `- Coordenadas GPS: ${formData.gpsCoordinates}\n` : ''}- Método de Pago: ${formData.paymentMethod}
+Mis Datos de Despacho:
+- Nombre Completo: ${formData.name}
+- Teléfono / WhatsApp: ${formData.phone}
+- Ciudad de Entrega: ${formData.city}
+- Dirección de Entrega: ${formData.address}
+${formData.gpsCoordinates ? `- Ubicación GPS (Link): ${formData.gpsCoordinates}\n` : ''}- Método de Pago: ${formData.paymentMethod}
 
-Presentación de envío: Bolsa Kraft eco-amigable con termosellado manual de seguridad.`;
+Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas gracias!`;
 
-        const encodedMessage = encodeURIComponent(message);
-        const whatsappUrl = `https://api.whatsapp.com/send?phone=${config.whatsappNumber}&text=${encodedMessage}`;
+      const encodedMessage = encodeURIComponent(message);
+      const whatsappUrl = `https://api.whatsapp.com/send?phone=${config.whatsappNumber}&text=${encodedMessage}`;
 
-        window.open(whatsappUrl, '_blank');
-        setIsCartOpen(false);
-        setCart([]);
-        setIsCheckingOut(false);
-        setShowSuccessModal(true);
+      // Open WhatsApp
+      window.open(whatsappUrl, '_blank');
+
+      // Reset cart and checkout states
+      setCart([]);
+      setIsCheckingOut(false);
+      setShowSuccessModal(true);
+
+      // Refresh orders history if user logged in
+      if (user) {
+        fetchUserOrders(user.id);
       }
 
     } catch (err) {
       console.error("Order creation failed:", err);
-      alert("Hubo un problema al procesar su pedido en la base de datos. De todas formas lo coordinaremos por WhatsApp.");
-      const itemsText = cart.map(item => `• *${item.quantity}x ${item.name}*`).join("\n");
-      window.open(`https://api.whatsapp.com/send?phone=${config.whatsappNumber}&text=${encodeURIComponent("Pedido alternativo: " + itemsText)}`, '_blank');
+      window.Swal.fire({
+        title: 'Error al registrar pedido',
+        text: 'Hubo un inconveniente al registrar su pedido en la base de datos: ' + err.message,
+        icon: 'error',
+        confirmButtonColor: 'var(--primary-green)'
+      });
     } finally {
       setIsSubmittingOrder(false);
     }
@@ -1139,6 +1316,7 @@ Presentación de envío: Bolsa Kraft eco-amigable con termosellado manual de seg
   // Open details view
   const openComboDetails = (combo) => {
     setSelectedCombo(combo);
+    setActiveImageIndex(0);
     setView("details");
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -1146,6 +1324,7 @@ Presentación de envío: Bolsa Kraft eco-amigable con termosellado manual de seg
   const closeComboDetails = () => {
     setView("catalog");
     setSelectedCombo(null);
+    setActiveImageIndex(0);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -2386,13 +2565,13 @@ Presentación de envío: Bolsa Kraft eco-amigable con termosellado manual de seg
               className="btn-google-login" 
               onClick={() => { setIsAuthModalOpen(true); setAuthError(""); setAuthMode("login"); }}
               title="Iniciar sesión / Registrarse"
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'white', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0.5rem 0.8rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'white', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
-              <span>Iniciar Sesión</span>
+              <span className="desktop-only">Iniciar Sesión</span>
             </button>
           )}
 
@@ -2872,101 +3051,269 @@ Presentación de envío: Bolsa Kraft eco-amigable con termosellado manual de seg
             </button>
           </div>
 
-          {selectedCombo && (
-            <div className="details-grid">
-              {/* Image Column */}
-              <div className="details-image-container" style={{ borderRadius: '16px', padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                {selectedCombo.image_url ? (
-                  isVideoUrl(selectedCombo.image_url) ? (
-                    <video src={selectedCombo.image_url} autoPlay loop muted playsInline style={{ maxWidth: '100%', maxHeight: '350px', objectFit: 'contain', borderRadius: '12px' }} />
-                  ) : (
-                    <img src={selectedCombo.image_url} alt={selectedCombo.name} style={{ maxWidth: '100%', maxHeight: '350px', objectFit: 'contain' }} />
-                  )
-                ) : (
-                  <div className="doypack-illustration" style={{ width: '120px', height: '180px', borderRadius: '15px' }}>
-                    <div className="doypack-zipper" style={{ height: '6px' }}></div>
-                    <div className="doypack-tag" style={{ top: '50px', height: '65px' }}>
-                      <span className="doypack-tag-logo" style={{ fontSize: '14px' }}>TIENS</span>
-                    </div>
-                  </div>
-                )}
-                <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-                  <span className="eco-badge" style={{ margin: 0, fontSize: '0.8rem' }}>
-                    Garantía Original Tiens 🛡
-                  </span>
-                </div>
-              </div>
+          {selectedCombo && (() => {
+            // Build media list dynamically (Added by Antigravity)
+            const mediaList = [];
+            if (selectedCombo.image_url) {
+              const urls = selectedCombo.image_url.split(',');
+              urls.forEach(url => {
+                if (url.trim()) {
+                  mediaList.push({ type: isVideoUrl(url.trim()) ? 'video' : 'image', url: url.trim() });
+                }
+              });
+            }
+            
+            // Add Amazon-style A+ Trust and Lifestyle infographic slides
+            mediaList.push({
+              type: 'infographic',
+              icon: (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+              ),
+              title: 'Sellado de Seguridad',
+              desc: 'Bolsa doypack Kraft termosellada manual para garantizar higiene absoluta y cero manipulación manual.'
+            });
 
-              {/* Info Column */}
-              <div className="details-content-section" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div>
-                  <span className="details-category">Tiens • {selectedCombo.category}</span>
-                  <h1 className="details-title">{selectedCombo.name}</h1>
-                  <p className="details-tagline">{selectedCombo.tagline}</p>
-                </div>
+            mediaList.push({
+              type: 'infographic',
+              icon: (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+              ),
+              title: 'Garantía Original Tiens',
+              desc: 'Suplementos 100% auténticos y legítimos provistos de manera oficial en envases sellados.'
+            });
 
-                <div>
-                  <h4 className="details-box-title">Beneficios Clave</h4>
-                  <ul className="details-bullets-list" style={{ paddingLeft: 0, listStyle: 'none' }}>
-                    {selectedCombo.bullets.map((bullet, idx) => (
-                      <li className="details-bullet-item" key={idx}>
-                        <svg className="svg-icon details-bullet-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                        <span>{bullet}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+            mediaList.push({
+              type: 'infographic',
+              icon: (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <rect x="1" y="3" width="15" height="13"></rect>
+                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                  <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                  <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                </svg>
+              ),
+              title: 'Despacho Express Rápido',
+              desc: 'Coordinación inmediata. Delivery en el día por Yango/PedidosYa en Santa Cruz y envíos nacionales.'
+            });
 
-                <div>
-                  <h4 className="details-box-title">¿Qué incluye este pack?</h4>
-                  <div className="details-box" style={{ padding: '1rem' }}>
-                    <p style={{ fontSize: '0.95rem' }}>{selectedCombo.includes}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="details-box-title">Presentación del empaque</h4>
-                  <div className="details-box" style={{ padding: '1rem' }}>
-                    <p style={{ fontSize: '0.95rem' }}>{selectedCombo.package_detail}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="details-box-title">Dosis sugerida</h4>
-                  <div className="details-box dosage-box" style={{ padding: '1rem' }}>
-                    <p style={{ fontSize: '0.95rem' }}>{selectedCombo.dosage}</p>
-                  </div>
-                </div>
-
-                {/* Price and Cart Buttons */}
-                <div className="details-price-card" style={{ padding: '1.5rem', borderRadius: '12px' }}>
-                  <div>
-                    <span style={{ display: 'block', textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '0.95rem' }}>Regular: Bs. {parseFloat(selectedCombo.original_price_bs).toFixed(1)}</span>
-                    <span style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--primary-green)' }}>Bs. {parseFloat(selectedCombo.price_bs).toFixed(1)}</span>
+            return (
+              <div className="details-grid">
+                {/* Image Gallery Column */}
+                <div className="details-gallery-container">
+                  <div className="details-main-media-box">
+                    {(() => {
+                      const currentMedia = mediaList[activeImageIndex] || mediaList[0];
+                      if (!currentMedia) return null;
+                      if (currentMedia.type === 'video') {
+                        return <video src={currentMedia.url} autoPlay loop muted playsInline />;
+                      } else if (currentMedia.type === 'image') {
+                        return <img src={currentMedia.url} alt={selectedCombo.name} />;
+                      } else if (currentMedia.type === 'infographic') {
+                        return (
+                          <div className="details-infographic-slide">
+                            <div className="details-infographic-icon">
+                              {currentMedia.icon}
+                            </div>
+                            <h4 className="details-infographic-title">{currentMedia.title}</h4>
+                            <p className="details-infographic-desc">{currentMedia.desc}</p>
+                          </div>
+                        );
+                      }
+                    })()}
                   </div>
                   
-                  <div className="details-action-buttons">
-                    <button 
-                      type="button" 
-                      className="btn-details-buy"
-                      onClick={() => addToCart(selectedCombo)}
-                    >
-                      Añadir al Pedido
-                    </button>
-                    <button 
-                      type="button" 
-                      className="btn-details-share"
-                      onClick={() => handleShareCombo(selectedCombo)}
-                    >
-                      {shareSuccess ? '¡Copiado!' : 'Compartir'}
-                    </button>
+                  {/* Thumbnails Row */}
+                  <div className="details-thumbnails-row">
+                    {mediaList.map((media, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        className={`details-thumbnail-btn ${activeImageIndex === index ? 'active' : ''}`}
+                        onClick={() => setActiveImageIndex(index)}
+                      >
+                        {media.type === 'video' ? (
+                          <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span style={{ fontSize: '9px', color: 'var(--accent-gold)', fontWeight: 'bold' }}>VIDEO</span>
+                          </div>
+                        ) : media.type === 'image' ? (
+                          <img src={media.url} alt={`Vista ${index + 1}`} />
+                        ) : (
+                          <div style={{ fontSize: '18px' }}>💡</div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Info Column */}
+                <div className="details-content-section" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <div>
+                    <span className="details-category">Tiens • {selectedCombo.category}</span>
+                    <h1 className="details-title">{selectedCombo.name}</h1>
+                    
+                    {/* Amazon-style Rating Breakdown */}
+                    <div className="amazon-rating-container">
+                      <span className="amazon-rating-text">4.9</span>
+                      <div className="amazon-stars-row">
+                        {[1, 2, 3, 4].map(n => (
+                          <svg key={n} width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                          </svg>
+                        ))}
+                        {/* Half star */}
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ opacity: 0.85 }}>
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                        </svg>
+                      </div>
+                      <span className="amazon-rating-link">98 calificaciones de clientes</span>
+                    </div>
+
+                    <p className="details-tagline">{selectedCombo.tagline}</p>
+                  </div>
+
+                  <div>
+                    <h4 className="details-box-title">Beneficios Clave</h4>
+                    <ul className="details-bullets-list" style={{ paddingLeft: 0, listStyle: 'none' }}>
+                      {selectedCombo.bullets.map((bullet, idx) => (
+                        <li className="details-bullet-item" key={idx}>
+                          <svg className="svg-icon details-bullet-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                          </svg>
+                          <span>{bullet}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h4 className="details-box-title">¿Qué incluye este pack?</h4>
+                    <div className="details-box" style={{ padding: '1rem' }}>
+                      <p style={{ fontSize: '0.95rem' }}>{selectedCombo.includes}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="details-box-title">Presentación del empaque</h4>
+                    <div className="details-box" style={{ padding: '1rem' }}>
+                      <p style={{ fontSize: '0.95rem' }}>{selectedCombo.package_detail}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="details-box-title">Dosis sugerida</h4>
+                    <div className="details-box dosage-box" style={{ padding: '1rem' }}>
+                      <p style={{ fontSize: '0.95rem' }}>{selectedCombo.dosage}</p>
+                    </div>
+                  </div>
+
+                  {/* Amazon Technical Specs Table */}
+                  <div>
+                    <h4 className="details-box-title">Especificaciones Técnicas</h4>
+                    <table className="tech-specs-table">
+                      <tbody>
+                        <tr>
+                          <td className="label-cell">Marca</td>
+                          <td className="value-cell">Tiens (Tianshi) Oficial</td>
+                        </tr>
+                        <tr>
+                          <td className="label-cell">Origen</td>
+                          <td className="value-cell">Suplementos Legítimos Importados</td>
+                        </tr>
+                        <tr>
+                          <td className="label-cell">Empaque</td>
+                          <td className="value-cell">Bolsa Doypack Kraft Ecológica con zipper</td>
+                        </tr>
+                        <tr>
+                          <td className="label-cell">Sellado</td>
+                          <td className="value-cell">Termosellado manual de seguridad Kaldirev</td>
+                        </tr>
+                        <tr>
+                          <td className="label-cell">Manipulación</td>
+                          <td className="value-cell">Cero contacto humano en fraccionamiento</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Amazon Trust Badges Grid */}
+                  <div className="trust-badges-grid">
+                    <div className="trust-badge-card">
+                      <div className="trust-badge-icon-box">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                      </div>
+                      <span className="trust-badge-title">100% Original</span>
+                      <span className="trust-badge-desc">Garantía oficial Tiens Bolivia</span>
+                    </div>
+
+                    <div className="trust-badge-card">
+                      <div className="trust-badge-icon-box">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                      </div>
+                      <span className="trust-badge-title">Termosellado</span>
+                      <span className="trust-badge-desc">Higiene y hermeticidad</span>
+                    </div>
+
+                    <div className="trust-badge-card">
+                      <div className="trust-badge-icon-box">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <line x1="12" y1="8" x2="12" y2="12"></line>
+                          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                      </div>
+                      <span className="trust-badge-title">Pago Seguro</span>
+                      <span className="trust-badge-desc">Contraentrega o transferencia</span>
+                    </div>
+
+                    <div className="trust-badge-card">
+                      <div className="trust-badge-icon-box">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                      </div>
+                      <span className="trust-badge-title">Envío Express</span>
+                      <span className="trust-badge-desc">Yango en el día (Santa Cruz)</span>
+                    </div>
+                  </div>
+
+                  {/* Price and Cart Buttons */}
+                  <div className="details-price-card" style={{ padding: '1.5rem', borderRadius: '12px' }}>
+                    <div>
+                      <span style={{ display: 'block', textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '0.95rem' }}>Regular: Bs. {parseFloat(selectedCombo.original_price_bs).toFixed(1)}</span>
+                      <span style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--primary-green)' }}>Bs. {parseFloat(selectedCombo.price_bs).toFixed(1)}</span>
+                    </div>
+                    
+                    <div className="details-action-buttons">
+                      <button 
+                        type="button" 
+                        className="btn-details-buy"
+                        onClick={() => addToCart(selectedCombo)}
+                      >
+                        Añadir al Pedido
+                      </button>
+                      <button 
+                        type="button" 
+                        className="btn-details-share"
+                        onClick={() => handleShareCombo(selectedCombo)}
+                      >
+                        {shareSuccess ? '¡Copiado!' : 'Compartir'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </main>
       )}
 
@@ -2976,7 +3323,7 @@ Presentación de envío: Bolsa Kraft eco-amigable con termosellado manual de seg
           
           <div className="cart-drawer-header">
             <h3 className="cart-drawer-title">
-              {isCheckingOut ? 'Datos de tu Pedido' : 'Tu Carrito de Combos'}
+              {isCheckingOut ? "Datos de Envío & Pago" : "Tu Carrito de Combos"}
             </h3>
             <button className="btn-close-cart" onClick={() => setIsCartOpen(false)} aria-label="Cerrar">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -2986,63 +3333,259 @@ Presentación de envío: Bolsa Kraft eco-amigable con termosellado manual de seg
             </button>
           </div>
 
-          {!isCheckingOut ? (
-            <>
-              <div className="cart-items-container">
-                {cart.length === 0 ? (
-                  <div className="cart-empty-state">
-                    <p style={{ fontWeight: 600, fontSize: '1.1rem' }}>El carrito está vacío</p>
-                    <p style={{ fontSize: '0.9rem' }}>Agrega algunos de nuestros combos para iniciar tu pedido.</p>
-                  </div>
-                ) : (
-                  cart.map(item => (
-                    <div className="cart-item" key={item.id}>
-                      <div className="cart-item-image">
-                        {item.image_url ? (
-                          <img src={item.image_url} alt={item.name} />
-                        ) : (
-                          <div className="doypack-illustration" style={{ width: '30px', height: '45px', borderRadius: '4px', borderWidth: '1px' }}>
-                            <div className="doypack-zipper" style={{ top: '4px', height: '2px' }}></div>
-                          </div>
-                        )}
+          <div className="cart-items-container">
+            {isCheckingOut ? (
+              /* ==================== STEP 2: CHECKOUT FORM ==================== */
+              <div className="checkout-form-container animate-fade-in">
+                <h4 className="checkout-form-title">Detalles del Cliente</h4>
+                
+                <div className="form-group">
+                  <label className="form-label" htmlFor="chk-name">Nombre Completo *</label>
+                  <input 
+                    type="text" 
+                    id="chk-name" 
+                    required
+                    className="form-input" 
+                    placeholder="Ej. Juan Pérez" 
+                    value={formData.name} 
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="chk-phone">Celular / WhatsApp *</label>
+                  <input 
+                    type="tel" 
+                    id="chk-phone" 
+                    required
+                    className="form-input" 
+                    placeholder="Ej. 70012345" 
+                    value={formData.phone} 
+                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  />
+                </div>
+
+                <h4 className="checkout-form-title" style={{ marginTop: '1rem' }}>Envío & Despacho</h4>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="chk-city">Ciudad de Destino *</label>
+                  <select 
+                    id="chk-city" 
+                    className="form-select" 
+                    value={formData.city} 
+                    onChange={(e) => handleCityChange(e.target.value)}
+                  >
+                    {branches.map(b => (
+                      <option key={b.id} value={b.name}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="chk-address">Dirección de Entrega (calle, número, zona) *</label>
+                  <input 
+                    type="text" 
+                    id="chk-address" 
+                    required
+                    className="form-input" 
+                    placeholder="Ej. Av. Bush, Calle 4, Nro 125, Zona Centro" 
+                    value={formData.address} 
+                    onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="chk-delivery">Método de Envío *</label>
+                  <select 
+                    id="chk-delivery" 
+                    className="form-select" 
+                    value={formData.deliveryMethod} 
+                    onChange={(e) => setFormData(prev => ({ ...prev, deliveryMethod: e.target.value }))}
+                  >
+                    <option value="Local (Yango)">Servicio Courier / Delivery (Yango/PedidosYa)</option>
+                    <option value="Envíos Nacionales">Envío por Flota/Transportadora Nacional</option>
+                    <option value="Retiro en Oficina">Retiro en Sucursal Oficial (Envío Bs. 0)</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="chk-gps">Enlace Ubicación GPS (Google Maps) (Opcional)</label>
+                  <input 
+                    type="text" 
+                    id="chk-gps" 
+                    className="form-input" 
+                    placeholder="Ej. https://maps.app.goo.gl/..." 
+                    value={formData.gpsCoordinates} 
+                    onChange={(e) => setFormData(prev => ({ ...prev, gpsCoordinates: e.target.value }))}
+                  />
+                </div>
+
+                <h4 className="checkout-form-title" style={{ marginTop: '1rem' }}>Forma de Pago</h4>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="chk-payment">Método de Pago *</label>
+                  <select 
+                    id="chk-payment" 
+                    className="form-select" 
+                    value={formData.paymentMethod} 
+                    onChange={(e) => setFormData(prev => ({ ...prev, paymentMethod: e.target.value }))}
+                  >
+                    <option value="Contraentrega">Efectivo / QR al recibir (Contraentrega)</option>
+                    <option value="Pago QR Directo">Pago QR Inmediato (Pasarela Libélula)</option>
+                    <option value="Transferencia Bancaria">Transferencia Bancaria Directa</option>
+                  </select>
+                </div>
+
+                {/* Stock Warning inside checkout form */}
+                {(() => {
+                  const outOfStockItems = getOutOfStockItemsForCity(formData.city);
+                  if (outOfStockItems.length > 0) {
+                    return (
+                      <div style={{ background: '#ffeeee', border: '1px solid #ffcccc', color: '#cc0000', padding: '10px', borderRadius: '8px', fontSize: '0.82rem', marginTop: '10px', fontWeight: 600 }}>
+                        ⚠️ Los siguientes combos no tienen stock suficiente en {formData.city}:
+                        <ul style={{ paddingLeft: '15px', marginTop: '4px' }}>
+                          {outOfStockItems.map(item => (
+                            <li key={item.id}>{item.name} (Requerido: {item.quantity})</li>
+                          ))}
+                        </ul>
+                        Por favor, reduzca cantidades en el carrito o cambie de ciudad.
                       </div>
-                      <div className="cart-item-details">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div>
-                            <p className="cart-item-name" style={{ fontSize: '0.95rem' }}>{item.name}</p>
-                            <span className="cart-item-meta" style={{ fontSize: '0.75rem' }}>Kraft Termosellado</span>
-                          </div>
-                          <button 
-                            style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', padding: '2px' }}
-                            onClick={() => removeFromCart(item.id)}
-                            aria-label="Eliminar producto"
-                          >
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <polyline points="3 6 5 6 21 6"></polyline>
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            </svg>
-                          </button>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+            ) : (
+              /* ==================== STEP 1: CART LIST ==================== */
+              cart.length === 0 ? (
+                <div className="cart-empty-state">
+                  <p style={{ fontWeight: 600, fontSize: '1.1rem' }}>El carrito está vacío</p>
+                  <p style={{ fontSize: '0.9rem' }}>Agrega algunos de nuestros combos para iniciar tu pedido.</p>
+                </div>
+              ) : (
+                cart.map(item => (
+                  <div className="cart-item" key={item.id}>
+                    <div className="cart-item-image">
+                      {item.image_url ? (
+                        isVideoUrl(item.image_url) ? (
+                          <video src={item.image_url} muted style={{ width: '45px', height: '65px', objectFit: 'contain', borderRadius: '4px' }} />
+                        ) : (
+                          <img src={item.image_url} alt={item.name} style={{ width: '45px', height: '65px', objectFit: 'contain' }} />
+                        )
+                      ) : (
+                        <div className="doypack-illustration" style={{ width: '30px', height: '45px', borderRadius: '4px', borderWidth: '1px' }}>
+                          <div className="doypack-zipper" style={{ top: '4px', height: '2px' }}></div>
                         </div>
-                        <div className="cart-item-bottom">
-                          <div className="cart-quantity-controls">
-                            <button className="btn-qty" onClick={() => updateQuantity(item.id, -1)}>-</button>
-                            <span className="qty-val">{item.quantity}</span>
-                            <button className="btn-qty" onClick={() => updateQuantity(item.id, 1)}>+</button>
-                          </div>
-                          <span className="cart-item-price" style={{ fontSize: '1.1rem' }}>Bs. {(item.price * item.quantity).toFixed(1)}</span>
+                      )}
+                    </div>
+                    <div className="cart-item-details">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <p className="cart-item-name" style={{ fontSize: '0.95rem' }}>{item.name}</p>
+                          <span className="cart-item-meta" style={{ fontSize: '0.75rem' }}>Kraft Termosellado</span>
                         </div>
+                        <button 
+                          style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', padding: '2px' }}
+                          onClick={() => removeFromCart(item.id)}
+                          aria-label="Eliminar producto"
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                          </svg>
+                        </button>
+                      </div>
+                      <div className="cart-item-bottom">
+                        <div className="cart-quantity-controls">
+                          <button className="btn-qty" onClick={() => updateQuantity(item.id, -1)}>-</button>
+                          <span className="qty-val">{item.quantity}</span>
+                          <button className="btn-qty" onClick={() => updateQuantity(item.id, 1)}>+</button>
+                        </div>
+                        <span className="cart-item-price" style={{ fontSize: '1.1rem' }}>Bs. {(item.price * item.quantity).toFixed(1)}</span>
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
-
-              {cart.length > 0 && (
-                <div className="cart-drawer-footer">
-                  <div className="summary-row" style={{ fontSize: '1.05rem' }}>
-                    <span>Subtotal:</span>
-                    <span>Bs. {getCartTotal().toFixed(1)}</span>
                   </div>
+                ))
+              )
+            )}
+          </div>
+
+          {cart.length > 0 && (
+            <div className="cart-drawer-footer">
+              <div className="summary-row" style={{ fontSize: '1.05rem' }}>
+                <span>Subtotal:</span>
+                <span>Bs. {getCartTotal().toFixed(1)}</span>
+              </div>
+              
+              {isCheckingOut ? (
+                <>
+                  <div className="summary-row" style={{ fontSize: '1.05rem' }}>
+                    <span>Costo de Envío ({formData.deliveryMethod === 'Retiro en Oficina' ? 'Sucursal' : formData.city}):</span>
+                    <span>
+                      {(() => {
+                        const selectedBranchObj = branches.find(b => b.name.toLowerCase().includes(formData.city.toLowerCase())) || branches[0];
+                        const cost = formData.deliveryMethod === 'Retiro en Oficina' ? 0 : (selectedBranchObj ? parseFloat(selectedBranchObj.shipping_cost_bs) : 15);
+                        return cost === 0 ? "Gratis" : `Bs. ${cost.toFixed(1)}`;
+                      })()}
+                    </span>
+                  </div>
+                  <div className="summary-row total" style={{ fontSize: '1.35rem' }}>
+                    <span>Total a pagar:</span>
+                    <span>
+                      Bs. {(() => {
+                        const selectedBranchObj = branches.find(b => b.name.toLowerCase().includes(formData.city.toLowerCase())) || branches[0];
+                        const cost = formData.deliveryMethod === 'Retiro en Oficina' ? 0 : (selectedBranchObj ? parseFloat(selectedBranchObj.shipping_cost_bs) : 15);
+                        return (getCartTotal() + cost).toFixed(1);
+                      })()}
+                    </span>
+                  </div>
+                  
+                  <div className="checkout-steps">
+                    <button 
+                      className="btn-checkout" 
+                      style={{ fontSize: '1.1rem', padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }} 
+                      onClick={handleCreateOrderCheckout}
+                      disabled={isSubmittingOrder}
+                    >
+                      {isSubmittingOrder ? (
+                        <span>Procesando Pedido...</span>
+                      ) : (
+                        <>
+                          {formData.paymentMethod === 'Pago QR Directo' ? (
+                            <>
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <rect x="7" y="7" width="3" height="3"></rect>
+                                <rect x="14" y="7" width="3" height="3"></rect>
+                                <rect x="7" y="14" width="3" height="3"></rect>
+                                <rect x="14" y="14" width="3" height="3"></rect>
+                              </svg>
+                              <span>Generar QR para Pago</span>
+                            </>
+                          ) : (
+                            <>
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+                                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.59-4.846c1.666.988 3.311 1.485 5.243 1.486 5.542.004 10.057-4.51 10.06-10.055.002-2.686-1.043-5.212-2.94-7.11s-4.426-2.943-7.11-2.943c-5.542 0-10.056 4.51-10.06 10.056-.001 2.01.536 3.69 1.547 5.356l-.99 3.616 3.733-.979zm11.332-6.862c-.3-.15-1.77-.875-2.04-.972-.27-.099-.47-.15-.67.15-.2.3-.77.975-.94 1.17-.18.195-.36.225-.66.075-.3-.15-1.27-.47-2.42-1.493-.89-.797-1.5-1.78-1.67-2.08-.18-.3-.02-.46.13-.61.135-.135.3-.35.45-.525.15-.175.2-.3.3-.5.1-.2.05-.375-.025-.525-.075-.15-.67-1.62-.92-2.22-.242-.58-.487-.5-.67-.51-.173-.008-.371-.01-.57-.01-.2 0-.525.075-.8.375-.275.3-1.05 1.025-1.05 2.5 0 1.475 1.075 2.9 1.225 3.1.15.2 2.11 3.22 5.11 4.525.714.31 1.272.496 1.706.635.717.227 1.37.195 1.885.118.575-.085 1.77-.725 2.02-1.39.25-.665.25-1.235.175-1.35-.075-.115-.275-.185-.575-.335z"/>
+                              </svg>
+                              <span>Confirmar Pedido (WhatsApp)</span>
+                            </>
+                          )}
+                        </>
+                      )}
+                    </button>
+                    
+                    <button 
+                      type="button" 
+                      className="btn-back-to-cart" 
+                      onClick={() => setIsCheckingOut(false)}
+                      style={{ marginTop: '8px' }}
+                    >
+                      Volver al Carrito
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
                   <div className="summary-row" style={{ fontSize: '1.05rem' }}>
                     <span>Empaque con Sello Kaldirev:</span>
                     <span style={{ color: '#276e49', fontWeight: 600 }}>Gratis</span>
@@ -3053,186 +3596,18 @@ Presentación de envío: Bolsa Kraft eco-amigable con termosellado manual de seg
                   </div>
                   
                   <div className="checkout-steps">
-                    <button className="btn-checkout" style={{ fontSize: '1.1rem', padding: '1rem' }} onClick={() => setIsCheckingOut(true)}>
-                      Continuar con el Envío
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '4px' }}>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                        <polyline points="12 5 19 12 12 19"></polyline>
-                      </svg>
+                    <button 
+                      className="btn-checkout" 
+                      style={{ fontSize: '1.1rem', padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }} 
+                      onClick={() => setIsCheckingOut(true)}
+                    >
+                      Proceder con el Pedido
                     </button>
                   </div>
-                </div>
+                </>
               )}
-            </>
-          ) : (
-            /* VIEW: CHECKOUT FORM */
-            <>
-              <form className="checkout-form-container" onSubmit={handleWhatsAppSubmit}>
-                <div className="checkout-form-title" style={{ fontSize: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Datos de Envío & Entrega</span>
-                  {user && <span style={{ fontSize: '0.75rem', background: '#eef6f2', color: 'var(--primary-green)', padding: '2px 8px', borderRadius: '12px' }}>Autocompletado</span>}
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label" htmlFor="name">Nombre y Apellido *</label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    required
-                    className="form-input"
-                    placeholder="Ej. Juan Pérez"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="phone">Teléfono / WhatsApp *</label>
-                  <input
-                    type="tel"
-                    id="phone"
-                    name="phone"
-                    required
-                    className="form-input"
-                    placeholder="Ej. 78945612"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="address">Dirección de entrega en Santa Cruz *</label>
-                  <input
-                    type="text"
-                    id="address"
-                    name="address"
-                    required
-                    className="form-input"
-                    placeholder="Calle, Número, Zona o Referencia de tu casa"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="city">Ciudad de Entrega *</label>
-                  <select
-                    id="city"
-                    name="city"
-                    required
-                    className="form-select"
-                    value={formData.city}
-                    onChange={(e) => {
-                      const cityName = e.target.value;
-                      let delivery = 'Local (Yango)';
-                      if (cityName === 'Otra Ciudad (Nacional)') {
-                        delivery = 'Nacional (OCS)';
-                      }
-                      setFormData(prev => ({ ...prev, city: cityName, deliveryMethod: delivery }));
-
-                      // Auto-update selectedBranch based on city name
-                      const matchingBranch = branches.find(b => b.name.toLowerCase().includes(cityName.toLowerCase())) || branches.find(b => b.name.toLowerCase().includes('santa cruz')) || branches[0];
-                      setSelectedBranch(matchingBranch);
-                    }}
-                  >
-                    <option value="Santa Cruz">Santa Cruz de la Sierra</option>
-                    <option value="La Paz">La Paz / El Alto</option>
-                    <option value="Cochabamba">Cochabamba</option>
-                    <option value="Otra Ciudad (Nacional)">Otra Ciudad (Envío Nacional Interdepartamental)</option>
-                  </select>
-                </div>
-
-                {formData.city !== 'Otra Ciudad (Nacional)' && (
-                  <div className="form-group animate-fade-in" style={{ background: '#faf9f6', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                    <label className="form-label" htmlFor="gpsCoordinates" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 'bold' }}>
-                      📍 Coordenadas GPS / Link de Ubicación (Opcional)
-                    </label>
-                    <input
-                      type="text"
-                      id="gpsCoordinates"
-                      name="gpsCoordinates"
-                      className="form-input"
-                      placeholder="Ej. https://maps.google.com/?q=-17.78, -63.18"
-                      value={formData.gpsCoordinates}
-                      onChange={handleInputChange}
-                    />
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-                      Pega tu enlace de ubicación compartida de Google Maps para acelerar la entrega de la moto.
-                    </span>
-                  </div>
-                )}
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="paymentMethod">Método de pago preferido</label>
-                  <select
-                    id="paymentMethod"
-                    name="paymentMethod"
-                    className="form-select"
-                    value={formData.paymentMethod}
-                    onChange={handleInputChange}
-                  >
-                    <option value="Contraentrega">Pago Contraentrega (Efectivo al recibir)</option>
-                    <option value="QR Libelula">Pasarela QR (Libélula / Circle.bo - Confirmación Automática)</option>
-                    <option value="Transferencia Bancaria">Pago previo por QR Manual / Transferencia</option>
-                  </select>
-                </div>
-                
-                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '1rem', lineHeight: '1.4' }}>
-                  * Se descontarán automáticamente las existencias del almacén de <strong>{selectedBranch ? selectedBranch.name : "Santa Cruz"}</strong>.
-                </div>
-              </form>
-
-              <div className="cart-drawer-footer" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', marginTop: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                  <span>Subtotal Combos:</span>
-                  <span>Bs. {getCartTotal().toFixed(1)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
-                  <span>Envío ({formData.deliveryMethod}):</span>
-                  <span>Bs. {getShippingCost().toFixed(1)}</span>
-                </div>
-                <div className="summary-row total" style={{ border: 'none', borderTop: '1px solid rgba(235, 220, 201, 0.4)', paddingTop: '10px', marginTop: '10px', fontSize: '1.3rem', fontWeight: 900 }}>
-                  <span>Total Final:</span>
-                  <span>Bs. {getFinalTotal().toFixed(1)}</span>
-                </div>
-
-                {getOutOfStockItemsForCity(formData.city).length > 0 && (
-                  <div className="animate-fade-in" style={{ marginTop: '12px', background: 'rgba(197, 160, 89, 0.08)', border: '1px solid rgba(197, 160, 89, 0.25)', padding: '10px 14px', borderRadius: '10px', fontSize: '0.8rem', color: 'var(--text-dark)', display: 'flex', gap: '8px', alignItems: 'flex-start', textAlign: 'left', lineHeight: '1.4' }}>
-                    <span style={{ fontSize: '1.1rem', marginTop: '-2px' }}>📦</span>
-                    <span>
-                      <strong>Despacho Interdepartamental:</strong> Algunos packs seleccionados están agotados en el almacén de {formData.city === 'Otra Ciudad (Nacional)' ? 'tu zona' : formData.city}. Los enviaremos sin costo adicional desde nuestra sucursal central de respaldo.
-                    </span>
-                  </div>
-                )}
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                  <button 
-                    type="submit" 
-                    className="btn-whatsapp-submit" 
-                    style={{ fontSize: '1.15rem', padding: '1rem', fontWeight: 700 }} 
-                    onClick={handleWhatsAppSubmit}
-                    disabled={isSubmittingOrder}
-                  >
-                    {isSubmittingOrder ? (
-                      <span>Registrando Pedido...</span>
-                    ) : (
-                      <>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '6px', display: 'inline-block', verticalAlign: 'middle' }}>
-                          <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.59-4.846c1.666.988 3.311 1.485 5.243 1.486 5.542.004 10.057-4.51 10.06-10.055.002-2.686-1.043-5.212-2.94-7.11s-4.426-2.943-7.11-2.943c-5.542 0-10.056 4.51-10.06 10.056-.001 2.01.536 3.69 1.547 5.356l-.99 3.616 3.733-.979zm11.332-6.862c-.3-.15-1.77-.875-2.04-.972-.27-.099-.47-.15-.67.15-.2.3-.77.975-.94 1.17-.18.195-.36.225-.66.075-.3-.15-1.27-.47-2.42-1.493-.89-.797-1.5-1.78-1.67-2.08-.18-.3-.02-.46.13-.61.135-.135.3-.35.45-.525.15-.175.2-.3.3-.5.1-.2.05-.375-.025-.525-.075-.15-.67-1.62-.92-2.22-.242-.58-.487-.5-.67-.51-.173-.008-.371-.01-.57-.01-.2 0-.525.075-.8.375-.275.3-1.05 1.025-1.05 2.5 0 1.475 1.075 2.9 1.225 3.1.15.2 2.11 3.22 5.11 4.525.714.31 1.272.496 1.706.635.717.227 1.37.195 1.885.118.575-.085 1.77-.725 2.02-1.39.25-.665.25-1.235.175-1.35-.075-.115-.275-.185-.575-.335z"/>
-                        </svg>
-                        Enviar Pedido por WhatsApp
-                      </>
-                    )}
-                  </button>
-                  <button type="button" className="btn-back-to-cart" onClick={() => setIsCheckingOut(false)}>
-                    Regresar al Carrito
-                  </button>
-                </div>
-              </div>
-            </>
+            </div>
           )}
-
         </div>
       </div>
 
