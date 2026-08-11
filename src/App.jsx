@@ -267,6 +267,9 @@ function App() {
   // Admin forms state
   const [editingCombo, setEditingCombo] = useState(null); // for editing/creating combos
   const [formStep, setFormStep] = useState(1);
+  const [configSubTab, setConfigSubTab] = useState("products"); // "products" | "combos" | "settings"
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [productFormStep, setProductFormStep] = useState(1);
   const [branches, setBranches] = useState([]);
   // Relational catalog states (comboStocks replaced by productStocks)
   const [selectedBranch, setSelectedBranch] = useState(null);
@@ -1231,34 +1234,6 @@ function App() {
     }
   };
 
-  // Save General settings to Supabase
-  const handleSaveSettings = async (e) => {
-    e.preventDefault();
-    try {
-      const updatedRate = parseFloat(adminFormData.exchangeRate) || 6.96;
-      const updatedPhone = adminFormData.whatsappNumber.replace(/\D/g, '');
-
-      const { error: err1 } = await supabase
-        .from('settings')
-        .upsert({ key: 'exchange_rate', value: updatedRate.toString() });
-
-      const { error: err2 } = await supabase
-        .from('settings')
-        .upsert({ key: 'whatsapp_number', value: updatedPhone });
-
-      if (err1 || err2) throw (err1 || err2);
-
-      setConfig({
-        exchangeRate: updatedRate,
-        whatsappNumber: updatedPhone
-      });
-
-      setShowAdminSaveToast(true);
-      setTimeout(() => setShowAdminSaveToast(false), 2000);
-    } catch (err) {
-      alert("Error al guardar la configuración: " + err.message);
-    }
-  };
 
   // Upload image to Cloudinary (Unsigned upload)
   const handleCloudinaryUpload = async (e) => {
@@ -1434,6 +1409,213 @@ function App() {
         });
       } else {
         alert("Error al eliminar combo: " + err.message);
+      }
+    }
+  };
+
+  // Save Product to Supabase
+  const handleSaveProduct = async (e) => {
+    e.preventDefault();
+    if (typeof window.Swal === 'undefined') {
+      executeSaveProduct();
+      return;
+    }
+    window.Swal.fire({
+      title: '¿Guardar Producto?',
+      text: 'Se actualizarán los datos de este producto en la base de datos de Supabase.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#0f3d2e',
+      cancelButtonColor: '#888',
+      confirmButtonText: 'Sí, guardar',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        executeSaveProduct();
+      }
+    });
+  };
+
+  const executeSaveProduct = async () => {
+    try {
+      const payload = {
+        name: editingProduct.name,
+        sku: editingProduct.sku || "",
+        slug: editingProduct.slug || editingProduct.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        price_bs: parseFloat(editingProduct.price_bs),
+        original_price_bs: parseFloat(editingProduct.original_price_bs),
+        category_id: parseInt(editingProduct.category_id),
+        description: editingProduct.description || "",
+        bullets: typeof editingProduct.bullets === 'string' 
+          ? editingProduct.bullets.split('\n').filter(b => b.trim() !== '')
+          : editingProduct.bullets || [],
+        dosage: editingProduct.dosage || "",
+        package_detail: editingProduct.package_detail || "",
+        badge: editingProduct.badge || null,
+        tagline: editingProduct.tagline || null,
+        pinned: !!editingProduct.pinned
+      };
+
+      let resId = editingProduct.id;
+      if (editingProduct.id) {
+        const { error } = await supabase
+          .from('products')
+          .update(payload)
+          .eq('id', editingProduct.id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase
+          .from('products')
+          .insert([payload])
+          .select();
+        if (error) throw error;
+        if (data && data[0]) {
+          resId = data[0].id;
+        }
+      }
+
+      // Save multiple images/videos
+      if (resId && editingProduct.media_urls !== undefined) {
+        // Clear existing product images
+        await supabase.from('product_images').delete().eq('product_id', resId);
+        
+        // Insert new ones
+        const list = (editingProduct.media_urls || "")
+          .split('\n')
+          .map(url => url.trim())
+          .filter(url => url !== "");
+        
+        if (list.length > 0) {
+          const insertPayload = list.map((url, index) => ({
+            product_id: resId,
+            url,
+            position: index,
+            is_video: isVideoUrl(url)
+          }));
+          const { error } = await supabase.from('product_images').insert(insertPayload);
+          if (error) throw error;
+        }
+      }
+
+      setEditingProduct(null);
+      fetchStoreData();
+      
+      if (window.Swal) {
+        window.Swal.fire({
+          title: '¡Guardado!',
+          text: 'El producto se ha guardado correctamente en Supabase.',
+          icon: 'success',
+          confirmButtonColor: '#0f3d2e'
+        });
+      } else {
+        alert("Producto guardado correctamente.");
+      }
+    } catch (err) {
+      if (window.Swal) {
+        window.Swal.fire({
+          title: 'Error',
+          text: 'Fallo al guardar producto: ' + err.message,
+          icon: 'error',
+          confirmButtonColor: '#0f3d2e'
+        });
+      } else {
+        alert("Error al guardar producto: " + err.message);
+      }
+    }
+  };
+
+  // Delete Product from Supabase
+  const handleDeleteProduct = async (id) => {
+    if (typeof window.Swal === 'undefined') {
+      if (!window.confirm("¿Está seguro de que desea eliminar este producto?")) return;
+      executeDeleteProduct(id);
+      return;
+    }
+
+    window.Swal.fire({
+      title: '¿Eliminar Producto?',
+      text: 'Esta acción borrará el producto y todas sus imágenes/stock permanentemente.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#888',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        executeDeleteProduct(id);
+      }
+    });
+  };
+
+  const executeDeleteProduct = async (id) => {
+    try {
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      fetchStoreData();
+      if (window.Swal) {
+        window.Swal.fire({
+          title: '¡Eliminado!',
+          text: 'El producto ha sido eliminado de la base de datos.',
+          icon: 'success',
+          confirmButtonColor: '#0f3d2e'
+        });
+      } else {
+        alert("Producto eliminado.");
+      }
+    } catch (err) {
+      if (window.Swal) {
+        window.Swal.fire({
+          title: 'Error',
+          text: 'Error al eliminar producto: ' + err.message,
+          icon: 'error',
+          confirmButtonColor: '#0f3d2e'
+        });
+      } else {
+        alert("Error al eliminar producto: " + err.message);
+      }
+    }
+  };
+
+  // Save Settings to Supabase
+  const handleSaveSettings = async (settingsKey, settingsVal) => {
+    try {
+      const valStr = typeof settingsVal === 'object' ? JSON.stringify(settingsVal) : String(settingsVal);
+      const { error } = await supabase.from('settings').upsert({ key: settingsKey, value: valStr });
+      if (error) throw error;
+      
+      setConfig(prev => {
+        const next = { ...prev };
+        if (settingsKey === 'exchange_rate') next.exchangeRate = parseFloat(settingsVal);
+        if (settingsKey === 'whatsapp_number') next.whatsappNumber = String(settingsVal);
+        if (settingsKey === 'flash_deal') next.flashDeal = settingsVal;
+        return next;
+      });
+      
+      if (window.Swal) {
+        window.Swal.fire({
+          title: '¡Guardado!',
+          text: `Ajuste "${settingsKey}" actualizado correctamente.`,
+          icon: 'success',
+          timer: 1500,
+          showConfirmButton: false
+        });
+      } else {
+        alert("Ajuste guardado.");
+      }
+    } catch (err) {
+      if (window.Swal) {
+        window.Swal.fire({
+          title: 'Error',
+          text: 'Error al actualizar ajuste: ' + err.message,
+          icon: 'error',
+          confirmButtonColor: '#0f3d2e'
+        });
+      } else {
+        alert("Error al actualizar ajuste: " + err.message);
       }
     }
   };
@@ -2337,7 +2519,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                         <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                       </svg>
                     </div>
-                    <span className="stat-card-value" style={{ fontSize: '1.75rem', fontWeight: 800 }}>Bs. {parseFloat(getTotalSales()).toLocaleString('es-BO', {minimumFractionDigits: 1})}</span>
+                    <span className="stat-card-value">Bs. {parseFloat(getTotalSales()).toLocaleString('es-BO', {minimumFractionDigits: 1})}</span>
                     <span className="stat-card-change" style={{ color: 'var(--text-muted)' }}>De órdenes con estado 'Completado'</span>
                   </div>
 
@@ -2350,7 +2532,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                         <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
                       </svg>
                     </div>
-                    <span className="stat-card-value" style={{ fontSize: '1.75rem', fontWeight: 800 }}>{orders.length}</span>
+                    <span className="stat-card-value">{orders.length}</span>
                     <span className="stat-card-change" style={{ fontSize: '0.8rem' }}>
                       <span style={{ color: 'var(--primary-green)', fontWeight: 'bold' }}>{getCompletedOrdersCount()} Comp</span> |{' '}
                       <span style={{ color: 'var(--offer-orange)', fontWeight: 'bold' }}>{getPendingOrdersCount()} Pend</span> |{' '}
@@ -2366,7 +2548,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                         <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
                       </svg>
                     </div>
-                    <span className="stat-card-value" style={{ fontSize: '1.75rem', fontWeight: 800 }}>Bs. {parseFloat(getAverageOrderValue()).toLocaleString('es-BO', {minimumFractionDigits: 1})}</span>
+                    <span className="stat-card-value">Bs. {parseFloat(getAverageOrderValue()).toLocaleString('es-BO', {minimumFractionDigits: 1})}</span>
                     <span className="stat-card-change" style={{ color: 'var(--text-muted)' }}>Monto medio por venta</span>
                   </div>
 
@@ -2379,7 +2561,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                         <line x1="12" y1="17" x2="12.01" y2="17"></line>
                       </svg>
                     </div>
-                    <span className="stat-card-value" style={{ fontSize: '1.75rem', fontWeight: 800, color: getLowStockAlerts().length > 0 ? 'var(--offer-orange)' : 'inherit' }}>
+                    <span className="stat-card-value" style={{ color: getLowStockAlerts().length > 0 ? 'var(--offer-orange)' : 'inherit' }}>
                       {getLowStockAlerts().length}
                     </span>
                     <span className="stat-card-change" style={{ color: 'var(--text-muted)' }}>Productos con bajo inventario (≤ 5)</span>
@@ -2387,7 +2569,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 </div>
 
                 {/* 2. Charts and Visualization Row */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '2rem' }}>
                   
                   {/* Column 1: Sales trends (7 days) */}
                   <div className="stat-card" style={{ padding: '1.5rem', background: 'white' }}>
@@ -2454,19 +2636,19 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                   </div>
 
                   {/* Column 2: Category Breakdown */}
-                  <div className="stat-card" style={{ padding: '1.5rem', background: 'white' }}>
-                    <h3 style={{ fontSize: '1.05rem', marginBottom: '1.5rem', color: 'var(--primary-green)' }}>Ventas por Categoría</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                  <div className="stat-card" style={{ padding: '2rem', background: 'white' }}>
+                    <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', color: 'var(--primary-green)' }}>Ventas por Categoría</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1rem' }}>
                       {getCategorySalesData().length === 0 ? (
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center', margin: '2rem 0' }}>Sin ventas registradas en categorías aún.</p>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.98rem', textAlign: 'center', margin: '2rem 0' }}>Sin ventas registradas en categorías aún.</p>
                       ) : (
                         getCategorySalesData().map((c, idx) => (
-                          <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                          <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', fontWeight: 'bold' }}>
                               <span>{c.category}</span>
                               <span style={{ color: 'var(--primary-green)' }}>Bs. {c.amount.toFixed(1)} ({c.percentage}%)</span>
                             </div>
-                            <div style={{ background: '#f1f5f9', borderRadius: '999px', height: '10px', width: '100%', overflow: 'hidden' }}>
+                            <div style={{ background: '#f1f5f9', borderRadius: '999px', height: '12px', width: '100%', overflow: 'hidden' }}>
                               <div style={{ background: 'var(--primary-green)', height: '100%', width: `${c.percentage}%`, borderRadius: '999px' }}></div>
                             </div>
                           </div>
@@ -2478,7 +2660,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 </div>
 
                 {/* 3. Detailed Lists Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '2rem' }}>
                   
                   {/* Top Selling Products */}
                   <div className="stat-card" style={{ padding: '1.5rem', background: 'white' }}>
@@ -2568,453 +2750,932 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     </div>
                   </div>
                 )}
-
               </div>
             )}
 
             {/* TAB 1: ADJUSTMENTS & COMBOS */}
             {adminActiveTab === "config" && (
               <div className="animate-fade-in">
-                {editingCombo ? (
-                  /* DEDICATED WORKSPACE FOR EDITING/CREATING COMBOS */
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid var(--border-color)', paddingBottom: '10px' }}>
-                      <div>
-                        <span className="admin-dash-subtitle" style={{ display: 'block' }}>Edición de Producto</span>
-                        <h3 style={{ fontSize: '1.5rem', color: 'var(--primary-green)', margin: 0, fontWeight: 900 }}>
-                          {editingCombo.id ? `✏️ Modificar Pack: ${editingCombo.name}` : "✨ Registrar Nuevo Pack / Combo"}
-                        </h3>
-                      </div>
-                      <button 
-                        type="button" 
-                        className="btn-share" 
-                        style={{ padding: '0.6rem 1.25rem', fontWeight: 800, fontSize: '0.9rem' }}
-                        onClick={() => setEditingCombo(null)}
-                      >
-                        ← Volver a la Lista
-                      </button>
-                    </div>
+                {/* SUB-TABS NAVIGATION BAR FOR CONFIG PANEL (Visible only when not editing) */}
+                {!editingCombo && !editingProduct && (
+                  <div className="admin-subtabs-bar">
+                    <button
+                      type="button"
+                      className={`admin-subtab-btn ${configSubTab === 'products' ? 'active' : ''}`}
+                      onClick={() => setConfigSubTab('products')}
+                    >
+                      📦 Productos Individuales
+                    </button>
+                    <button
+                      type="button"
+                      className={`admin-subtab-btn ${configSubTab === 'combos' ? 'active' : ''}`}
+                      onClick={() => setConfigSubTab('combos')}
+                    >
+                      🧪 Combos y Recetas
+                    </button>
+                    <button
+                      type="button"
+                      className={`admin-subtab-btn ${configSubTab === 'settings' ? 'active' : ''}`}
+                      onClick={() => setConfigSubTab('settings')}
+                    >
+                      ⚙️ Ajustes de Tienda
+                    </button>
+                  </div>
+                )}
 
-                    <div className="admin-combo-editor-layout" style={{ marginTop: '1rem' }}>                      <div className="dash-panel-card" style={{ padding: '2rem' }}>
-                        {/* Wizard Steps Indicator */}
-                        <div className="form-wizard-steps" style={{ display: 'flex', gap: '10px', marginBottom: '2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
-                          <div className={`wizard-step ${formStep === 1 ? 'active' : ''}`} style={{ flex: 1, padding: '10px', textAlign: 'center', borderRadius: '8px', background: formStep === 1 ? 'var(--primary-light)' : '#fbfaf8', color: formStep === 1 ? 'var(--primary-green)' : 'var(--text-muted)', fontWeight: 'bold', fontSize: '0.8rem', border: formStep === 1 ? '1px solid var(--primary-green)' : '1px solid var(--border-color)', transition: 'var(--transition-smooth)' }}>
-                            1. Básico
+                {/* SUB-TAB: PRODUCTS MANAGEMENT */}
+                {configSubTab === "products" && !editingCombo && (
+                  <div>
+                    {editingProduct ? (
+                      /* PRODUCT EDITOR WIZARD */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid var(--border-color)', paddingBottom: '10px' }}>
+                          <div>
+                            <span className="admin-dash-subtitle" style={{ display: 'block' }}>Edición de Producto</span>
+                            <h3 style={{ fontSize: '1.5rem', color: 'var(--primary-green)', margin: 0, fontWeight: 900 }}>
+                              {editingProduct.id ? `✏️ Modificar Producto: ${editingProduct.name}` : "✨ Registrar Nuevo Producto"}
+                            </h3>
                           </div>
-                          <div className={`wizard-step ${formStep === 2 ? 'active' : ''}`} style={{ flex: 1, padding: '10px', textAlign: 'center', borderRadius: '8px', background: formStep === 2 ? 'var(--primary-light)' : '#fbfaf8', color: formStep === 2 ? 'var(--primary-green)' : 'var(--text-muted)', fontWeight: 'bold', fontSize: '0.8rem', border: formStep === 2 ? '1px solid var(--primary-green)' : '1px solid var(--border-color)', transition: 'var(--transition-smooth)' }}>
-                            2. Precio & Inclusión
-                          </div>
-                          <div className={`wizard-step ${formStep === 3 ? 'active' : ''}`} style={{ flex: 1, padding: '10px', textAlign: 'center', borderRadius: '8px', background: formStep === 3 ? 'var(--primary-light)' : '#fbfaf8', color: formStep === 3 ? 'var(--primary-green)' : 'var(--text-muted)', fontWeight: 'bold', fontSize: '0.8rem', border: formStep === 3 ? '1px solid var(--primary-green)' : '1px solid var(--border-color)', transition: 'var(--transition-smooth)' }}>
-                            3. Consumo & Destacar
-                          </div>
+                          <button 
+                            type="button" 
+                            className="btn-share" 
+                            style={{ padding: '0.6rem 1.25rem', fontWeight: 800, fontSize: '0.9rem' }}
+                            onClick={() => setEditingProduct(null)}
+                          >
+                            ← Volver a la Lista
+                          </button>
                         </div>
 
-                        <form onSubmit={handleSaveCombo} className="admin-edit-combo-form" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                          
-                          {/* STEP 1: BASIC INFORMATION */}
-                          {formStep === 1 && (
-                            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                              <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div className="form-group">
-                                  <label className="form-label" style={{ fontWeight: 800 }}>Nombre del Kit *</label>
-                                  <input 
-                                    type="text" 
-                                    required
-                                    className="form-input"
-                                    placeholder="Ej. Kit Energía Diaria"
-                                    value={editingCombo.name}
-                                    onChange={(e) => setEditingCombo({...editingCombo, name: e.target.value})}
-                                  />
-                                </div>
-                                <div className="form-group">
-                                  <label className="form-label" style={{ fontWeight: 800 }}>Categoría *</label>
-                                  <select 
-                                    className="form-select"
-                                    value={editingCombo.category}
-                                    onChange={(e) => setEditingCombo({...editingCombo, category: e.target.value})}
-                                  >
-                                    <option value="Energía">Energía</option>
-                                    <option value="Bienestar">Bienestar</option>
-                                    <option value="Saludable">Saludable</option>
-                                    <option value="Defensas">Defensas</option>
-                                    <option value="Detox">Detox</option>
-                                    <option value="Belleza">Belleza</option>
-                                  </select>
-                                </div>
+                        <div className="admin-combo-editor-layout" style={{ marginTop: '1rem' }}>
+                          <div className="dash-panel-card" style={{ padding: '2rem' }}>
+                            {/* Product Wizard steps */}
+                            <div className="wizard-steps-container">
+                              <div className={`wizard-step ${productFormStep === 1 ? 'active' : ''}`}>
+                                1. Información Básica
                               </div>
-
-                              <div className="form-group">
-                                <label className="form-label" style={{ fontWeight: 800 }}>Eslogan de Venta (Tagline)</label>
-                                <input 
-                                  type="text" 
-                                  className="form-input"
-                                  placeholder="Ej. Energía y enfoque natural al instante"
-                                  value={editingCombo.tagline || ""}
-                                  onChange={(e) => setEditingCombo({...editingCombo, tagline: e.target.value})}
-                                />
+                              <div className={`wizard-step ${productFormStep === 2 ? 'active' : ''}`}>
+                                2. Precios e Imágenes
                               </div>
+                              <div className={`wizard-step ${productFormStep === 3 ? 'active' : ''}`}>
+                                3. Consumo y Detalles
+                              </div>
+                            </div>
 
-                              {/* Image Upload Area */}
-                              <div className="form-group" style={{ background: '#faf9f6', padding: '1.25rem', borderRadius: '12px', border: '1px dashed var(--accent-gold)' }}>
-                                <label className="form-label" style={{ fontWeight: 800, display: 'block', marginBottom: '8px' }}>Imagen / Video Ilustrativo *</label>
-                                {editingCombo.image_url && (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px', background: 'white', padding: '8px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                                    {isVideoUrl(editingCombo.image_url) ? (
-                                      <video src={editingCombo.image_url} muted style={{ height: '55px', width: '55px', objectFit: 'cover', borderRadius: '4px' }} />
-                                    ) : (
-                                      <img src={editingCombo.image_url} alt="Cargada" style={{ height: '55px', objectFit: 'contain' }} />
-                                    )}
-                                    <button type="button" className="btn-qty" style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold' }} onClick={() => setEditingCombo({...editingCombo, image_url: ''})}>Eliminar Foto/Video</button>
+                            <form onSubmit={handleSaveProduct} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                              {productFormStep === 1 && (
+                                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                  <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontWeight: 800 }}>Nombre del Producto *</label>
+                                      <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        value={editingProduct.name}
+                                        onChange={(e) => setEditingProduct({...editingProduct, name: e.target.value})}
+                                        required
+                                      />
+                                    </div>
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontWeight: 800 }}>Categoría *</label>
+                                      <select 
+                                        className="form-input"
+                                        value={editingProduct.category_id}
+                                        onChange={(e) => setEditingProduct({...editingProduct, category_id: e.target.value})}
+                                        required
+                                      >
+                                        <option value="">Seleccionar Categoría</option>
+                                        {categoriesList.map(cat => (
+                                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                        ))}
+                                      </select>
+                                    </div>
                                   </div>
+
+                                  <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontWeight: 800 }}>SKU Código (ej. A05) *</label>
+                                      <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        value={editingProduct.sku}
+                                        onChange={(e) => setEditingProduct({...editingProduct, sku: e.target.value})}
+                                        required
+                                      />
+                                    </div>
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontWeight: 800 }}>Tagline Frase (ej. Tu café con energía) *</label>
+                                      <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        value={editingProduct.tagline || ""}
+                                        onChange={(e) => setEditingProduct({...editingProduct, tagline: e.target.value})}
+                                        required
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="form-group">
+                                    <label className="form-label" style={{ fontWeight: 800 }}>Descripción Larga</label>
+                                    <textarea 
+                                      className="form-input" 
+                                      rows="3"
+                                      value={editingProduct.description || ""}
+                                      onChange={(e) => setEditingProduct({...editingProduct, description: e.target.value})}
+                                    ></textarea>
+                                  </div>
+                                </div>
+                              )}
+
+                              {productFormStep === 2 && (
+                                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                  <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontWeight: 800 }}>Precio Oferta (Bs.) *</label>
+                                      <input 
+                                        type="number" 
+                                        step="0.1" 
+                                        className="form-input" 
+                                        value={editingProduct.price_bs}
+                                        onChange={(e) => setEditingProduct({...editingProduct, price_bs: e.target.value})}
+                                        required
+                                      />
+                                    </div>
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontWeight: 800 }}>Precio Regular (Bs.) *</label>
+                                      <input 
+                                        type="number" 
+                                        step="0.1" 
+                                        className="form-input" 
+                                        value={editingProduct.original_price_bs}
+                                        onChange={(e) => setEditingProduct({...editingProduct, original_price_bs: e.target.value})}
+                                        required
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="form-group">
+                                    <label className="form-label" style={{ fontWeight: 800 }}>URLs de Fotos/Videos (Uno por línea) *</label>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                                      Copia y pega los enlaces de Cloudinary u otros servidores. Admite fotos y videos. El primer enlace se usará como portada principal.
+                                    </span>
+                                    <textarea 
+                                      className="form-input" 
+                                      rows="4" 
+                                      placeholder="https://res.cloudinary.com/...\nhttps://..."
+                                      value={editingProduct.media_urls || ""}
+                                      onChange={(e) => setEditingProduct({...editingProduct, media_urls: e.target.value})}
+                                      required
+                                    ></textarea>
+                                  </div>
+                                </div>
+                              )}
+
+                              {productFormStep === 3 && (
+                                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                  <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontWeight: 800 }}>Dosis / Modo de Uso</label>
+                                      <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        placeholder="ej. Tomar 1 cápsula 2 veces al día"
+                                        value={editingProduct.dosage || ""}
+                                        onChange={(e) => setEditingProduct({...editingProduct, dosage: e.target.value})}
+                                      />
+                                    </div>
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontWeight: 800 }}>Detalle de Empaque</label>
+                                      <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        placeholder="ej. Caja con 30 sobres de 10g"
+                                        value={editingProduct.package_detail || ""}
+                                        onChange={(e) => setEditingProduct({...editingProduct, package_detail: e.target.value})}
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'center' }}>
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontWeight: 800 }}>Etiqueta Destacada (ej. Más Vendido, Popular)</label>
+                                      <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        value={editingProduct.badge || ""}
+                                        onChange={(e) => setEditingProduct({...editingProduct, badge: e.target.value})}
+                                      />
+                                    </div>
+                                    <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '1.5rem' }}>
+                                      <input 
+                                        type="checkbox" 
+                                        id="prodPinned"
+                                        checked={!!editingProduct.pinned}
+                                        onChange={(e) => setEditingProduct({...editingProduct, pinned: e.target.checked})}
+                                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                      />
+                                      <label htmlFor="prodPinned" style={{ fontWeight: 800, cursor: 'pointer' }}>Destacar en Inicio (Pinear)</label>
+                                    </div>
+                                  </div>
+
+                                  <div className="form-group">
+                                    <label className="form-label" style={{ fontWeight: 800 }}>Beneficios (Uno por línea)</label>
+                                    <textarea 
+                                      className="form-input" 
+                                      rows="3" 
+                                      placeholder="ej. Mejora la digestión\nAumenta los niveles de calcio"
+                                      value={Array.isArray(editingProduct.bullets) ? editingProduct.bullets.join('\n') : editingProduct.bullets || ""}
+                                      onChange={(e) => setEditingProduct({...editingProduct, bullets: e.target.value})}
+                                    ></textarea>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Wizard Navigation */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
+                                <button
+                                  type="button"
+                                  className="btn-details-back"
+                                  disabled={productFormStep === 1}
+                                  onClick={() => setProductFormStep(prev => prev - 1)}
+                                  style={{ padding: '0.6rem 1.2rem' }}
+                                >
+                                  Anterior
+                                </button>
+
+                                {productFormStep < 3 ? (
+                                  <button
+                                    type="button"
+                                    className="btn-share"
+                                    onClick={() => {
+                                      if (productFormStep === 1 && (!editingProduct.name || !editingProduct.category_id || !editingProduct.sku)) {
+                                        alert("Por favor completa los campos requeridos (*)");
+                                        return;
+                                      }
+                                      if (productFormStep === 2 && (!editingProduct.price_bs || !editingProduct.original_price_bs || !editingProduct.media_urls)) {
+                                        alert("Por favor completa los precios y URL de imagen");
+                                        return;
+                                      }
+                                      setProductFormStep(prev => prev + 1);
+                                    }}
+                                    style={{ padding: '0.6rem 1.2rem' }}
+                                  >
+                                    Siguiente
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="submit"
+                                    className="btn-add-cart"
+                                    style={{ padding: '0.6rem 1.5rem', background: 'var(--primary-green)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}
+                                  >
+                                    Guardar Producto
+                                  </button>
                                 )}
-                                <input 
-                                  type="file" 
-                                  accept="image/*,video/*"
-                                  className="form-input"
-                                  style={{ padding: '0.4rem' }}
-                                  onChange={handleCloudinaryUpload}
-                                />
-                                {uploadingImage && <span style={{ fontSize: '0.8rem', color: 'var(--accent-gold)', marginTop: '4px', fontWeight: 'bold' }}>Subiendo archivo a Cloudinary...</span>}
                               </div>
-                            </div>
-                          )}
-
-                          {/* STEP 2: PRICING & INCLUSIONS */}
-                          {formStep === 2 && (
-                            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                              <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div className="form-group">
-                                  <label className="form-label" style={{ fontWeight: 800 }}>Precio de Venta (Bs.) *</label>
-                                  <input 
-                                    type="number" 
-                                    required
-                                    className="form-input"
-                                    placeholder="Ej. 55"
-                                    value={editingCombo.price_bs}
-                                    onChange={(e) => setEditingCombo({...editingCombo, price_bs: e.target.value})}
-                                  />
-                                </div>
-                                <div className="form-group">
-                                  <label className="form-label" style={{ fontWeight: 800 }}>Precio Regular / Tachado (Bs.) *</label>
-                                  <input 
-                                    type="number" 
-                                    required
-                                    className="form-input"
-                                    placeholder="Ej. 75"
-                                    value={editingCombo.original_price_bs}
-                                    onChange={(e) => setEditingCombo({...editingCombo, original_price_bs: e.target.value})}
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="form-group">
-                                <label className="form-label" style={{ fontWeight: 800 }}>¿Qué productos incluye el Kit? *</label>
-                                <input 
-                                  type="text" 
-                                  required
-                                  className="form-input"
-                                  placeholder="Ej. 2 Cordycafe + 3 Té Tianshi"
-                                  value={editingCombo.includes}
-                                  onChange={(e) => setEditingCombo({...editingCombo, includes: e.target.value})}
-                                />
-                              </div>
-
-                              <div className="form-group">
-                                <label className="form-label" style={{ fontWeight: 800 }}>Detalles del Empaque *</label>
-                                <input 
-                                  type="text" 
-                                  required
-                                  className="form-input"
-                                  placeholder="Ej. Bolsa doypack kraft original sellada con sello de seguridad Kaldirev"
-                                  value={editingCombo.package_detail}
-                                  onChange={(e) => setEditingCombo({...editingCombo, package_detail: e.target.value})}
-                                />
-                              </div>
-                            </div>
-                          )}
-
-                          {/* STEP 3: BENEFITS & DOSAGE */}
-                          {formStep === 3 && (
-                            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                              <div className="form-group">
-                                <label className="form-label" style={{ fontWeight: 800 }}>Beneficios del Kit (Uno por línea) *</label>
-                                <textarea 
-                                  className="form-input"
-                                  rows="3"
-                                  placeholder="Escribe cada beneficio en una línea diferente..."
-                                  value={Array.isArray(editingCombo.bullets) ? editingCombo.bullets.join('\n') : editingCombo.bullets}
-                                  onChange={(e) => setEditingCombo({...editingCombo, bullets: e.target.value})}
-                                ></textarea>
-                              </div>
-
-                              <div className="form-group">
-                                <label className="form-label" style={{ fontWeight: 800 }}>Modo de Consumo / Dosis *</label>
-                                <textarea 
-                                  className="form-input"
-                                  rows="2"
-                                  placeholder="Instrucciones de cómo consumirlo..."
-                                  value={editingCombo.dosage}
-                                  onChange={(e) => setEditingCombo({...editingCombo, dosage: e.target.value})}
-                                ></textarea>
-                              </div>
-
-                              <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div className="form-group">
-                                  <label className="form-label" style={{ fontWeight: 800 }}>Etiqueta Especial</label>
-                                  <input 
-                                    type="text" 
-                                    className="form-input"
-                                    placeholder="Ej. Más Vendido, Recomendado"
-                                    value={editingCombo.badge || ""}
-                                    onChange={(e) => setEditingCombo({...editingCombo, badge: e.target.value})}
-                                  />
-                                </div>
-                                <div className="form-group" style={{ display: 'flex', alignItems: 'center', height: '100%', marginTop: '1.8rem' }}>
-                                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 700 }}>
-                                    <input 
-                                      type="checkbox"
-                                      checked={!!editingCombo.pinned}
-                                      onChange={(e) => setEditingCombo({...editingCombo, pinned: e.target.checked})}
-                                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                                    />
-                                    <span>Destacar en Catálogo principal</span>
-                                  </label>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Navigation buttons */}
-                          <div style={{ display: 'flex', gap: '10px', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
-                            {formStep > 1 && (
-                              <button 
-                                type="button" 
-                                className="btn-share" 
-                                style={{ padding: '0.85rem 1.5rem', fontWeight: 'bold' }} 
-                                onClick={() => setFormStep(formStep - 1)}
-                              >
-                                ← Anterior
-                              </button>
-                            )}
-                            
-                            {formStep < 3 ? (
-                              <button 
-                                type="button" 
-                                className="btn-dash-save" 
-                                style={{ flexGrow: 1, padding: '0.85rem' }}
-                                onClick={() => {
-                                  if (formStep === 1 && (!editingCombo.name || !editingCombo.category)) {
-                                    alert("Por favor rellena los campos obligatorios (*).");
-                                    return;
-                                  }
-                                  setFormStep(formStep + 1);
-                                }}
-                              >
-                                Siguiente Paso →
-                              </button>
-                            ) : (
-                              <button type="submit" className="btn-dash-save" style={{ flexGrow: 1, padding: '0.85rem' }}>
-                                Guardar Combo en Supabase
-                              </button>
-                            )}
-
-                            <button type="button" className="btn-dash-cancel" style={{ padding: '0.85rem' }} onClick={() => setEditingCombo(null)}>
-                              Cancelar
-                            </button>
+                            </form>
                           </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* PRODUCTS LIST SECTION */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <span className="admin-dash-subtitle" style={{ display: 'block' }}>Configuración de Catálogo</span>
+                            <h2 style={{ fontSize: '1.6rem', color: 'var(--primary-green)', margin: 0, fontWeight: 900 }}>Productos en la Base de Datos</h2>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn-admin-primary"
+                            onClick={() => {
+                              setProductFormStep(1);
+                              setEditingProduct({
+                                name: "",
+                                sku: "",
+                                tagline: "",
+                                category_id: "1",
+                                description: "",
+                                price_bs: 260,
+                                original_price_bs: 300,
+                                media_urls: "",
+                                bullets: "",
+                                dosage: "",
+                                package_detail: "",
+                                badge: "",
+                                pinned: false
+                              });
+                            }}
+                          >
+                            + Crear Nuevo Producto
+                          </button>
+                        </div>
+
+                        <div className="dash-panel-card" style={{ width: '100%' }}>
+                          <div className="admin-price-table-container">
+                            <table className="admin-price-table">
+                              <thead>
+                                <tr>
+                                  <th>Imagen</th>
+                                  <th>SKU / Nombre</th>
+                                  <th>Categoría</th>
+                                  <th>Precio Oferta</th>
+                                  <th>Precio Regular</th>
+                                  <th>Destacado</th>
+                                  <th style={{ textAlign: 'right' }}>Acciones</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {products.map(prod => {
+                                  const mainImg = getProductImage(prod.id);
+                                  return (
+                                    <tr key={prod.id}>
+                                      <td>
+                                        {mainImg ? (
+                                          isVideoUrl(mainImg) ? (
+                                            <video src={resolveAssetUrl(mainImg)} autoPlay loop muted playsInline style={{ width: '45px', height: '45px', objectFit: 'cover', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} />
+                                          ) : (
+                                            <img src={resolveAssetUrl(mainImg)} alt={prod.name} style={{ width: '45px', height: '45px', objectFit: 'contain', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} />
+                                          )
+                                        ) : (
+                                          <span className="badge-normal" style={{ fontSize: '0.65rem' }}>Sin foto</span>
+                                        )}
+                                      </td>
+                                      <td>
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent-gold)' }}>SKU: {prod.sku || 'N/A'}</span>
+                                          <span style={{ fontWeight: 800, color: 'var(--primary-green)' }}>{prod.name}</span>
+                                        </div>
+                                      </td>
+                                      <td>{categoriesList.find(c => String(c.id) === String(prod.category_id))?.name || 'General'}</td>
+                                      <td style={{ fontWeight: 900, color: 'var(--primary-green)' }}>Bs. {parseFloat(prod.price_bs).toFixed(1)}</td>
+                                      <td style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Bs. {parseFloat(prod.original_price_bs).toFixed(1)}</td>
+                                      <td>
+                                        {prod.pinned ? (
+                                          <span className="badge-highlight" style={{ fontSize: '0.7rem' }}>⭐ Destacado</span>
+                                        ) : (
+                                          <span className="badge-normal" style={{ fontSize: '0.7rem' }}>Básico</span>
+                                        )}
+                                      </td>
+                                      <td style={{ textAlign: 'right' }}>
+                                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                          <button 
+                                            type="button" 
+                                            className="btn-admin-edit"
+                                            onClick={async () => {
+                                              let mediaUrls = "";
+                                              const { data: imgList } = await supabase.from('product_images').select('url').eq('product_id', prod.id).order('position', { ascending: true });
+                                              if (imgList && imgList.length > 0) {
+                                                mediaUrls = imgList.map(i => i.url).join('\n');
+                                              }
+                                              
+                                              setProductFormStep(1);
+                                              setEditingProduct({
+                                                ...prod,
+                                                media_urls: mediaUrls
+                                              });
+                                            }}
+                                          >
+                                            Editar
+                                          </button>
+                                          <button 
+                                            type="button" 
+                                            className="btn-admin-delete"
+                                            onClick={() => handleDeleteProduct(prod.id)}
+                                          >
+                                            Borrar
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* SUB-TAB: COMBOS/KITS MANAGEMENT */}
+                {configSubTab === "combos" && !editingProduct && (
+                  <div>
+                    {editingCombo ? (
+                      /* DEDICATED WORKSPACE FOR EDITING/CREATING COMBOS */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid var(--border-color)', paddingBottom: '10px' }}>
+                          <div>
+                            <span className="admin-dash-subtitle" style={{ display: 'block' }}>Edición de Producto</span>
+                            <h3 style={{ fontSize: '1.5rem', color: 'var(--primary-green)', margin: 0, fontWeight: 900 }}>
+                              {editingCombo.id ? `✏️ Modificar Pack: ${editingCombo.name}` : "✨ Registrar Nuevo Pack / Combo"}
+                            </h3>
+                          </div>
+                          <button 
+                            type="button" 
+                            className="btn-share" 
+                            style={{ padding: '0.6rem 1.25rem', fontWeight: 800, fontSize: '0.9rem' }}
+                            onClick={() => setEditingCombo(null)}
+                          >
+                            ← Volver a la Lista
+                          </button>
+                        </div>
+
+                        <div className="admin-combo-editor-layout" style={{ marginTop: '1rem' }}>
+                          <div className="dash-panel-card" style={{ padding: '2rem' }}>
+                            {/* Wizard Steps Indicator */}
+                            <div className="wizard-steps-container">
+                              <div className={`wizard-step ${formStep === 1 ? 'active' : ''}`}>
+                                1. Básico
+                              </div>
+                              <div className={`wizard-step ${formStep === 2 ? 'active' : ''}`}>
+                                2. Precio & Inclusión
+                              </div>
+                              <div className={`wizard-step ${formStep === 3 ? 'active' : ''}`}>
+                                3. Consumo & Destacar
+                              </div>
+                            </div>
+
+                            <form onSubmit={handleSaveCombo} className="admin-edit-combo-form" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                              
+                              {/* STEP 1: BASIC INFORMATION */}
+                              {formStep === 1 && (
+                                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                  <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontWeight: 800 }}>Nombre del Kit *</label>
+                                      <input 
+                                        type="text" 
+                                        required
+                                        className="form-input"
+                                        placeholder="Ej. Kit Energía Diaria"
+                                        value={editingCombo.name}
+                                        onChange={(e) => setEditingCombo({...editingCombo, name: e.target.value})}
+                                      />
+                                    </div>
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontWeight: 800 }}>Categoría *</label>
+                                      <input 
+                                        type="text" 
+                                        required
+                                        className="form-input"
+                                        placeholder="Ej. Energía o Bienestar"
+                                        value={editingCombo.category}
+                                        onChange={(e) => setEditingCombo({...editingCombo, category: e.target.value})}
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="form-group">
+                                    <label className="form-label" style={{ fontWeight: 800 }}>Frase de Impacto (Tagline) *</label>
+                                    <input 
+                                      type="text" 
+                                      required
+                                      className="form-input"
+                                      placeholder="Ej. Despierta tu potencial con Cordycafe y Té Tianshi"
+                                      value={editingCombo.tagline || ""}
+                                      onChange={(e) => setEditingCombo({...editingCombo, tagline: e.target.value})}
+                                    />
+                                  </div>
+
+                                  <div className="form-group">
+                                    <label className="form-label" style={{ fontWeight: 800 }}>Imagen o Video Oficial (URL de Cloudinary) *</label>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                                      Enlace directo. Si lo dejas vacío, se autogenerará un mosaico con las fotos de los productos incluidos en el pack.
+                                    </span>
+                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                      <input 
+                                        type="text" 
+                                        className="form-input"
+                                        placeholder="https://res.cloudinary.com/..."
+                                        value={editingCombo.image_url || ""}
+                                        onChange={(e) => setEditingCombo({...editingCombo, image_url: e.target.value})}
+                                        style={{ flexGrow: 1 }}
+                                      />
+                                      {editingCombo.image_url && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          {isVideoUrl(editingCombo.image_url) ? (
+                                            <video src={editingCombo.image_url} muted style={{ height: '55px', width: '55px', objectFit: 'cover', borderRadius: '4px' }} />
+                                          ) : (
+                                            <img src={editingCombo.image_url} alt="Cargada" style={{ height: '55px', objectFit: 'contain' }} />
+                                          )}
+                                          <button type="button" className="btn-qty" style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold' }} onClick={() => setEditingCombo({...editingCombo, image_url: ''})}>Eliminar</button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* STEP 2: PRICING AND INCLUSIONS */}
+                              {formStep === 2 && (
+                                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                  <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontWeight: 800 }}>Precio Oferta del Pack (Bs.) *</label>
+                                      <input 
+                                        type="number" 
+                                        required
+                                        className="form-input"
+                                        placeholder="Ej. 188.5"
+                                        value={editingCombo.price_bs}
+                                        onChange={(e) => setEditingCombo({...editingCombo, price_bs: e.target.value})}
+                                      />
+                                    </div>
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontWeight: 800 }}>Precio Regular Sumado (Bs.) *</label>
+                                      <input 
+                                        type="number" 
+                                        required
+                                        className="form-input"
+                                        placeholder="Ej. 220"
+                                        value={editingCombo.original_price_bs}
+                                        onChange={(e) => setEditingCombo({...editingCombo, original_price_bs: e.target.value})}
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="form-group">
+                                    <label className="form-label" style={{ fontWeight: 800 }}>Lista de Productos Incluidos (ej: 1x Cordycafe, 1x Calcio) *</label>
+                                    <input 
+                                      type="text" 
+                                      required
+                                      className="form-input"
+                                      placeholder="Ej. 1x Cordycafe Tiens, 1x Calcio Nutritivo"
+                                      value={editingCombo.includes}
+                                      onChange={(e) => setEditingCombo({...editingCombo, includes: e.target.value})}
+                                    />
+                                  </div>
+
+                                  <div className="form-group">
+                                    <label className="form-label" style={{ fontWeight: 800 }}>Presentación del Combo (Envase)</label>
+                                    <input 
+                                      type="text" 
+                                      className="form-input"
+                                      placeholder="Ej. Caja original de cartón + Doypack kraft"
+                                      value={editingCombo.package_detail}
+                                      onChange={(e) => setEditingCombo({...editingCombo, package_detail: e.target.value})}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* STEP 3: CONSUMPTION AND PINNED BADGES */}
+                              {formStep === 3 && (
+                                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                  <div className="form-group">
+                                    <label className="form-label" style={{ fontWeight: 800 }}>Detalles/Beneficios Clave (Uno por línea) *</label>
+                                    <textarea 
+                                      required
+                                      className="form-input"
+                                      rows="4"
+                                      placeholder="Ej. Estimula el sistema inmune&#10;Aporta energía natural sin taquicardia&#10;Contiene calcio orgánico altamente absorbible"
+                                      value={Array.isArray(editingCombo.bullets) ? editingCombo.bullets.join('\n') : editingCombo.bullets}
+                                      onChange={(e) => setEditingCombo({...editingCombo, bullets: e.target.value})}
+                                    ></textarea>
+                                  </div>
+
+                                  <div className="form-group">
+                                    <label className="form-label" style={{ fontWeight: 800 }}>Dosis recomendada y Modo de uso *</label>
+                                    <input 
+                                      type="text" 
+                                      required
+                                      className="form-input"
+                                      placeholder="Ej. Tomar 1 sobre de Cordycafe en la mañana y 1 sobre de Calcio antes de dormir."
+                                      value={editingCombo.dosage}
+                                      onChange={(e) => setEditingCombo({...editingCombo, dosage: e.target.value})}
+                                    />
+                                  </div>
+
+                                  <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '1rem', alignItems: 'center' }}>
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontWeight: 800 }}>Etiqueta de Oferta especial (ej: Popular, Más Vendido)</label>
+                                      <input 
+                                        type="text" 
+                                        className="form-input"
+                                        placeholder="Ej. Popular"
+                                        value={editingCombo.badge || ""}
+                                        onChange={(e) => setEditingCombo({...editingCombo, badge: e.target.value})}
+                                      />
+                                    </div>
+
+                                    <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '1.5rem' }}>
+                                      <input 
+                                        type="checkbox" 
+                                        id="pinned"
+                                        checked={!!editingCombo.pinned}
+                                        onChange={(e) => setEditingCombo({...editingCombo, pinned: e.target.checked})}
+                                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                      />
+                                      <label htmlFor="pinned" style={{ fontWeight: 800, cursor: 'pointer' }}>Destacar en Inicio (Pinear)</label>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Navigation Buttons for Wizard */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
+                                <button 
+                                  type="button" 
+                                  className="btn-details-back"
+                                  disabled={formStep === 1}
+                                  onClick={() => setFormStep(prev => prev - 1)}
+                                  style={{ padding: '0.6rem 1.2rem' }}
+                                >
+                                  Anterior
+                                </button>
+                                
+                                {formStep < 3 ? (
+                                  <button 
+                                    type="button" 
+                                    className="btn-share"
+                                    onClick={() => {
+                                      if (formStep === 1 && (!editingCombo.name || !editingCombo.category)) {
+                                        alert("Por favor completa los campos requeridos (*)");
+                                        return;
+                                      }
+                                      if (formStep === 2 && (!editingCombo.price_bs || !editingCombo.original_price_bs || !editingCombo.includes)) {
+                                        alert("Por favor completa los precios e ingredientes requeridos (*)");
+                                        return;
+                                      }
+                                      setFormStep(prev => prev + 1);
+                                    }}
+                                    style={{ padding: '0.6rem 1.25rem' }}
+                                  >
+                                    Siguiente
+                                  </button>
+                                ) : (
+                                  <button 
+                                    type="submit" 
+                                    className="btn-add-cart"
+                                    style={{ padding: '0.6rem 1.5rem', background: 'var(--primary-green)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}
+                                  >
+                                    Guardar Combo / Kit
+                                  </button>
+                                )}
+                              </div>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* LIST OF COMBOS IN CONFIG DATABASE */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <span className="admin-dash-subtitle" style={{ display: 'block' }}>Configuración de Catálogo</span>
+                            <h2 style={{ fontSize: '1.6rem', color: 'var(--primary-green)', margin: 0, fontWeight: 900 }}>Combos y Packs Registrados</h2>
+                          </div>
+                          <button 
+                            type="button" 
+                            className="btn-admin-primary" 
+                            onClick={() => {
+                              setFormStep(1);
+                              setEditingCombo({
+                                name: "",
+                                category: "Energía",
+                                price_bs: 50,
+                                original_price_bs: 70,
+                                includes: "",
+                                bullets: "",
+                                dosage: "",
+                                package_detail: "Bolsa doypack kraft original sellada con sello de seguridad Kaldirev.",
+                                badge: "",
+                                tagline: "",
+                                image_url: "",
+                                pinned: false
+                              });
+                            }}
+                          >
+                            + Crear Nuevo Combo / Kit
+                          </button>
+                        </div>
+
+                        {/* Combos list table card */}
+                        <div className="dash-panel-card" style={{ width: '100%' }}>
+                          <div className="admin-price-table-container">
+                            <table className="admin-price-table">
+                              <thead>
+                                <tr>
+                                  <th>Imagen</th>
+                                  <th>Nombre del Kit</th>
+                                  <th>Productos Incluidos</th>
+                                  <th>Categoría</th>
+                                  <th>Precio Oferta</th>
+                                  <th>Precio Regular</th>
+                                  <th>Catálogo</th>
+                                  <th style={{ textAlign: 'right' }}>Acciones</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {combos.map(combo => (
+                                  <tr key={combo.id}>
+                                    <td>
+                                      {getComboImage(combo.id) ? (
+                                        isVideoUrl(getComboImage(combo.id)) ? (
+                                          <video src={resolveAssetUrl(getComboImage(combo.id))} autoPlay loop muted playsInline style={{ width: '45px', height: '45px', objectFit: 'cover', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} />
+                                        ) : (
+                                          <img src={resolveAssetUrl(getComboImage(combo.id))} alt={combo.name} style={{ width: '45px', height: '45px', objectFit: 'contain', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} />
+                                        )
+                                      ) : (
+                                        <span className="badge-normal" style={{ fontSize: '0.65rem' }}>Sin foto</span>
+                                      )}
+                                    </td>
+                                    <td style={{ fontWeight: 800, color: 'var(--primary-green)' }}>{combo.name}</td>
+                                    <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '280px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={combo.includes}>
+                                      {combo.includes}
+                                    </td>
+                                    <td>{combo.category}</td>
+                                    <td style={{ fontWeight: 900, color: 'var(--primary-green)' }}>Bs. {parseFloat(combo.price_bs).toFixed(1)}</td>
+                                    <td style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Bs. {parseFloat(combo.original_price_bs).toFixed(1)}</td>
+                                    <td>
+                                      {combo.pinned ? (
+                                        <span className="badge-highlight" style={{ fontSize: '0.7rem' }}>⭐ Destacado</span>
+                                      ) : (
+                                        <span className="badge-normal" style={{ fontSize: '0.7rem' }}>Básico</span>
+                                      )}
+                                    </td>
+                                    <td style={{ textAlign: 'right' }}>
+                                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                        <button 
+                                          type="button" 
+                                          className="btn-admin-edit" 
+                                          onClick={() => { setFormStep(1); setEditingCombo(combo); }}
+                                        >
+                                          Editar
+                                        </button>
+                                        <button 
+                                          type="button" 
+                                          className="btn-admin-delete" 
+                                          onClick={() => handleDeleteCombo(combo.id)}
+                                        >
+                                          Borrar
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* SUB-TAB: STORE SETTINGS */}
+                {configSubTab === "settings" && (
+                  <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div>
+                      <span className="admin-dash-subtitle" style={{ display: 'block' }}>Ajustes e Integraciones</span>
+                      <h2 style={{ fontSize: '1.6rem', color: 'var(--primary-green)', margin: 0, fontWeight: 900 }}>Configuración de Tienda</h2>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }} className="admin-settings-layout">
+                      {/* Generales settings */}
+                      <div className="dash-panel-card" style={{ padding: '1.5rem' }}>
+                        <h3 style={{ fontSize: '1.25rem', color: 'var(--primary-green)', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>🚀 Enlace de WhatsApp & Delivery</h3>
+                        <form onSubmit={(e) => {
+                          e.preventDefault();
+                          const val = e.target.whatsapp_number.value;
+                          handleSaveSettings('whatsapp_number', val);
+                        }} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 800 }}>Número Oficial de WhatsApp (con código de país, sin +)</label>
+                            <input 
+                              type="text" 
+                              name="whatsapp_number"
+                              className="form-input" 
+                              defaultValue={config.whatsappNumber}
+                              required
+                            />
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>ej. 59163488086 (código de Bolivia 591 + número)</span>
+                          </div>
+                          
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 800 }}>Tipo de Cambio (Bs. por USD)</label>
+                            <input 
+                              type="number" 
+                              step="0.01"
+                              className="form-input" 
+                              value={config.exchangeRate}
+                              onChange={(e) => handleSaveSettings('exchange_rate', e.target.value)}
+                              required
+                            />
+                          </div>
+
+                          <button type="submit" className="btn-add-cart" style={{ width: '100%', marginTop: '10px', background: 'var(--primary-green)', color: 'white', border: 'none', padding: '0.6rem 1.25rem', borderRadius: '8px', fontWeight: 'bold' }}>
+                            Guardar Enlace Oficial
+                          </button>
                         </form>
                       </div>
 
-
-                      {/* Right: Live Preview Panel */}
-                      <div className="live-preview-card-pane">
-                        <div style={{ position: 'sticky', top: '20px' }}>
-                          <h4>Previsualización en la Tienda:</h4>
-                          <div className="admin-live-preview-wrapper">
-                            <article className="product-card pinned" style={{ background: 'white', pointerEvents: 'none' }}>
-                              {editingCombo.pinned && (
-                                <span className="pinned-badge">⭐ Destacado</span>
-                              )}
-                              {editingCombo.badge && <span className="card-badge">{editingCombo.badge}</span>}
-                              <span className="card-packaging-badge">Termosellado</span>
-                              
-                              <div className="product-image-container" style={{ height: '170px' }}>
-                                {editingCombo.image_url ? (
-                                  isVideoUrl(editingCombo.image_url) ? (
-                                    <video src={editingCombo.image_url} autoPlay loop muted playsInline style={{ objectFit: 'contain', width: '100%', height: '100%' }} />
-                                  ) : (
-                                    <img src={editingCombo.image_url} alt="Vista" style={{ objectFit: 'contain', width: '100%', height: '100%' }} />
-                                  )
-                                ) : (
-                                  <div style={{ textAlign: 'center', color: '#ccc' }}>Carga foto / video</div>
-                                )}
-                              </div>
-
-                              <div className="product-details" style={{ padding: '1.25rem' }}>
-                                <span className="product-category">Tiens • {editingCombo.category}</span>
-                                <h3 className="product-name" style={{ fontSize: '1.2rem', fontWeight: 800, margin: '5px 0' }}>{editingCombo.name || "Nombre del Combo"}</h3>
-                                <span style={{ display: 'block', fontSize: '0.9rem', color: 'var(--accent-gold)', fontWeight: 700, marginBottom: '8px' }}>
-                                  {editingCombo.tagline || "Frase comercial llamativa"}
-                                </span>
-                                
-                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '5px 0 10px 0' }}>
-                                  <strong>Incluye:</strong> {editingCombo.includes || "Lista de productos"}
-                                </p>
-
-                                <div className="product-price-row" style={{ borderTop: 'none', paddingTop: 0, margin: '10px 0 0 0' }}>
-                                  {editingCombo.original_price_bs && <span className="price-original">Bs. {parseFloat(editingCombo.original_price_bs).toFixed(1)}</span>}
-                                  <span className="price-current">Bs. {parseFloat(editingCombo.price_bs || 0).toFixed(1)}</span>
-                                </div>
-                              </div>
-                            </article>
+                      {/* Flash Deal Settings */}
+                      <div className="dash-panel-card" style={{ padding: '1.5rem' }}>
+                        <h3 style={{ fontSize: '1.25rem', color: 'var(--primary-green)', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>⚡ Oferta Relámpago (Banner Superior)</h3>
+                        <form onSubmit={(e) => {
+                          e.preventDefault();
+                          const val = {
+                            is_active: e.target.is_active.checked,
+                            title: e.target.title.value,
+                            subtitle: e.target.subtitle.value,
+                            discount_tag: e.target.discount_tag.value,
+                            hours: parseInt(e.target.hours.value) || 0,
+                            minutes: parseInt(e.target.minutes.value) || 0,
+                            seconds: 0,
+                            combo_id: parseInt(e.target.combo_id.value)
+                          };
+                          handleSaveSettings('flash_deal', val);
+                        }} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                            <input 
+                              type="checkbox" 
+                              name="is_active"
+                              id="flashActive"
+                              defaultChecked={config.flashDeal?.is_active}
+                              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                            />
+                            <label htmlFor="flashActive" style={{ fontWeight: 800, cursor: 'pointer' }}>Activar Oferta Relámpago</label>
                           </div>
-                        </div>
+
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 800 }}>Título de la Oferta</label>
+                            <input 
+                              type="text" 
+                              name="title"
+                              className="form-input" 
+                              defaultValue={config.flashDeal?.title}
+                              required
+                            />
+                          </div>
+
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 800 }}>Subtítulo / Detalles</label>
+                            <input 
+                              type="text" 
+                              name="subtitle"
+                              className="form-input" 
+                              defaultValue={config.flashDeal?.subtitle}
+                              required
+                            />
+                          </div>
+
+                          <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                            <div className="form-group">
+                              <label className="form-label" style={{ fontWeight: 800 }}>Etiqueta Descuento</label>
+                              <input 
+                                type="text" 
+                                name="discount_tag"
+                                className="form-input" 
+                                placeholder="ej. 25% OFF"
+                                defaultValue={config.flashDeal?.discount_tag}
+                                required
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label" style={{ fontWeight: 800 }}>Combo Enlazado</label>
+                              <select 
+                                name="combo_id"
+                                className="form-input"
+                                defaultValue={config.flashDeal?.combo_id}
+                                required
+                              >
+                                {combos.map(combo => (
+                                  <option key={combo.id} value={combo.id}>{combo.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                            <div className="form-group">
+                              <label className="form-label" style={{ fontWeight: 800 }}>Duración (Horas)</label>
+                              <input 
+                                type="number" 
+                                name="hours"
+                                className="form-input" 
+                                defaultValue={config.flashDeal?.hours || 4}
+                                required
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label" style={{ fontWeight: 800 }}>Minutos</label>
+                              <input 
+                                type="number" 
+                                name="minutes"
+                                className="form-input" 
+                                defaultValue={config.flashDeal?.minutes || 30}
+                                required
+                              />
+                            </div>
+                          </div>
+
+                          <button type="submit" className="btn-add-cart" style={{ width: '100%', marginTop: '10px', background: 'var(--primary-green)', color: 'white', border: 'none', padding: '0.6rem 1.25rem', borderRadius: '8px', fontWeight: 'bold' }}>
+                            Guardar Ajuste de Oferta
+                          </button>
+                        </form>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  /* GENERAL CONFIGURATION & FULL-WIDTH PRODUCTS TABLE LIST */
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                    
-                    {/* Top Row: Stats & General Settings */}
-                    <div className="admin-two-cols" style={{ padding: 0 }}>
-                      
-                      {/* Settings Card */}
-                      <form onSubmit={handleSaveSettings} className="dash-panel-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                        <h3 className="dash-panel-card-title">Ajustes del Sistema</h3>
-                        
-                        <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-                          <label className="form-label" style={{ fontWeight: 800 }}>WhatsApp Business de Kaldirev</label>
-                          <input 
-                            type="text" 
-                            name="whatsappNumber"
-                            className="form-input"
-                            required
-                            placeholder="Ej. 59163488086"
-                            value={adminFormData.whatsappNumber}
-                            onChange={handleAdminInputChange}
-                          />
-                          <span className="admin-help-text">Código de Bolivia es 591 (sin +). Ej. 59163488086</span>
-                        </div>
-                        
-                        <button type="submit" className="btn-dash-save" style={{ width: '100%' }}>
-                          Guardar Número
-                        </button>
-                      </form>
-
-                      {/* CTA Panel for New Pack */}
-                      <div className="dash-panel-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '2rem' }}>
-                        <h4 style={{ fontSize: '1.25rem', color: 'var(--primary-green)', marginBottom: '8px' }}>¿Deseas añadir un nuevo Kit al catálogo?</h4>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem', maxWidth: '340px' }}>
-                          Agrega nuevos combos con imágenes a tu tienda. Se sincronizará automáticamente en la base de datos de Supabase.
-                        </p>
-                        <button 
-                          type="button" 
-                          className="btn-dash-save"
-                          style={{ padding: '0.75rem 2rem', fontWeight: 800 }}
-                          onClick={() => {
-                            setFormStep(1);
-                            setEditingCombo({
-                              name: "",
-                              category: "Energía",
-                              price_bs: 50,
-                              original_price_bs: 70,
-                              includes: "",
-                              bullets: "",
-                              dosage: "",
-                              package_detail: "Bolsa doypack kraft original sellada con sello de seguridad Kaldirev.",
-                              badge: "",
-                              tagline: "",
-                              image_url: "",
-                              pinned: false
-                            });
-                          }}
-                        >
-                          + Crear Nuevo Combo / Kit
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Table Row: Full width database list */}
-                    <div className="dash-panel-card" style={{ width: '100%' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid var(--border-color)', paddingBottom: '10px' }}>
-                        <h3 style={{ fontSize: '1.3rem', color: 'var(--primary-green)', margin: 0 }}>Catálogo de Combos en la Base de Datos</h3>
-                        <span style={{ fontSize: '0.85rem', color: 'var(--accent-gold)', fontWeight: 'bold' }}>{combos.length} Combos Activos</span>
-                      </div>
-                      
-                      <div className="admin-price-table-container">
-                        <table className="admin-price-table">
-                          <thead>
-                            <tr>
-                              <th>Imagen</th>
-                              <th>Nombre del Kit</th>
-                              <th>Productos Incluidos</th>
-                              <th>Categoría</th>
-                              <th>Precio Oferta</th>
-                              <th>Precio Regular</th>
-                              <th>Catálogo</th>
-                              <th style={{ textAlign: 'right' }}>Acciones</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {combos.map(combo => (
-                              <tr key={combo.id}>
-                                <td>
-                                  {getComboImage(combo.id) ? (
-                                    isVideoUrl(getComboImage(combo.id)) ? (
-                                      <video src={resolveAssetUrl(getComboImage(combo.id))} autoPlay loop muted playsInline style={{ width: '45px', height: '45px', objectFit: 'cover', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} />
-                                    ) : (
-                                      <img src={resolveAssetUrl(getComboImage(combo.id))} alt={combo.name} style={{ width: '45px', height: '45px', objectFit: 'contain', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} />
-                                    )
-                                  ) : (
-                                    <span className="badge-normal" style={{ fontSize: '0.65rem' }}>Sin foto</span>
-                                  )}
-                                </td>
-                                <td style={{ fontWeight: 800, color: 'var(--primary-green)' }}>{combo.name}</td>
-                                <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '280px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={combo.includes}>
-                                  {combo.includes}
-                                </td>
-                                <td>
-                                  <span className="status-pill" style={{ background: 'var(--accent-gold-light)', color: 'var(--primary-green)', border: '1px solid var(--border-color)' }}>
-                                    {combo.category}
-                                  </span>
-                                </td>
-                                <td style={{ fontWeight: 900, color: 'var(--primary-green)' }}>Bs. {parseFloat(combo.price_bs).toFixed(1)}</td>
-                                <td style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Bs. {parseFloat(combo.original_price_bs).toFixed(1)}</td>
-                                <td>
-                                  {combo.pinned ? (
-                                    <span className="badge-highlight" style={{ fontSize: '0.7rem' }}>⭐ Destacado</span>
-                                  ) : (
-                                    <span className="badge-normal" style={{ fontSize: '0.7rem' }}>Básico</span>
-                                  )}
-                                </td>
-                                <td style={{ textAlign: 'right' }}>
-                                  <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
-                                    <button 
-                                      type="button" 
-                                      className="btn-share" 
-                                      style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                                      onClick={() => { setFormStep(1); setEditingCombo(combo); }}
-                                    >
-                                      Editar
-                                    </button>
-                                    <button 
-                                      type="button" 
-                                      className="btn-back-to-cart" 
-                                      style={{ padding: '6px 12px', fontSize: '0.8rem', color: 'red', border: '1px solid red' }}
-                                      onClick={() => handleDeleteCombo(combo.id)}
-                                    >
-                                      Borrar
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
                   </div>
                 )}
               </div>
@@ -3219,11 +3880,10 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                 </span>
                               </td>
                               <td>
-                                <div style={{ display: 'flex', gap: '4px' }}>
+                                <div style={{ display: 'flex', gap: '6px' }}>
                                   {order.status !== 'Completado' && (
                                     <button 
-                                      className="btn-success-close" 
-                                      style={{ padding: '6px 10px', fontSize: '0.75rem', background: '#276e49' }}
+                                      className="btn-admin-edit" 
                                       onClick={() => handleUpdateOrderStatus(order.id, 'Completado')}
                                     >
                                       ✔ Listo
@@ -3231,8 +3891,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                   )}
                                   {order.status !== 'Cancelado' && (
                                     <button 
-                                      className="btn-back-to-cart" 
-                                      style={{ padding: '6px 10px', fontSize: '0.75rem', color: '#ff4d4d', border: '1px solid #ff4d4d' }}
+                                      className="btn-admin-delete" 
                                       onClick={() => handleUpdateOrderStatus(order.id, 'Cancelado')}
                                     >
                                       ✖ Cancelar
@@ -4064,6 +4723,21 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '4px' }}>(4.8)</span>
+                            </div>
+                            
+                            <div className="product-trust-line" style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', color: '#2e7d32', fontWeight: 600, marginBottom: '6px' }}>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                              </svg>
+                              <span>
+                                {String(product.id) === "1" && "98 comprados esta semana en Bolivia"}
+                                {String(product.id) === "2" && "Fórmula patentada • Alta demanda"}
+                                {String(product.id) === "3" && "15 personas lo están viendo ahora"}
+                                {String(product.id) === "4" && "Recomendado por asesores Tiens"}
+                                {String(product.id) === "5" && "Cuidado corporal premium verificado"}
+                                {String(product.id) === "6" && "Efecto tensor antiedad verificado"}
+                                {!["1","2","3","4","5","6"].includes(String(product.id)) && "Garantía original de fábrica"}
+                              </span>
                             </div>
 
                             <div className="product-price-row-container" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
