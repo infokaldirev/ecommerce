@@ -3,32 +3,144 @@ import { supabase } from './supabaseClient';
 import './App.css';
 
 // Fallback Combos Data in Bolivianos
+const DEFAULT_CATEGORIES = [
+  { id: 1, name: "Energía", slug: "energia" },
+  { id: 2, name: "Bienestar", slug: "bienestar" },
+  { id: 3, name: "Saludable", slug: "saludable" },
+  { id: 4, name: "Café", slug: "cafe" }
+];
+
+const DEFAULT_PRODUCTS = [
+  {
+    id: 1,
+    name: "Cordycafe Tiens",
+    price_bs: 140,
+    original_price_bs: 180,
+    category_id: 4,
+    description: "Café instantáneo gourmet elaborado con granos seleccionados y adicionado con micelio de hongo Cordyceps Sinensis.",
+    bullets: [
+      "Contiene hongo Cordyceps que fortalece pulmones y riñones",
+      "Brinda energía natural de larga duración sin nerviosismo",
+      "Apoya al sistema inmune y mejora el rendimiento físico"
+    ],
+    dosage: "Disolver 1 sobre en una taza de agua caliente por la mañana o antes del ejercicio físico.",
+    package_detail: "Caja original sellada de fábrica conteniendo 12 sobres individuales de 15g cada uno.",
+    badge: "Popular",
+    tagline: "Tu café con energía natural y salud",
+    pinned: true
+  },
+  {
+    id: 2,
+    name: "Calcio Nutritivo Tiens",
+    price_bs: 70,
+    original_price_bs: 90,
+    category_id: 2,
+    description: "Suplemento dietario de calcio en polvo de alta absorción biológica, enriquecido con vitaminas, minerales y aminoácidos esenciales.",
+    bullets: [
+      "Fortalece la estructura ósea, articulaciones y dientes",
+      "Tasa de absorción superior al 95% patentada de Tiens",
+      "Ayuda a prevenir la osteoporosis y dolores musculares"
+    ],
+    dosage: "Disolver 1 sobre en media taza de agua tibia antes de acostarse.",
+    package_detail: "Empacado en sobres individuales sellados herméticamente de 10g cada uno.",
+    badge: "Recomendado",
+    tagline: "Huesos fuertes y vitalidad física diaria",
+    pinned: true
+  },
+  {
+    id: 3,
+    name: "Té Tianshi",
+    price_bs: 15,
+    original_price_bs: 25,
+    category_id: 1,
+    description: "Té herbal tradicional formulado con hojas de té verde y extractos de hierbas que apoyan a la digestión y limpieza celular.",
+    bullets: [
+      "Potente antioxidante y quemador de grasa natural",
+      "Ayuda a regular los niveles de colesterol y triglicéridos",
+      "Promueve una digestión saludable y desintoxicación corporal"
+    ],
+    dosage: "Hervir 1 sobre de Té en un litro de agua y tomar como agua de tiempo a lo largo del día.",
+    package_detail: "Sobre de filtrante original con doble empaque termosellado.",
+    badge: "Detox",
+    tagline: "Limpia, desintoxica y renueva tu cuerpo",
+    pinned: false
+  },
+  {
+    id: 4,
+    name: "Luteína Masticable",
+    price_bs: 50,
+    original_price_bs: 65,
+    category_id: 3,
+    description: "Caramelos masticables formulados con luteína y extractos naturales de arándano para la protección de la retina frente a la luz de pantallas.",
+    bullets: [
+      "Protege los ojos del cansancio provocado por pantallas móviles y PCs",
+      "Delicioso sabor a arándanos natural, ideal para niños y adultos",
+      "Aporta antioxidantes específicos para la salud visual"
+    ],
+    dosage: "Masticar de 1 a 2 tabletas de Luteína al día como un antojo dulce y saludable.",
+    package_detail: "Empacado en bolsa doypack termosellada con cierre hermético reutilizable.",
+    badge: "Vista Sana",
+    tagline: "Protección visual con delicioso sabor natural",
+    pinned: false
+  }
+];
+
+const DEFAULT_PRODUCT_IMAGES = [
+  { id: 1, product_id: 1, url: "products/cordycafe.webp", position: 0, is_video: false },
+  { id: 2, product_id: 2, url: "products/salud_osea.png", position: 0, is_video: false },
+  { id: 3, product_id: 3, url: "products/inmunidad_defensas.png", position: 0, is_video: false },
+  { id: 4, product_id: 4, url: "products/kit_antojo_saludable.jpg", position: 0, is_video: false }
+];
+
 const DEFAULT_COMBOS = [
   {
     id: 1,
     name: "Kit Energía Diaria",
-    category: "Energía",
     price_bs: 55,
     original_price_bs: 75,
-    usd_price: 55,
-    original_usd_price: 75,
-    includes: "2 Cordycafe + 3 Té Tianshi",
-    bullets: [
-      "Aumenta la vitalidad y concentración mental",
-      "Combate el sueño y cansancio crónico",
-      "Ideal para deportistas y jornadas largas de trabajo"
-    ],
-    dosage: "Disolver 1 sobre de Cordycafe en una taza de agua caliente por la mañana y tomar 1 taza de Té Tianshi a media tarde.",
-    package_detail: "Empacado en bolsa doypack kraft original sellada térmicamente con sello de seguridad Kaldirev.",
+    description: "El pack ideal para comenzar tus mañanas con enfoque total. Incluye 2 sobres de café gourmet Cordycafe y 3 sobres del digestivo Té Tianshi.",
     badge: "Más Vendido",
     tagline: "Energía y enfoque natural al instante",
     pinned: true
+  },
+  {
+    id: 2,
+    name: "Kit Bienestar & Huesos",
+    price_bs: 85,
+    original_price_bs: 110,
+    description: "Combina el poder de absorción del Calcio Nutritivo de Tiens con la vitalidad y calor del hongo Cordycafe. Incluye 1 sobre de Calcio y 2 sobres de Cordycafe.",
+    badge: "Recomendado",
+    tagline: "Huesos fuertes y vitalidad física diaria",
+    pinned: true
+  },
+  {
+    id: 3,
+    name: "Kit Antojo Saludable",
+    price_bs: 50,
+    original_price_bs: 65,
+    description: "Una forma exquisita de cuidar tus ojos del cansancio de pantallas. Bolsa kraft sellada herméticamente conteniendo 10 tabletas masticables de Luteína.",
+    badge: "Exclusivo",
+    tagline: "Protección visual con delicioso sabor natural",
+    pinned: false
   }
+];
+
+const DEFAULT_COMBO_PRODUCTS = [
+  { combo_id: 1, product_id: 1, quantity: 2 },
+  { combo_id: 1, product_id: 3, quantity: 3 },
+  { combo_id: 2, product_id: 2, quantity: 1 },
+  { combo_id: 2, product_id: 1, quantity: 2 },
+  { combo_id: 3, product_id: 4, quantity: 1 }
 ];
 
 function App() {
   // Database states
+  const [products, setProducts] = useState([]);
   const [combos, setCombos] = useState([]);
+  const [categoriesList, setCategoriesList] = useState([]);
+  const [productImages, setProductImages] = useState([]);
+  const [productStocks, setProductStocks] = useState([]);
+  const [comboProducts, setComboProducts] = useState([]);
   const [testimonials, setTestimonials] = useState([]);
   const [faqs, setFaqs] = useState([]);
   
@@ -66,9 +178,21 @@ function App() {
   const [activeFaqIndex, setActiveFaqIndex] = useState(null);
   const [shareSuccess, setShareSuccess] = useState(false);
   const [showAdminSaveToast, setShowAdminSaveToast] = useState(false);
-  const [adminActiveTab, setAdminActiveTab] = useState("config"); // "config", "orders", "extras"
+  const [adminActiveTab, setAdminActiveTab] = useState("dashboard"); // "dashboard", "config", "orders", "stocks", "extras"
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [countdownTime, setCountdownTime] = useState({ hours: 4, minutes: 32, seconds: 15 });
+  const [flashDeal, setFlashDeal] = useState({
+    title: "¡Llévate el Kit Energía Diaria con 25% OFF!",
+    subtitle: "Potencia tus mañanas con Cordycafe y Té Tianshi.",
+    discount_tag: "Oferta Relámpago del Día",
+    hours: 4,
+    minutes: 32,
+    seconds: 15,
+    combo_id: 1,
+    is_active: true
+  });
+  const [socialProofOrder, setSocialProofOrder] = useState(null);
   
   // Orders history (fetched for Admin only)
   const [orders, setOrders] = useState([]);
@@ -98,7 +222,7 @@ function App() {
   const [editingCombo, setEditingCombo] = useState(null); // for editing/creating combos
   const [formStep, setFormStep] = useState(1);
   const [branches, setBranches] = useState([]);
-  const [comboStocks, setComboStocks] = useState([]);
+  // Relational catalog states (comboStocks replaced by productStocks)
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [qrModalOrder, setQrModalOrder] = useState(null);
@@ -150,13 +274,24 @@ function App() {
   // Fetch public profile from Supabase with client-side fallback
   const fetchUserProfile = async (userId, currentUser = null) => {
     try {
-      let { data, error } = await supabase
+      let { data: profilesList, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', userId)
-        .single();
+        .eq('id', userId);
       
-      // Fallback: If profile doesn't exist yet, insert it directly from user metadata
+      let data = profilesList && profilesList.length > 0 ? profilesList[0] : null;
+      
+      if (!data) {
+        const savedProfile = localStorage.getItem(`kaldirev_local_profile_${userId}`);
+        if (savedProfile) {
+          try {
+            data = JSON.parse(savedProfile);
+          } catch (e) {
+            console.error("Error parsing saved profile:", e);
+          }
+        }
+      }
+      
       if (!data && currentUser) {
         const meta = currentUser.user_metadata || {};
         const newProfile = {
@@ -177,7 +312,9 @@ function App() {
         if (!insertError && insertedData) {
           data = insertedData;
         } else {
-          console.error("Error creating fallback profile:", insertError);
+          console.warn("Could not write profile to Supabase (possibly RLS restriction). Utilizing local profile fallback.", insertError);
+          data = newProfile;
+          localStorage.setItem(`kaldirev_local_profile_${userId}`, JSON.stringify(newProfile));
         }
       }
 
@@ -207,9 +344,29 @@ function App() {
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
+      
+      const savedProfile = localStorage.getItem(`kaldirev_local_profile_${user.id}`);
+      let currentLocal = {};
+      if (savedProfile) {
+        try { currentLocal = JSON.parse(savedProfile); } catch (e) {}
+      }
+      const newLocal = { ...currentLocal, ...updatedFields, id: user.id };
+      localStorage.setItem(`kaldirev_local_profile_${user.id}`, JSON.stringify(newLocal));
+      
+      setProfile(newLocal);
+      setFormData(prev => ({
+        ...prev,
+        name: newLocal.full_name || prev.name || '',
+        phone: newLocal.phone || prev.phone || '',
+        address: newLocal.address || prev.address || '',
+        city: newLocal.city || prev.city || 'Santa Cruz'
+      }));
+
       if (!error) {
         fetchUserProfile(user.id, user);
         fetchUserOrders(user.id);
+      } else {
+        console.warn("Could not save profile changes to remote DB (likely RLS policy active). Local copy updated.", error);
       }
     } catch (err) {
       console.error("Error saving user profile:", err);
@@ -226,18 +383,77 @@ function App() {
            url.includes('/video/upload/');
   };
 
+  // Helper to get stock of a product in a branch
+  const getProductStock = (productId, branchId) => {
+    const stockObj = productStocks.find(s => s.product_id === productId && s.branch_id === branchId);
+    return stockObj ? stockObj.stock : 0;
+  };
+
+  // Helper to get stock of a combo in a branch (dynamically calculated)
+  const getComboStock = (comboId, branchId) => {
+    const linked = comboProducts.filter(cp => cp.combo_id === comboId);
+    if (linked.length === 0) return 0;
+    let minStock = Infinity;
+    for (const cp of linked) {
+      const pStock = getProductStock(cp.product_id, branchId);
+      const possibleCombos = Math.floor(pStock / cp.quantity);
+      if (possibleCombos < minStock) {
+        minStock = possibleCombos;
+      }
+    }
+    return minStock === Infinity ? 0 : minStock;
+  };
+
   // Helper to get stock of a combo in the selected sucursal/branch
   const getComboStockForSelectedBranch = (comboId) => {
     if (!selectedBranch) return 0;
-    const stockObj = comboStocks.find(s => s.combo_id === comboId && s.branch_id === selectedBranch.id);
-    return stockObj ? stockObj.stock : 0;
+    return getComboStock(comboId, selectedBranch.id);
   };
 
   // Helper to get total stock of a combo across all Bolivian sucursales
   const getComboTotalStock = (comboId) => {
-    return comboStocks
-      .filter(s => s.combo_id === comboId)
+    return branches.reduce((acc, branch) => acc + getComboStock(comboId, branch.id), 0);
+  };
+
+  // Helper to get total stock of a product across all branches
+  const getProductTotalStock = (productId) => {
+    return productStocks
+      .filter(s => s.product_id === productId)
       .reduce((acc, curr) => acc + curr.stock, 0);
+  };
+
+  // Helper to get the main image of a product
+  const getProductImage = (productId) => {
+    const img = productImages.find(i => String(i.product_id) === String(productId) && !i.is_video);
+    return img ? img.url : '';
+  };
+
+  // Helper to resolve local and remote asset URLs (Added by Antigravity)
+  const resolveAssetUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+      return url;
+    }
+    const cleanUrl = url.replace(/^\//, '');
+    const base = import.meta.env.BASE_URL || '/';
+    return `${base.endsWith('/') ? base : base + '/'}${cleanUrl}`;
+  };
+
+  // Helper to get the main image of a combo dynamically (Added by Antigravity)
+  const getComboImage = (comboId) => {
+    const linked = comboProducts.filter(cp => String(cp.combo_id) === String(comboId));
+    if (linked.length > 0) {
+      const prod = products.find(p => String(p.id) === String(linked[0].product_id));
+      if (prod) {
+        const img = productImages.find(i => String(i.product_id) === String(prod.id) && !i.is_video);
+        if (img) return img.url;
+        return prod.image_url;
+      }
+    }
+    if (comboId === 1) return "products/kit_energia_diaria.jpg";
+    if (comboId === 2) return "products/kit_bienestar_huesos.jpg";
+    if (comboId === 3) return "products/kit_antojo_saludable.jpg";
+    return "";
   };
 
   // Helper to check if any item in cart is low stock or out of stock in selected branch
@@ -246,9 +462,14 @@ function App() {
     const matchingBranch = branches.find(b => b.name.toLowerCase().includes(cityName.toLowerCase()));
     if (!matchingBranch) return [];
     return cart.filter(item => {
-      const stockObj = comboStocks.find(s => s.combo_id === item.id && s.branch_id === matchingBranch.id);
-      const stock = stockObj ? stockObj.stock : 0;
-      return stock < item.quantity;
+      const itemType = item.cartItemType || 'combo';
+      if (itemType === 'product') {
+        const stock = getProductStock(item.id, matchingBranch.id);
+        return stock < item.quantity;
+      } else {
+        const stock = getComboStock(item.id, matchingBranch.id);
+        return stock < item.quantity;
+      }
     });
   };
 
@@ -349,11 +570,29 @@ function App() {
       const { data: settingsData } = await supabase.from('settings').select('*');
       let currentRate = 6.96;
       let currentPhone = "59163488086";
+      let currentFlashDeal = {
+        title: "¡Llévate el Kit Energía Diaria con 25% OFF!",
+        subtitle: "Potencia tus mañanas con Cordycafe y Té Tianshi.",
+        discount_tag: "Oferta Relámpago del Día",
+        hours: 4,
+        minutes: 32,
+        seconds: 15,
+        combo_id: 1,
+        is_active: true
+      };
       
       if (settingsData) {
         settingsData.forEach(item => {
           if (item.key === 'exchange_rate') currentRate = parseFloat(item.value);
           if (item.key === 'whatsapp_number') currentPhone = item.value;
+          if (item.key === 'flash_deal') {
+            try {
+              const val = typeof item.value === 'string' ? JSON.parse(item.value) : item.value;
+              if (val) currentFlashDeal = { ...currentFlashDeal, ...val };
+            } catch (e) {
+              console.error("Error parsing flash_deal setting:", e);
+            }
+          }
         });
       }
       
@@ -365,6 +604,13 @@ function App() {
       setAdminFormData({
         exchangeRate: currentRate,
         whatsappNumber: currentPhone
+      });
+
+      setFlashDeal(currentFlashDeal);
+      setCountdownTime({
+        hours: parseInt(currentFlashDeal.hours) || 0,
+        minutes: parseInt(currentFlashDeal.minutes) || 0,
+        seconds: parseInt(currentFlashDeal.seconds) || 0
       });
 
       // 2. Fetch branches
@@ -380,55 +626,82 @@ function App() {
       const defaultBranch = branchesList.find(b => b.name.toLowerCase().includes('santa cruz')) || branchesList[0];
       setSelectedBranch(prev => prev || defaultBranch);
 
-      // 3. Fetch combos
-      const { data: combosData, error: combosErr } = await supabase
-        .from('combos')
-        .select('*')
-        .order('id', { ascending: true });
-      if (combosErr) throw combosErr;
-      
-      const mappedData = (combosData || []).map(c => {
-        let imageUrl = c.image_url || "";
-        if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:') && !imageUrl.startsWith('/products/') && !imageUrl.startsWith('/src/')) {
-          imageUrl = `/products/${imageUrl.replace(/^\//, '')}`;
+      // 3. Fetch categories
+      const { data: categoriesData } = await supabase.from('categories').select('*').order('id', { ascending: true });
+      const finalCategories = categoriesData && categoriesData.length > 0 ? categoriesData : DEFAULT_CATEGORIES;
+      setCategoriesList(finalCategories);
+
+      // 4. Fetch product images
+      const { data: imagesData } = await supabase.from('product_images').select('*').order('position', { ascending: true });
+      const finalImages = imagesData && imagesData.length > 0 ? imagesData : DEFAULT_PRODUCT_IMAGES;
+      setProductImages(finalImages);
+
+      // 5. Fetch products
+      const { data: productsData } = await supabase.from('products').select('*').order('id', { ascending: true });
+      const finalProducts = (productsData || []).map(p => {
+        const mainImg = finalImages.find(img => String(img.product_id) === String(p.id) && !img.is_video);
+        let imageUrl = mainImg ? mainImg.url : '';
+        if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:') && !imageUrl.startsWith('products/') && !imageUrl.startsWith('/src/')) {
+          imageUrl = `products/${imageUrl.replace(/^\//, '')}`;
+        } else if (imageUrl && imageUrl.startsWith('/products/')) {
+          imageUrl = imageUrl.substring(1);
         }
         return {
-          ...c,
+          ...p,
           image_url: imageUrl,
-          price_bs: parseFloat(c.price_bs || c.usd_price) || 0,
-          original_price_bs: parseFloat(c.original_price_bs || c.original_usd_price) || 0
+          price_bs: parseFloat(p.price_bs) || 0,
+          original_price_bs: parseFloat(p.original_price_bs) || 0
         };
       });
-      const finalCombos = mappedData.length > 0 ? mappedData : DEFAULT_COMBOS;
-      setCombos(finalCombos);
+      const finalProductsList = finalProducts.length > 0 ? finalProducts : DEFAULT_PRODUCTS;
+      setProducts(finalProductsList);
 
-      // 4. Fetch combo stocks
-      const { data: stocksData } = await supabase.from('combo_stock').select('*');
-      if (!stocksData || stocksData.length === 0) {
-        // Create fallback mock stocks
-        const fallbackStocks = [];
-        finalCombos.forEach(c => {
+      // 6. Fetch combos
+      const { data: combosData } = await supabase.from('combos').select('*').order('id', { ascending: true });
+      const finalCombos = (combosData || []).map(c => {
+        return {
+          ...c,
+          price_bs: parseFloat(c.price_bs) || 0,
+          original_price_bs: parseFloat(c.original_price_bs) || 0
+        };
+      });
+      const finalCombosList = finalCombos.length > 0 ? finalCombos : DEFAULT_COMBOS;
+      setCombos(finalCombosList);
+
+      // 7. Fetch combo products link
+      const { data: comboProductsData } = await supabase.from('combo_products').select('*');
+      setComboProducts(comboProductsData && comboProductsData.length > 0 ? comboProductsData : DEFAULT_COMBO_PRODUCTS);
+
+      // 8. Fetch product stock per branch
+      const { data: productStockData } = await supabase.from('product_stock').select('*');
+      if (productStockData && productStockData.length > 0) {
+        setProductStocks(productStockData);
+      } else {
+        const fallbackProductStocks = [];
+        finalProductsList.forEach(p => {
           branchesList.forEach(b => {
-            let stock = 10;
-            if (b.name.includes("Santa Cruz")) stock = c.id === 1 ? 35 : (c.id === 2 ? 20 : 15);
-            if (b.name.includes("La Paz")) stock = c.id === 1 ? 18 : (c.id === 2 ? 8 : 12);
-            if (b.name.includes("Cochabamba")) stock = c.id === 1 ? 10 : (c.id === 2 ? 5 : 12);
-            fallbackStocks.push({ combo_id: c.id, branch_id: b.id, stock });
+            let stock = 20;
+            if (b.name.includes("Santa Cruz")) {
+              stock = p.id === 1 ? 50 : (p.id === 2 ? 30 : (p.id === 3 ? 100 : 40));
+            } else if (b.name.includes("La Paz")) {
+              stock = p.id === 1 ? 30 : (p.id === 2 ? 15 : (p.id === 3 ? 60 : 25));
+            } else if (b.name.includes("Cochabamba")) {
+              stock = p.id === 1 ? 20 : (p.id === 2 ? 10 : (p.id === 3 ? 40 : 20));
+            }
+            fallbackProductStocks.push({ product_id: p.id, branch_id: b.id, stock });
           });
         });
-        setComboStocks(fallbackStocks);
-      } else {
-        setComboStocks(stocksData);
+        setProductStocks(fallbackProductStocks);
       }
 
-      // 5. Fetch testimonials
+      // 9. Fetch testimonials
       const { data: testData } = await supabase
         .from('testimonials')
         .select('*')
         .order('id', { ascending: true });
       setTestimonials(testData || []);
 
-      // 6. Fetch FAQs
+      // 10. Fetch FAQs
       const { data: faqsData } = await supabase
         .from('faqs')
         .select('*')
@@ -438,7 +711,11 @@ function App() {
     } catch (err) {
       console.error("Error loading Kaldirev database:", err);
       setErrorMsg("No se pudieron cargar los datos de la base de datos. Mostrando datos locales de respaldo.");
+      setCategoriesList(DEFAULT_CATEGORIES);
+      setProductImages(DEFAULT_PRODUCT_IMAGES);
+      setProducts(DEFAULT_PRODUCTS);
       setCombos(DEFAULT_COMBOS);
+      setComboProducts(DEFAULT_COMBO_PRODUCTS);
       
       const fallbackBranches = [
         { id: 1, name: "Santa Cruz", address: "Av. San Martín, Equipetrol, Santa Cruz", shipping_cost_bs: 12 },
@@ -448,17 +725,21 @@ function App() {
       setBranches(fallbackBranches);
       setSelectedBranch(fallbackBranches[0]);
       
-      const fallbackStocks = [];
-      DEFAULT_COMBOS.forEach(c => {
+      const fallbackProductStocks = [];
+      DEFAULT_PRODUCTS.forEach(p => {
         fallbackBranches.forEach(b => {
-          let stock = 10;
-          if (b.name.includes("Santa Cruz")) stock = c.id === 1 ? 35 : (c.id === 2 ? 20 : 15);
-          if (b.name.includes("La Paz")) stock = c.id === 1 ? 18 : (c.id === 2 ? 8 : 12);
-          if (b.name.includes("Cochabamba")) stock = c.id === 1 ? 10 : (c.id === 2 ? 5 : 12);
-          fallbackStocks.push({ combo_id: c.id, branch_id: b.id, stock });
+          let stock = 20;
+          if (b.name.includes("Santa Cruz")) {
+            stock = p.id === 1 ? 50 : (p.id === 2 ? 30 : (p.id === 3 ? 100 : 40));
+          } else if (b.name.includes("La Paz")) {
+            stock = p.id === 1 ? 30 : (p.id === 2 ? 15 : (p.id === 3 ? 60 : 25));
+          } else if (b.name.includes("Cochabamba")) {
+            stock = p.id === 1 ? 20 : (p.id === 2 ? 10 : (p.id === 3 ? 40 : 20));
+          }
+          fallbackProductStocks.push({ product_id: p.id, branch_id: b.id, stock });
         });
       });
-      setComboStocks(fallbackStocks);
+      setProductStocks(fallbackProductStocks);
     } finally {
       setLoading(false);
     }
@@ -548,6 +829,59 @@ function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [isAdminUnlocked, view]);
 
+  // Tick countdown timer down every second (24 hours reset)
+  useEffect(() => {
+    const timerInterval = setInterval(() => {
+      setCountdownTime(prev => {
+        if (prev.seconds > 0) {
+          return { ...prev, seconds: prev.seconds - 1 };
+        } else if (prev.minutes > 0) {
+          return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
+        } else if (prev.hours > 0) {
+          return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
+        } else {
+          return { hours: 23, minutes: 59, seconds: 59 };
+        }
+      });
+    }, 1000);
+    return () => clearInterval(timerInterval);
+  }, []);
+
+  // Cycle social proof mock notifications
+  useEffect(() => {
+    const mockBuyers = [
+      { name: "Alejandro M.", city: "Santa Cruz", item: "Kit Energía Diaria", time: "hace 2 min" },
+      { name: "María R.", city: "La Paz", item: "Cordycafe Tiens", time: "hace 5 min" },
+      { name: "Carlos S.", city: "Cochabamba", item: "Kit Bienestar & Huesos", time: "hace 8 min" },
+      { name: "Gabriela Y.", city: "Tarija", item: "Calcio Nutritivo", time: "hace 4 min" },
+      { name: "Roberto V.", city: "Oruro", item: "Kit Antojo Saludable", time: "hace 11 min" },
+      { name: "Fernanda L.", city: "Sucre", item: "Cordycafe Tiens", time: "hace 1 min" },
+      { name: "Jose Daniel O.", city: "Santa Cruz", item: "Kit Bienestar & Huesos", time: "hace 7 min" },
+      { name: "Patricia P.", city: "Potosí", item: "Zinc Tiens", time: "hace 12 min" },
+      { name: "Gustavo B.", city: "Trinidad", item: "Kit Energía Diaria", time: "hace 3 min" },
+      { name: "Ana Isabel C.", city: "Cobija", item: "Luteína Masticable", time: "hace 15 min" },
+      { name: "Diego F.", city: "La Paz", item: "Kit Antojo Saludable", time: "hace 9 min" },
+      { name: "Andrea S.", city: "Cochabamba", item: "Té Reductor Tianshi", time: "hace 6 min" },
+      { name: "Mauricio G.", city: "Tarija", item: "Kit Energía Diaria", time: "hace 10 min" },
+      { name: "Luciana M.", city: "Sucre", item: "Calcio Nutritivo", time: "hace 14 min" },
+      { name: "Juan de Dios R.", city: "Santa Cruz", item: "Cordycafe Tiens", time: "hace 2 min" },
+      { name: "Sofía T.", city: "Oruro", item: "Zinc Tiens", time: "hace 5 min" },
+      { name: "Ricardo H.", city: "Potosí", item: "Kit Bienestar & Huesos", time: "hace 13 min" },
+      { name: "Elena K.", city: "Trinidad", item: "Cordycafe Tiens", time: "hace 16 min" }
+    ];
+
+    let index = 0;
+    const notificationInterval = setInterval(() => {
+      setSocialProofOrder(mockBuyers[index]);
+      setTimeout(() => {
+        setSocialProofOrder(null);
+      }, 6000);
+      index = (index + 1) % mockBuyers.length;
+    }, 18000);
+
+    return () => clearInterval(notificationInterval);
+  }, []);
+
   // Load orders when admin is unlocked and admin tab changes
   useEffect(() => {
     if (view === "admin" && isAdminUnlocked && adminActiveTab === "orders") {
@@ -561,31 +895,40 @@ function App() {
   }, [cart]);
 
   // Cart operations
-  const addToCart = (combo) => {
-    const computedPrice = parseFloat(combo.price_bs);
-    const computedOriginalPrice = parseFloat(combo.original_price_bs);
+  const addToCart = (item, type = 'combo') => {
+    const computedPrice = parseFloat(item.price_bs);
+    const computedOriginalPrice = parseFloat(item.original_price_bs);
+    const cartItemId = `${type}-${item.id}`;
+    
+    let imageUrl = item.image_url || '';
+    if (type === 'product') {
+      imageUrl = getProductImage(item.id) || imageUrl;
+    }
     
     setCart(prevCart => {
-      const existingItem = prevCart.find(item => item.id === combo.id);
+      const existingItem = prevCart.find(c => c.cartItemId === cartItemId);
       if (existingItem) {
-        return prevCart.map(item =>
-          item.id === combo.id ? { ...item, quantity: item.quantity + 1 } : item
+        return prevCart.map(c =>
+          c.cartItemId === cartItemId ? { ...c, quantity: c.quantity + 1 } : c
         );
       }
       return [...prevCart, { 
-        ...combo, 
+        ...item, 
+        cartItemId,
+        cartItemType: type,
         price: computedPrice, 
         originalPrice: computedOriginalPrice, 
+        image_url: imageUrl,
         quantity: 1 
       }];
     });
     setIsCartOpen(true);
   };
 
-  const updateQuantity = (itemId, change) => {
+  const updateQuantity = (cartItemId, change) => {
     setCart(prevCart => {
       return prevCart.map(item => {
-        if (item.id === itemId) {
+        if (item.cartItemId === cartItemId) {
           const newQty = item.quantity + change;
           return newQty > 0 ? { ...item, quantity: newQty } : null;
         }
@@ -594,8 +937,8 @@ function App() {
     });
   };
 
-  const removeFromCart = (itemId) => {
-    setCart(prevCart => prevCart.filter(item => item.id !== itemId));
+  const removeFromCart = (cartItemId) => {
+    setCart(prevCart => prevCart.filter(item => item.cartItemId !== cartItemId));
   };
 
   const getCartCount = () => cart.reduce((acc, item) => acc + item.quantity, 0);
@@ -969,30 +1312,72 @@ function App() {
   const deductStockObj = async (branchId, itemsList) => {
     try {
       for (const item of itemsList) {
-        const { data: currentStockObj } = await supabase
-          .from('combo_stock')
-          .select('stock')
-          .eq('combo_id', item.id)
-          .eq('branch_id', branchId)
-          .maybeSingle();
-
-        if (currentStockObj) {
-          const newStock = Math.max(0, currentStockObj.stock - item.quantity);
-          await supabase
-            .from('combo_stock')
-            .update({ stock: newStock })
-            .eq('combo_id', item.id)
-            .eq('branch_id', branchId);
+        const itemType = item.cartItemType || item.type || 'combo';
+        
+        if (itemType === 'product') {
+          const { data: currentStockObj } = await supabase
+            .from('product_stock')
+            .select('stock')
+            .eq('product_id', item.id)
+            .eq('branch_id', branchId)
+            .maybeSingle();
+            
+          if (currentStockObj) {
+            const newStock = Math.max(0, currentStockObj.stock - item.quantity);
+            await supabase
+              .from('product_stock')
+              .update({ stock: newStock })
+              .eq('product_id', item.id)
+              .eq('branch_id', branchId);
+          }
         } else {
-          // Fallback local memory sync
-          setComboStocks(prev => prev.map(s => {
-            if (s.combo_id === item.id && s.branch_id === branchId) {
-              return { ...s, stock: Math.max(0, s.stock - item.quantity) };
+          const linked = comboProducts.filter(cp => cp.combo_id === item.id);
+          for (const cp of linked) {
+            const qtyToDeduct = cp.quantity * item.quantity;
+            const { data: currentStockObj } = await supabase
+              .from('product_stock')
+              .select('stock')
+              .eq('product_id', cp.product_id)
+              .eq('branch_id', branchId)
+              .maybeSingle();
+              
+            if (currentStockObj) {
+              const newStock = Math.max(0, currentStockObj.stock - qtyToDeduct);
+              await supabase
+                .from('product_stock')
+                .update({ stock: newStock })
+                .eq('product_id', cp.product_id)
+                .eq('branch_id', branchId);
             }
-            return s;
-          }));
+          }
         }
       }
+      setProductStocks(prev => {
+        let updatedStocks = [...prev];
+        for (const item of itemsList) {
+          const itemType = item.cartItemType || item.type || 'combo';
+          if (itemType === 'product') {
+            updatedStocks = updatedStocks.map(s => {
+              if (s.product_id === item.id && s.branch_id === branchId) {
+                return { ...s, stock: Math.max(0, s.stock - item.quantity) };
+              }
+              return s;
+            });
+          } else {
+            const linked = comboProducts.filter(cp => cp.combo_id === item.id);
+            for (const cp of linked) {
+              const qtyToDeduct = cp.quantity * item.quantity;
+              updatedStocks = updatedStocks.map(s => {
+                if (s.product_id === cp.product_id && s.branch_id === branchId) {
+                  return { ...s, stock: Math.max(0, s.stock - qtyToDeduct) };
+                }
+                return s;
+              });
+            }
+          }
+        }
+        return updatedStocks;
+      });
       fetchStoreData();
     } catch (err) {
       console.error("Error deducting stock:", err);
@@ -1150,6 +1535,55 @@ Por favor, ayúdenme a coordinar el envío completando estos datos:
     } finally {
       setIsSubmittingOrder(false);
     }
+  };
+
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      window.Swal.fire({
+        title: 'Geolocalización no soportada',
+        text: 'Tu navegador o dispositivo no soporta la geolocalización directa.',
+        icon: 'error',
+        confirmButtonColor: 'var(--primary-green)'
+      });
+      return;
+    }
+    
+    window.Swal.fire({
+      title: 'Obteniendo ubicación...',
+      text: 'Por favor, permite el acceso a tu ubicación cuando el navegador te lo solicite.',
+      allowOutsideClick: false,
+      didOpen: () => {
+        window.Swal.showLoading();
+      }
+    });
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const mapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+        setFormData(prev => ({ ...prev, gpsCoordinates: mapsLink }));
+        window.Swal.fire({
+          title: '📍 ¡Ubicación Obtenida!',
+          text: 'Hemos enlazado tu ubicación exacta al formulario de entrega.',
+          icon: 'success',
+          confirmButtonColor: 'var(--primary-green)'
+        });
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        let msg = "No pudimos obtener tu ubicación. Por favor, asegúrate de activar el GPS y dar permisos.";
+        if (error.code === error.PERMISSION_DENIED) {
+          msg = "Permiso denegado. Por favor, habilita los permisos de ubicación en tu navegador.";
+        }
+        window.Swal.fire({
+          title: 'Error de Ubicación',
+          text: msg,
+          icon: 'error',
+          confirmButtonColor: 'var(--primary-green)'
+        });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
 
   // Synchronize city selection with the active branch (Added by Antigravity)
@@ -1314,8 +1748,45 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
   };
 
   // Open details view
-  const openComboDetails = (combo) => {
-    setSelectedCombo(combo);
+  const openComboDetails = (item, type = 'combo') => {
+    const detailsObj = { ...item, type };
+    
+    if (type === 'product') {
+      const imgs = productImages.filter(img => img.product_id === item.id).sort((a,b) => a.position - b.position);
+      if (imgs.length > 0) {
+        detailsObj.image_url = imgs.map(img => img.url).join(',');
+      } else {
+        detailsObj.image_url = item.image_url || '';
+      }
+    } else {
+      const comboImgList = [];
+      if (item.image_url) {
+        comboImgList.push(item.image_url);
+      }
+      
+      const linked = comboProducts.filter(cp => cp.combo_id === item.id);
+      for (const cp of linked) {
+        const prodImgs = productImages.filter(img => img.product_id === cp.product_id).sort((a,b) => a.position - b.position);
+        prodImgs.forEach(img => {
+          if (!comboImgList.includes(img.url)) {
+            comboImgList.push(img.url);
+          }
+        });
+      }
+      detailsObj.image_url = comboImgList.join(',');
+      
+      // Add helper values for render compatibility
+      detailsObj.bullets = detailsObj.bullets || [
+        "Ahorra al comprar este paquete combinado",
+        "Empacado al vacío con sellos de seguridad oficiales",
+        "Distribución y garantía oficial Tiens Bolivia"
+      ];
+      detailsObj.dosage = detailsObj.dosage || "Consultar dosis individual detallada de cada producto incluido en el pack.";
+      detailsObj.package_detail = detailsObj.package_detail || "Empacado en bolsa doypack kraft original sellada térmicamente con sello de seguridad Kaldirev.";
+      detailsObj.category = detailsObj.category || "Combo Especial";
+    }
+    
+    setSelectedCombo(detailsObj);
     setActiveImageIndex(0);
     setView("details");
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1329,13 +1800,32 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
   };
 
   // Categories and filtering
-  const categories = ["Todos", "Energía", "Bienestar", "Saludable"];
+  const categories = ["Todos", ...categoriesList.map(c => c.name)];
   
+  // Filtered products list
+  const filteredProducts = products.filter(p => {
+    const cat = categoriesList.find(c => c.id === p.category_id);
+    const categoryName = cat ? cat.name : "";
+    const matchesCategory = activeCategory === "Todos" || categoryName === activeCategory;
+    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          p.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          p.bullets.some(b => b.toLowerCase().includes(searchTerm.toLowerCase()));
+    return matchesCategory && matchesSearch;
+  });
+
+  // Filtered combos list
   const filteredCombos = combos.filter(c => {
-    const matchesCategory = activeCategory === "Todos" || c.category === activeCategory;
+    const linked = comboProducts.filter(cp => cp.combo_id === c.id);
+    const comboProductCategories = linked.map(cp => {
+      const p = products.find(prod => prod.id === cp.product_id);
+      if (!p) return "";
+      const cat = categoriesList.find(catObj => catObj.id === p.category_id);
+      return cat ? cat.name : "";
+    }).filter(Boolean);
+    
+    const matchesCategory = activeCategory === "Todos" || comboProductCategories.includes(activeCategory);
     const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          c.includes.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          c.bullets.some(b => b.toLowerCase().includes(searchTerm.toLowerCase()));
+                          c.description.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -1358,6 +1848,118 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
 
   const getPendingOrdersCount = () => {
     return orders.filter(o => o.status === "Pendiente").length;
+  };
+
+  const getCompletedOrdersCount = () => {
+    return orders.filter(o => o.status === "Completado").length;
+  };
+
+  const getCancelledOrdersCount = () => {
+    return orders.filter(o => o.status === "Cancelado").length;
+  };
+
+  const getAverageOrderValue = () => {
+    const completed = orders.filter(o => o.status === "Completado");
+    if (completed.length === 0) return "0.0";
+    const total = completed.reduce((acc, curr) => acc + parseFloat(curr.total_bs), 0);
+    return (total / completed.length).toFixed(1);
+  };
+
+  const getLowStockAlerts = () => {
+    const alerts = [];
+    productStocks.forEach(stockItem => {
+      if (stockItem.stock <= 5) {
+        const product = products.find(p => p.id === stockItem.product_id);
+        const branch = (branches || []).find(b => b.id === stockItem.branch_id);
+        if (product && branch) {
+          alerts.push({
+            id: `${stockItem.product_id}-${stockItem.branch_id}`,
+            productName: product.name,
+            branchName: branch.name,
+            stock: stockItem.stock
+          });
+        }
+      }
+    });
+    return alerts;
+  };
+
+  const getTopProductsData = () => {
+    const counts = {};
+    orders.forEach(o => {
+      if (o.status === "Completado" && o.items && Array.isArray(o.items)) {
+        o.items.forEach(item => {
+          const name = item.name || `Pack ${item.id}`;
+          counts[name] = (counts[name] || 0) + (parseInt(item.quantity) || 0);
+        });
+      }
+    });
+    return Object.entries(counts)
+      .map(([name, qty]) => ({ name, qty }))
+      .sort((a, b) => b.qty - a.qty)
+      .slice(0, 5);
+  };
+
+  const getCategorySalesData = () => {
+    const sales = {};
+    orders.forEach(o => {
+      if (o.status === "Completado" && o.items && Array.isArray(o.items)) {
+        o.items.forEach(item => {
+          const product = combos.find(c => c.id === item.id);
+          const category = product ? product.category : "General";
+          const itemTotal = (parseFloat(item.price) || 0) * (parseInt(item.quantity) || 0);
+          sales[category] = (sales[category] || 0) + itemTotal;
+        });
+      }
+    });
+    const total = Object.values(sales).reduce((acc, curr) => acc + curr, 0) || 1;
+    return Object.entries(sales)
+      .map(([category, amount]) => ({
+        category,
+        amount,
+        percentage: ((amount / total) * 100).toFixed(0)
+      }))
+      .sort((a, b) => b.amount - a.amount);
+  };
+
+  const getBranchSalesData = () => {
+    const sales = {};
+    orders.forEach(o => {
+      if (o.status === "Completado") {
+        const city = o.city || "No especificada";
+        sales[city] = (sales[city] || 0) + (parseFloat(o.total_bs) || 0);
+      }
+    });
+    return Object.entries(sales)
+      .map(([city, amount]) => ({ city, amount }))
+      .sort((a, b) => b.amount - a.amount);
+  };
+
+  const getRevenueOverTime = () => {
+    const salesByDate = {};
+    const dateKeys = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
+      dateKeys.push(key);
+      salesByDate[key] = 0;
+    }
+    
+    orders.forEach(o => {
+      if (o.status === "Completado") {
+        const orderDate = new Date(o.created_at);
+        const key = orderDate.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
+        if (key in salesByDate) {
+          salesByDate[key] += parseFloat(o.total_bs) || 0;
+        }
+      }
+    });
+    
+    return dateKeys.map(date => ({
+      date,
+      amount: salesByDate[date]
+    }));
   };
 
   /* ==================== VIEW 3: PREMIUM SIDEBAR ADMIN DASHBOARD ==================== */
@@ -1413,6 +2015,18 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             
             <nav className="sidebar-nav" style={{ marginTop: '2.5rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <button 
+                className={`sidebar-nav-btn ${adminActiveTab === "dashboard" ? "active" : ""}`}
+                onClick={() => setAdminActiveTab("dashboard")}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: '10px' }}>
+                  <rect x="3" y="3" width="7" height="9"></rect>
+                  <rect x="14" y="3" width="7" height="5"></rect>
+                  <rect x="14" y="12" width="7" height="9"></rect>
+                  <rect x="3" y="16" width="7" height="5"></rect>
+                </svg>
+                Estadísticas
+              </button>
+              <button 
                 className={`sidebar-nav-btn ${adminActiveTab === "config" ? "active" : ""}`}
                 onClick={() => setAdminActiveTab("config")}
               >
@@ -1420,7 +2034,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                   <circle cx="12" cy="12" r="3"></circle>
                   <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                 </svg>
-                Ajustes & Combos
+                Ajustes & Catálogo
               </button>
               <button 
                 className={`sidebar-nav-btn ${adminActiveTab === "orders" ? "active" : ""}`}
@@ -1487,7 +2101,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             <div className="topbar-title-section">
               <span className="admin-dash-subtitle">Panel Master</span>
               <h2 style={{ fontSize: '1.25rem', margin: 0 }}>
-                {adminActiveTab === "config" ? "Gestión de Ajustes & Catálogo" : adminActiveTab === "orders" ? "Logística e Historial de Pedidos" : adminActiveTab === "stocks" ? "Control de Almacenes & Multi-Stock" : "Administración de FAQs & Testimonios"}
+                {adminActiveTab === "dashboard" ? "Estadísticas e Indicadores de Negocio" : adminActiveTab === "config" ? "Gestión de Ajustes & Catálogo" : adminActiveTab === "orders" ? "Logística e Historial de Pedidos" : adminActiveTab === "stocks" ? "Control de Almacenes & Multi-Stock" : "Administración de FAQs & Testimonios"}
               </h2>
             </div>
             
@@ -1505,6 +2119,255 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
           {/* Page body */}
           <div className="admin-content-area" style={{ padding: '2rem', overflowY: 'auto', flexGrow: 1 }}>
             
+            {/* TAB 0: DASHBOARD / ESTADISTICAS */}
+            {adminActiveTab === "dashboard" && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                
+                {/* 1. Metric Cards Grid */}
+                <div className="admin-dash-stats-grid" style={{ padding: 0 }}>
+                  <div className="stat-card" style={{ borderLeft: '4px solid var(--primary-green)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span className="stat-card-label">Ventas Totales</span>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5">
+                        <line x1="12" y1="1" x2="12" y2="23"></line>
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                      </svg>
+                    </div>
+                    <span className="stat-card-value" style={{ fontSize: '1.75rem', fontWeight: 800 }}>Bs. {parseFloat(getTotalSales()).toLocaleString('es-BO', {minimumFractionDigits: 1})}</span>
+                    <span className="stat-card-change" style={{ color: 'var(--text-muted)' }}>De órdenes con estado 'Completado'</span>
+                  </div>
+
+                  <div className="stat-card" style={{ borderLeft: '4px solid var(--accent-gold)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span className="stat-card-label">Pedidos Recibidos</span>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" strokeWidth="2.5">
+                        <circle cx="9" cy="21" r="1"></circle>
+                        <circle cx="20" cy="21" r="1"></circle>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                      </svg>
+                    </div>
+                    <span className="stat-card-value" style={{ fontSize: '1.75rem', fontWeight: 800 }}>{orders.length}</span>
+                    <span className="stat-card-change" style={{ fontSize: '0.8rem' }}>
+                      <span style={{ color: 'var(--primary-green)', fontWeight: 'bold' }}>{getCompletedOrdersCount()} Comp</span> |{' '}
+                      <span style={{ color: 'var(--offer-orange)', fontWeight: 'bold' }}>{getPendingOrdersCount()} Pend</span> |{' '}
+                      <span style={{ color: '#d33', fontWeight: 'bold' }}>{getCancelledOrdersCount()} Can</span>
+                    </span>
+                  </div>
+
+                  <div className="stat-card" style={{ borderLeft: '4px solid #0284c7' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span className="stat-card-label">Ticket Promedio</span>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2.5">
+                        <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+                        <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+                      </svg>
+                    </div>
+                    <span className="stat-card-value" style={{ fontSize: '1.75rem', fontWeight: 800 }}>Bs. {parseFloat(getAverageOrderValue()).toLocaleString('es-BO', {minimumFractionDigits: 1})}</span>
+                    <span className="stat-card-change" style={{ color: 'var(--text-muted)' }}>Monto medio por venta</span>
+                  </div>
+
+                  <div className="stat-card" style={{ borderLeft: `4px solid ${getLowStockAlerts().length > 0 ? 'var(--offer-orange)' : 'var(--primary-green)'}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span className="stat-card-label">Alertas de Stock</span>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={getLowStockAlerts().length > 0 ? 'var(--offer-orange)' : 'var(--primary-green)'} strokeWidth="2.5">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                      </svg>
+                    </div>
+                    <span className="stat-card-value" style={{ fontSize: '1.75rem', fontWeight: 800, color: getLowStockAlerts().length > 0 ? 'var(--offer-orange)' : 'inherit' }}>
+                      {getLowStockAlerts().length}
+                    </span>
+                    <span className="stat-card-change" style={{ color: 'var(--text-muted)' }}>Productos con bajo inventario (≤ 5)</span>
+                  </div>
+                </div>
+
+                {/* 2. Charts and Visualization Row */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                  
+                  {/* Column 1: Sales trends (7 days) */}
+                  <div className="stat-card" style={{ padding: '1.5rem', background: 'white' }}>
+                    <h3 style={{ fontSize: '1.05rem', marginBottom: '1.5rem', color: 'var(--primary-green)' }}>Historial de Ventas (Últimos 7 Días)</h3>
+                    {(() => {
+                      const trendData = getRevenueOverTime();
+                      const maxAmount = Math.max(...trendData.map(d => d.amount), 200);
+                      return (
+                        <div style={{ width: '100%' }}>
+                          <svg viewBox="0 0 400 200" style={{ width: '100%', height: 'auto', background: 'transparent' }}>
+                            {/* Grid Lines */}
+                            <line x1="30" y1="30" x2="390" y2="30" stroke="#f1f5f9" strokeWidth="1" />
+                            <line x1="30" y1="80" x2="390" y2="80" stroke="#f1f5f9" strokeWidth="1" />
+                            <line x1="30" y1="130" x2="390" y2="130" stroke="#f1f5f9" strokeWidth="1" />
+                            <line x1="30" y1="170" x2="390" y2="170" stroke="#cbd5e1" strokeWidth="1.5" />
+                            
+                            {/* Bars */}
+                            {trendData.map((d, index) => {
+                              const barHeight = (d.amount / maxAmount) * 130;
+                              const x = 45 + index * 48;
+                              const y = 170 - barHeight;
+                              return (
+                                <g key={index}>
+                                  <rect 
+                                    x={x} 
+                                    y={y} 
+                                    width="24" 
+                                    height={barHeight} 
+                                    fill="var(--primary-green)" 
+                                    rx="3" 
+                                    style={{ transition: 'all 0.3s ease', cursor: 'pointer' }}
+                                  >
+                                    <title>{`Bs. ${d.amount.toFixed(1)}`}</title>
+                                  </rect>
+                                  {d.amount > 0 && (
+                                    <text 
+                                      x={x + 12} 
+                                      y={y - 6} 
+                                      textAnchor="middle" 
+                                      fontSize="9" 
+                                      fontWeight="bold" 
+                                      fill="var(--primary-green)"
+                                    >
+                                      {d.amount.toFixed(0)}
+                                    </text>
+                                  )}
+                                  <text 
+                                    x={x + 12} 
+                                    y="185" 
+                                    textAnchor="middle" 
+                                    fontSize="9" 
+                                    fill="var(--text-muted)"
+                                    fontWeight="bold"
+                                  >
+                                    {d.date}
+                                  </text>
+                                </g>
+                              );
+                            })}
+                          </svg>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Column 2: Category Breakdown */}
+                  <div className="stat-card" style={{ padding: '1.5rem', background: 'white' }}>
+                    <h3 style={{ fontSize: '1.05rem', marginBottom: '1.5rem', color: 'var(--primary-green)' }}>Ventas por Categoría</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                      {getCategorySalesData().length === 0 ? (
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center', margin: '2rem 0' }}>Sin ventas registradas en categorías aún.</p>
+                      ) : (
+                        getCategorySalesData().map((c, idx) => (
+                          <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                              <span>{c.category}</span>
+                              <span style={{ color: 'var(--primary-green)' }}>Bs. {c.amount.toFixed(1)} ({c.percentage}%)</span>
+                            </div>
+                            <div style={{ background: '#f1f5f9', borderRadius: '999px', height: '10px', width: '100%', overflow: 'hidden' }}>
+                              <div style={{ background: 'var(--primary-green)', height: '100%', width: `${c.percentage}%`, borderRadius: '999px' }}></div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* 3. Detailed Lists Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                  
+                  {/* Top Selling Products */}
+                  <div className="stat-card" style={{ padding: '1.5rem', background: 'white' }}>
+                    <h3 style={{ fontSize: '1.05rem', marginBottom: '1rem', color: 'var(--primary-green)' }}>Packs más Vendidos</h3>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table className="admin-table" style={{ width: '100%' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ padding: '8px' }}>Rank</th>
+                            <th style={{ padding: '8px' }}>Producto / Pack</th>
+                            <th style={{ padding: '8px', textAlign: 'center' }}>Cant. Vendida</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {getTopProductsData().length === 0 ? (
+                            <tr>
+                              <td colSpan="3" style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Aún no hay ventas de productos completadas.</td>
+                            </tr>
+                          ) : (
+                            getTopProductsData().map((p, idx) => (
+                              <tr key={idx}>
+                                <td style={{ padding: '8px', fontWeight: 'bold', color: 'var(--accent-gold)' }}>#{idx + 1}</td>
+                                <td style={{ padding: '8px', fontWeight: 'bold' }}>{p.name}</td>
+                                <td style={{ padding: '8px', textAlign: 'center', fontWeight: 'bold', color: 'var(--primary-green)' }}>{p.qty} uds.</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Sales by Branch/City */}
+                  <div className="stat-card" style={{ padding: '1.5rem', background: 'white' }}>
+                    <h3 style={{ fontSize: '1.05rem', marginBottom: '1rem', color: 'var(--primary-green)' }}>Ventas por Sucursal / Ciudad</h3>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table className="admin-table" style={{ width: '100%' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ padding: '8px' }}>Ciudad / Sucursal</th>
+                            <th style={{ padding: '8px', textAlign: 'right' }}>Total Recaudado</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {getBranchSalesData().length === 0 ? (
+                            <tr>
+                              <td colSpan="2" style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Aún no hay ventas por sucursal completadas.</td>
+                            </tr>
+                          ) : (
+                            getBranchSalesData().map((b, idx) => (
+                              <tr key={idx}>
+                                <td style={{ padding: '8px', fontWeight: 'bold' }}>{b.city}</td>
+                                <td style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold', color: 'var(--primary-green)' }}>Bs. {b.amount.toFixed(1)}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* 4. Critical Stock Warnings Alert */}
+                {getLowStockAlerts().length > 0 && (
+                  <div style={{ padding: '1.5rem', background: '#fffbeb', borderLeft: '5px solid var(--offer-orange)', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--offer-orange)', fontWeight: 'bold' }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                      </svg>
+                      <span>¡Alerta Crítica! Productos con bajo nivel de stock (≤ 5 unidades)</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px', marginTop: '0.5rem' }}>
+                      {getLowStockAlerts().map((alert) => (
+                        <div key={alert.id} style={{ background: 'white', padding: '10px 15px', borderRadius: '8px', border: '1px solid #fed7aa', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
+                          <div>
+                            <strong style={{ display: 'block', color: 'var(--text-dark)' }}>{alert.productName}</strong>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Sucursal: {alert.branchName}</span>
+                          </div>
+                          <span style={{ background: '#ffedd5', color: 'var(--offer-orange)', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.8rem' }}>
+                            {alert.stock} uds.
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            )}
+
             {/* TAB 1: ADJUSTMENTS & COMBOS */}
             {adminActiveTab === "config" && (
               <div className="animate-fade-in">
@@ -1893,11 +2756,11 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                             {combos.map(combo => (
                               <tr key={combo.id}>
                                 <td>
-                                  {combo.image_url ? (
-                                    isVideoUrl(combo.image_url) ? (
-                                      <video src={combo.image_url} autoPlay loop muted playsInline style={{ width: '45px', height: '45px', objectFit: 'cover', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} />
+                                  {getComboImage(combo.id) ? (
+                                    isVideoUrl(getComboImage(combo.id)) ? (
+                                      <video src={resolveAssetUrl(getComboImage(combo.id))} autoPlay loop muted playsInline style={{ width: '45px', height: '45px', objectFit: 'cover', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} />
                                     ) : (
-                                      <img src={combo.image_url} alt={combo.name} style={{ width: '45px', height: '45px', objectFit: 'contain', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} />
+                                      <img src={resolveAssetUrl(getComboImage(combo.id))} alt={combo.name} style={{ width: '45px', height: '45px', objectFit: 'contain', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} />
                                     )
                                   ) : (
                                     <span className="badge-normal" style={{ fontSize: '0.65rem' }}>Sin foto</span>
@@ -2274,24 +3137,24 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     <table className="admin-price-table">
                       <thead>
                         <tr>
-                          <th>Combo / Kit</th>
+                          <th>Producto Individual</th>
                           {branches.map(b => (
                             <th key={b.id}>{b.name} (Stock)</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {combos.map(combo => (
-                          <tr key={combo.id}>
+                        {products.map(product => (
+                          <tr key={product.id}>
                             <td style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              {combo.image_url && (
-                                <img src={combo.image_url} alt="" style={{ width: '30px', height: '30px', objectFit: 'cover', borderRadius: '4px' }} />
+                              {getProductImage(product.id) && (
+                                <img src={getProductImage(product.id)} alt="" style={{ width: '30px', height: '30px', objectFit: 'cover', borderRadius: '4px' }} />
                               )}
-                              <strong>{combo.name}</strong>
+                              <strong>{product.name}</strong>
                             </td>
                             {branches.map(b => {
-                              const getStockForBranch = (cId, bId) => {
-                                const obj = comboStocks.find(s => s.combo_id === cId && s.branch_id === bId);
+                              const getStockForBranch = (pId, bId) => {
+                                const obj = productStocks.find(s => s.product_id === pId && s.branch_id === bId);
                                 return obj ? obj.stock : 0;
                               };
                               return (
@@ -2300,15 +3163,15 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                     type="number" 
                                     className="form-input" 
                                     style={{ width: '100px', padding: '0.3rem 0.5rem', fontSize: '0.9rem', fontWeight: 'bold' }}
-                                    value={getStockForBranch(combo.id, b.id)} 
+                                    value={getStockForBranch(product.id, b.id)} 
                                     onChange={(e) => {
                                       const newStockVal = parseInt(e.target.value) || 0;
-                                      setComboStocks(prev => {
-                                        const exists = prev.some(s => s.combo_id === combo.id && s.branch_id === b.id);
+                                      setProductStocks(prev => {
+                                        const exists = prev.some(s => s.product_id === product.id && s.branch_id === b.id);
                                         if (exists) {
-                                          return prev.map(s => (s.combo_id === combo.id && s.branch_id === b.id) ? { ...s, stock: newStockVal } : s);
+                                          return prev.map(s => (s.product_id === product.id && s.branch_id === b.id) ? { ...s, stock: newStockVal } : s);
                                         } else {
-                                          return [...prev, { combo_id: combo.id, branch_id: b.id, stock: newStockVal }];
+                                          return [...prev, { product_id: product.id, branch_id: b.id, stock: newStockVal }];
                                         }
                                       });
                                     }}
@@ -2329,21 +3192,21 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                       style={{ padding: '0.85rem 1.75rem', width: 'auto', background: 'var(--primary-green)', fontWeight: 'bold', fontSize: '0.95rem' }}
                       onClick={async () => {
                         try {
-                          const upsertPayload = comboStocks.map(s => ({
-                            combo_id: s.combo_id,
+                          const upsertPayload = productStocks.map(s => ({
+                            product_id: s.product_id,
                             branch_id: s.branch_id,
                             stock: s.stock
                           }));
                           
                           const { error } = await supabase
-                            .from('combo_stock')
-                            .upsert(upsertPayload, { onConflict: 'combo_id,branch_id' });
+                            .from('product_stock')
+                            .upsert(upsertPayload, { onConflict: 'product_id,branch_id' });
                           
                           if (error) throw error;
 
                           window.Swal.fire({
                             title: 'Inventario Guardado',
-                            text: 'Las existencias de todos los combos y sucursales han sido actualizadas en la base de datos.',
+                            text: 'Las existencias de todos los productos y sucursales han sido actualizadas en la base de datos.',
                             icon: 'success',
                             confirmButtonColor: 'var(--primary-green)'
                           });
@@ -2605,8 +3468,12 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
           {/* HERO BANNER SECTION */}
           <section className="hero-banner animate-fade-in">
             <div className="hero-content">
-              <span className="eco-badge">
-                Envío Sostenible Kraft Termosellado 🌱
+              <span className="eco-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.5 1 8.5C18.6 17 15 20 11 20z"></path>
+                  <path d="M19 2c-2.26 4.33-5.27 7.14-8 10"></path>
+                </svg>
+                Envío Sostenible Kraft Termosellado
               </span>
               <h1 className="hero-title" style={{ fontSize: '2.5rem', fontWeight: 800 }}>Kaldirev • Bienestar & Energía</h1>
               <p className="hero-description" style={{ fontSize: '1.2rem', lineHeight: '1.5' }}>
@@ -2628,6 +3495,48 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             </div>
           </div>
 
+          {/* DYNAMIC MARKETING PROMOTIONS GRID (Amazon/Shopify style) */}
+          <section className="marketing-grid animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', padding: '1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
+            <div className="promo-tile-card" style={{ background: 'linear-gradient(135deg, #103d2e 0%, #175743 100%)', borderRadius: '12px', padding: '1.5rem', color: 'white', display: 'flex', gap: '15px', alignItems: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', transition: 'transform 0.2s', cursor: 'default' }}>
+              <div style={{ background: 'rgba(255,255,255,0.1)', padding: '0.75rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" strokeWidth="2.5">
+                  <rect x="1" y="3" width="15" height="13"></rect>
+                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                  <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                  <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                </svg>
+              </div>
+              <div>
+                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--accent-gold)' }}>Despacho Express ⚡</h4>
+                <p style={{ margin: '4px 0 0', fontSize: '0.85rem', opacity: 0.9 }}>Entregas coordinadas en menos de 2 horas en Santa Cruz por courier express.</p>
+              </div>
+            </div>
+
+            <div className="promo-tile-card" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', display: 'flex', gap: '15px', alignItems: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
+              <div style={{ background: 'rgba(16, 61, 46, 0.05)', padding: '0.75rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+              </div>
+              <div>
+                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--primary-green)' }}>Garantía 100% Sellado 🛡️</h4>
+                <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Bolsas kraft termoselladas manuales con precinto de seguridad anti-manipulación.</p>
+              </div>
+            </div>
+
+            <div className="promo-tile-card" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', display: 'flex', gap: '15px', alignItems: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
+              <div style={{ background: 'rgba(197, 160, 89, 0.08)', padding: '0.75rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b89047" strokeWidth="2.5">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+              </div>
+              <div>
+                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#b89047' }}>Asesoría Directa 💬</h4>
+                <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>¿Dudas sobre dosis? Chatea en vivo con nuestros asesores de salud autorizados.</p>
+              </div>
+            </div>
+          </section>
+
           {/* SEARCH BAR */}
           <section className="search-container animate-fade-in" style={{ padding: '0 1.5rem' }}>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -2648,6 +3557,76 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             </div>
           </section>
 
+          {/* DYNAMIC FLASH DEAL COUNTDOWN BANNER (Marketing Hero Promo) */}
+          {flashDeal && flashDeal.is_active && (
+            <section className="flash-deal-banner animate-fade-in" style={{ maxWidth: '1200px', margin: '1.5rem auto 0 auto', padding: '0 1.5rem' }}>
+              <div style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', border: '2px dashed var(--accent-gold)', borderRadius: '16px', padding: '1.5rem', display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '20px', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 10px 25px rgba(197, 160, 89, 0.08)' }}>
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                  <div style={{ background: 'rgba(217, 83, 30, 0.1)', color: 'var(--offer-orange)', padding: '10px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none" style={{ flexShrink: 0 }}>
+                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                  </div>
+                  <div>
+                    <span style={{ background: 'var(--offer-orange)', color: 'white', fontSize: '0.68rem', fontWeight: 900, padding: '3px 8px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      {flashDeal.discount_tag || "Oferta Relámpago"}
+                    </span>
+                    <h3 style={{ margin: '4px 0 0', fontSize: '1.25rem', fontWeight: 900, color: 'var(--primary-green)' }}>{flashDeal.title}</h3>
+                    <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-dark)' }}>
+                      {flashDeal.subtitle}
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'center' }}>
+                  {/* Countdown display */}
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', marginRight: '4px' }}>Termina en:</span>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <div style={{ background: 'var(--primary-green)', color: 'white', padding: '6px 10px', borderRadius: '6px', fontWeight: 800, fontSize: '0.95rem', minWidth: '38px', textAlign: 'center' }}>
+                        {String(countdownTime.hours).padStart(2, '0')}
+                        <div style={{ fontSize: '0.52rem', fontWeight: 500, opacity: 0.8, marginTop: '2px' }}>Horas</div>
+                      </div>
+                      <span style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--primary-green)', alignSelf: 'center' }}>:</span>
+                      <div style={{ background: 'var(--primary-green)', color: 'white', padding: '6px 10px', borderRadius: '6px', fontWeight: 800, fontSize: '0.95rem', minWidth: '38px', textAlign: 'center' }}>
+                        {String(countdownTime.minutes).padStart(2, '0')}
+                        <div style={{ fontSize: '0.52rem', fontWeight: 500, opacity: 0.8, marginTop: '2px' }}>Min</div>
+                      </div>
+                      <span style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--primary-green)', alignSelf: 'center' }}>:</span>
+                      <div style={{ background: 'var(--primary-green)', color: 'white', padding: '6px 10px', borderRadius: '6px', fontWeight: 800, fontSize: '0.95rem', minWidth: '38px', textAlign: 'center' }}>
+                        {String(countdownTime.seconds).padStart(2, '0')}
+                        <div style={{ fontSize: '0.52rem', fontWeight: 500, opacity: 0.8, marginTop: '2px' }}>Seg</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Direct CTA */}
+                  <button
+                    type="button"
+                    className="btn-add-cart"
+                    style={{ background: 'var(--offer-orange)', padding: '0.8rem 1.25rem', borderRadius: '10px', fontSize: '0.88rem', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}
+                    onClick={() => {
+                      const kit = combos.find(c => c.id === flashDeal.combo_id);
+                      if (kit) {
+                        addToCart(kit, 'combo');
+                      } else {
+                        const prod = products.find(p => p.id === flashDeal.combo_id);
+                        if (prod) addToCart(prod, 'product');
+                      }
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                      <circle cx="9" cy="21" r="1"></circle>
+                      <circle cx="20" cy="21" r="1"></circle>
+                      <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                    </svg>
+                    Reclamar Oferta
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
+
           {/* TABS FILTER */}
           <section className="filter-container animate-fade-in" style={{ marginTop: '1.5rem' }}>
             {categories.map(cat => (
@@ -2667,7 +3646,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             
             {loading ? (
               <div>
-                <h2 className="section-title" style={{ fontSize: '1.6rem', marginBottom: '1.5rem' }}>Cargando Combos Oficiales...</h2>
+                <h2 className="section-title" style={{ fontSize: '1.6rem', marginBottom: '1.5rem' }}>Cargando Catálogo Oficial...</h2>
                 <div className="products-grid">
                   {[1, 2, 3].map(n => (
                     <div key={n} className="product-card skeleton-card" style={{ height: '400px', display: 'flex', flexDirection: 'column', gap: '15px', padding: '1.5rem', background: 'white' }}>
@@ -2681,18 +3660,21 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
               </div>
             ) : (
               <>
-                {/* 1. PINNED / HIGHLIGHTED COMBOS */}
+                {/* 1. PINNED / HIGHLIGHTED COMBOS (Kits Recomendados) */}
                 {pinnedCombos.length > 0 && (
                   <div style={{ marginBottom: '3rem' }}>
-                    <div className="section-title-wrapper">
-                      <h2 className="section-title" style={{ fontSize: '1.7rem', fontWeight: 800 }}>Kits Recomendados</h2>
+                    <div className="section-title-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                      </svg>
+                      <h2 className="section-title" style={{ fontSize: '1.7rem', fontWeight: 800, margin: 0 }}>Kits Recomendados</h2>
                     </div>
                     <div className="recommended-container" style={{ marginTop: '1rem' }}>
                       {pinnedCombos.map(combo => (
                         <article 
                           className="product-card pinned animate-fade-in" 
                           key={combo.id}
-                          onClick={() => openComboDetails(combo)}
+                          onClick={() => openComboDetails(combo, 'combo')}
                           style={{ cursor: 'pointer' }}
                         >
                           <span className="pinned-badge">
@@ -2704,11 +3686,11 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           <span className="card-packaging-badge">Termosellado</span>
                           
                           <div className="product-image-container">
-                            {combo.image_url ? (
-                              isVideoUrl(combo.image_url) ? (
-                                <video src={combo.image_url} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                            {getComboImage(combo.id) ? (
+                              isVideoUrl(getComboImage(combo.id)) ? (
+                                <video src={resolveAssetUrl(getComboImage(combo.id))} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                               ) : (
-                                <img src={combo.image_url} alt={combo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                <img src={resolveAssetUrl(getComboImage(combo.id))} alt={combo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                               )
                             ) : (
                               <div className="product-image-placeholder">
@@ -2724,26 +3706,20 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           </div>
 
                           <div className="product-details">
-                            <span className="product-category">Tiens • {combo.category}</span>
-                            <h3 className="product-name" style={{ fontSize: '1.25rem', fontWeight: 800, margin: '5px 0' }}>{combo.name}</h3>
-                            <span style={{ display: 'block', fontSize: '0.95rem', color: '#b89047', fontWeight: 700, marginBottom: '10px' }}>
+                            <span className="product-category">Combo Especial</span>
+                            <h3 className="product-name" style={{ fontSize: '1.25rem', fontWeight: 800, margin: '2px 0 4px' }}>{combo.name}</h3>
+                            <span style={{ display: 'block', fontSize: '0.88rem', color: '#b89047', fontWeight: 700, marginBottom: '6px' }}>
                               {combo.tagline}
                             </span>
                             
-                            <ul className="product-bullet-list" style={{ paddingLeft: 0, listStyle: 'none' }}>
-                              {combo.bullets.map((bullet, idx) => (
-                                <li className="product-bullet-item" key={idx} style={{ display: 'flex', gap: '8px', fontSize: '0.9rem', marginBottom: '6px' }}>
-                                  <svg className="svg-icon product-bullet-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary-green)', flexShrink: 0 }}>
-                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                  </svg>
-                                  <span>{bullet}</span>
-                                </li>
-                              ))}
-                            </ul>
-
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '10px 0 15px 0' }}>
-                              <strong>Incluye:</strong> {combo.includes}
-                            </p>
+                            <div className="stars-row" style={{ color: 'var(--accent-gold)', marginBottom: '8px', display: 'flex', gap: '3px', alignItems: 'center' }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '4px' }}>(4.9)</span>
+                            </div>
 
                             <div className="product-price-row-container" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                               <div className="product-price-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid rgba(235, 220, 201, 0.2)' }}>
@@ -2753,12 +3729,12 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                 </div>
                                 
                                 <div className="mobile-add-action">
-                                  {getComboTotalStock(combo.id) > 0 ? (
+                                  {getComboStock(combo.id, selectedBranch?.id || 1) > 0 ? (
                                     <button 
                                       className="btn-add-cart-circle" 
                                       onClick={(e) => { 
                                         e.stopPropagation();
-                                        addToCart(combo); 
+                                        addToCart(combo, 'combo'); 
                                       }}
                                       title="Añadir al pedido"
                                       aria-label="Añadir al pedido"
@@ -2773,21 +3749,21 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                   )}
                                 </div>
                               </div>
-                              {getComboTotalStock(combo.id) > 0 && getComboTotalStock(combo.id) <= 5 && (
+                              {getComboStock(combo.id, selectedBranch?.id || 1) > 0 && getComboStock(combo.id, selectedBranch?.id || 1) <= 5 && (
                                 <div style={{ fontSize: '0.72rem', color: 'var(--offer-orange)', fontWeight: 'bold', textAlign: 'left' }}>
-                                  ⚠️ ¡Solo {getComboTotalStock(combo.id)} disponibles!
+                                  ⚠️ ¡Solo {getComboStock(combo.id, selectedBranch?.id || 1)} disponibles!
                                 </div>
                               )}
                             </div>
 
                             <div className="card-actions-row desktop-only-actions">
-                              {getComboTotalStock(combo.id) > 0 ? (
+                              {getComboStock(combo.id, selectedBranch?.id || 1) > 0 ? (
                                 <button 
                                   className="btn-add-cart" 
                                   style={{ flexGrow: 1, padding: '0.8rem', fontSize: '0.95rem', fontWeight: 700 }}
                                   onClick={(e) => { 
                                     e.stopPropagation();
-                                    addToCart(combo); 
+                                    addToCart(combo, 'combo'); 
                                   }}
                                 >
                                   Añadir al Pedido
@@ -2803,12 +3779,13 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                 </button>
                               )}
                               <button 
+                                  type="button"
                                   className="btn-share"
                                   style={{ padding: '0.8rem', fontSize: '0.9rem' }}
                                   title="Ver detalles"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    openComboDetails(combo);
+                                    openComboDetails(combo, 'combo');
                                   }}
                                 >
                                   Detalles
@@ -2821,29 +3798,29 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                   </div>
                 )}
 
-                {/* 2. OTHER COMBOS */}
-                {otherCombos.length > 0 && (
-                  <div>
-                    <div className="section-title-wrapper" style={{ marginTop: '1.5rem' }}>
-                      <h2 className="section-title" style={{ fontSize: '1.6rem', fontWeight: 800 }}>Otros Combos Disponibles</h2>
+                {/* 2. INDIVIDUAL PRODUCTS GRID */}
+                {filteredProducts.length > 0 && (
+                  <div style={{ marginBottom: '3rem' }}>
+                    <div className="section-title-wrapper">
+                      <h2 className="section-title" style={{ fontSize: '1.7rem', fontWeight: 800 }}>Suplementos Individuales 🌿</h2>
                     </div>
                     <div className="products-grid" style={{ marginTop: '1rem' }}>
-                      {otherCombos.map(combo => (
+                      {filteredProducts.map(product => (
                         <article 
                           className="product-card animate-fade-in" 
-                          key={combo.id}
-                          onClick={() => openComboDetails(combo)}
+                          key={product.id}
+                          onClick={() => openComboDetails(product, 'product')}
                           style={{ cursor: 'pointer' }}
                         >
-                          {combo.badge && <span className="card-badge">{combo.badge}</span>}
-                          <span className="card-packaging-badge">Termosellado</span>
+                          {product.badge && <span className="card-badge">{product.badge}</span>}
+                          <span className="card-packaging-badge">Original Tiens</span>
                           
                           <div className="product-image-container">
-                            {combo.image_url ? (
-                              isVideoUrl(combo.image_url) ? (
-                                <video src={combo.image_url} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                            {product.image_url ? (
+                              isVideoUrl(product.image_url) ? (
+                                <video src={resolveAssetUrl(product.image_url)} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                               ) : (
-                                <img src={combo.image_url} alt={combo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                <img src={resolveAssetUrl(product.image_url)} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                               )
                             ) : (
                               <div className="product-image-placeholder">
@@ -2859,41 +3836,37 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           </div>
 
                           <div className="product-details">
-                            <span className="product-category">Tiens • {combo.category}</span>
-                            <h3 className="product-name" style={{ fontSize: '1.2rem', fontWeight: 800, margin: '5px 0' }}>{combo.name}</h3>
-                            <span style={{ display: 'block', fontSize: '0.9rem', color: '#b89047', fontWeight: 700, marginBottom: '10px' }}>
-                              {combo.tagline}
+                            <span className="product-category">
+                              Tiens • {categoriesList.find(cat => cat.id === product.category_id)?.name || 'Nutrición'}
+                            </span>
+                            <h3 className="product-name" style={{ fontSize: '1.2rem', fontWeight: 800, margin: '2px 0 4px' }}>{product.name}</h3>
+                            <span style={{ display: 'block', fontSize: '0.88rem', color: '#b89047', fontWeight: 700, marginBottom: '6px' }}>
+                              {product.tagline}
                             </span>
                             
-                            <ul className="product-bullet-list" style={{ paddingLeft: 0, listStyle: 'none' }}>
-                              {combo.bullets.map((bullet, idx) => (
-                                <li className="product-bullet-item" key={idx} style={{ display: 'flex', gap: '8px', fontSize: '0.85rem', marginBottom: '6px' }}>
-                                  <svg className="svg-icon product-bullet-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary-green)', flexShrink: 0 }}>
-                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                  </svg>
-                                  <span>{bullet}</span>
-                                </li>
-                              ))}
-                            </ul>
-
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '10px 0' }}>
-                              <strong>Incluye:</strong> {combo.includes}
-                            </p>
+                            <div className="stars-row" style={{ color: 'var(--accent-gold)', marginBottom: '8px', display: 'flex', gap: '3px', alignItems: 'center' }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '4px' }}>(4.8)</span>
+                            </div>
 
                             <div className="product-price-row-container" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                               <div className="product-price-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid rgba(235, 220, 201, 0.2)' }}>
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                                  <span className="price-original">Bs. {parseFloat(combo.original_price_bs).toFixed(1)}</span>
-                                  <span className="price-current">Bs. {parseFloat(combo.price_bs).toFixed(1)}</span>
+                                  <span className="price-original">Bs. {parseFloat(product.original_price_bs).toFixed(1)}</span>
+                                  <span className="price-current">Bs. {parseFloat(product.price_bs).toFixed(1)}</span>
                                 </div>
                                 
                                 <div className="mobile-add-action">
-                                  {getComboTotalStock(combo.id) > 0 ? (
+                                  {getProductStock(product.id, selectedBranch?.id || 1) > 0 ? (
                                     <button 
                                       className="btn-add-cart-circle" 
                                       onClick={(e) => { 
                                         e.stopPropagation();
-                                        addToCart(combo); 
+                                        addToCart(product, 'product'); 
                                       }}
                                       title="Añadir al pedido"
                                       aria-label="Añadir al pedido"
@@ -2908,21 +3881,21 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                   )}
                                 </div>
                               </div>
-                              {getComboTotalStock(combo.id) > 0 && getComboTotalStock(combo.id) <= 5 && (
+                              {getProductStock(product.id, selectedBranch?.id || 1) > 0 && getProductStock(product.id, selectedBranch?.id || 1) <= 5 && (
                                 <div style={{ fontSize: '0.72rem', color: 'var(--offer-orange)', fontWeight: 'bold', textAlign: 'left' }}>
-                                  ⚠️ ¡Solo {getComboTotalStock(combo.id)} disponibles!
+                                  ⚠️ ¡Solo {getProductStock(product.id, selectedBranch?.id || 1)} disponibles!
                                 </div>
                               )}
                             </div>
 
                             <div className="card-actions-row desktop-only-actions">
-                              {getComboTotalStock(combo.id) > 0 ? (
+                              {getProductStock(product.id, selectedBranch?.id || 1) > 0 ? (
                                 <button 
                                   className="btn-add-cart" 
                                   style={{ flexGrow: 1, padding: '0.8rem', fontSize: '0.95rem' }}
                                   onClick={(e) => { 
                                     e.stopPropagation();
-                                    addToCart(combo); 
+                                    addToCart(product, 'product'); 
                                   }}
                                 >
                                   Añadir al Pedido
@@ -2942,7 +3915,141 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                 style={{ padding: '0.8rem', fontSize: '0.9rem' }}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  openComboDetails(combo);
+                                  openComboDetails(product, 'product');
+                                }}
+                              >
+                                Detalles
+                              </button>
+                            </div>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. OTHER COMBOS GRID */}
+                {otherCombos.length > 0 && (
+                  <div style={{ marginBottom: '3rem' }}>
+                    <div className="section-title-wrapper" style={{ marginTop: '1.5rem' }}>
+                      <h2 className="section-title" style={{ fontSize: '1.7rem', fontWeight: 800 }}>Otros Combos en Oferta 🔥</h2>
+                    </div>
+                    <div className="products-grid" style={{ marginTop: '1rem' }}>
+                      {otherCombos.map(combo => (
+                        <article 
+                          className="product-card animate-fade-in" 
+                          key={combo.id}
+                          onClick={() => openComboDetails(combo, 'combo')}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          {combo.badge && <span className="card-badge">{combo.badge}</span>}
+                          <span className="card-packaging-badge">Termosellado</span>
+                          
+                          <div className="product-image-container">
+                            {getComboImage(combo.id) ? (
+                              isVideoUrl(getComboImage(combo.id)) ? (
+                                <video src={resolveAssetUrl(getComboImage(combo.id))} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                              ) : (
+                                <img src={resolveAssetUrl(getComboImage(combo.id))} alt={combo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                              )
+                            ) : combo.image_url ? (
+                              isVideoUrl(combo.image_url) ? (
+                                <video src={combo.image_url} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                              ) : (
+                                <img src={combo.image_url} alt={combo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                              )
+                            ) : (
+                              <div className="product-image-placeholder">
+                                <div className="doypack-illustration">
+                                  <div className="doypack-zipper"></div>
+                                  <div className="doypack-tag">
+                                    <span className="doypack-tag-logo">TIENS</span>
+                                    <div className="doypack-tag-dot"></div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="product-details">
+                            <span className="product-category">Combo Especial</span>
+                            <h3 className="product-name" style={{ fontSize: '1.25rem', fontWeight: 800, margin: '2px 0 4px' }}>{combo.name}</h3>
+                            <span style={{ display: 'block', fontSize: '0.88rem', color: '#b89047', fontWeight: 700, marginBottom: '6px' }}>
+                              {combo.tagline}
+                            </span>
+                            
+                            <div className="stars-row" style={{ color: 'var(--accent-gold)', marginBottom: '8px', display: 'flex', gap: '3px', alignItems: 'center' }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '4px' }}>(4.9)</span>
+                            </div>
+
+                            <div className="product-price-row-container" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              <div className="product-price-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid rgba(235, 220, 201, 0.2)' }}>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                  <span className="price-original">Bs. {parseFloat(combo.original_price_bs).toFixed(1)}</span>
+                                  <span className="price-current">Bs. {parseFloat(combo.price_bs).toFixed(1)}</span>
+                                </div>
+                                
+                                <div className="mobile-add-action">
+                                  {getComboStock(combo.id, selectedBranch?.id || 1) > 0 ? (
+                                    <button 
+                                      className="btn-add-cart-circle" 
+                                      onClick={(e) => { 
+                                        e.stopPropagation();
+                                        addToCart(combo, 'combo'); 
+                                      }}
+                                      title="Añadir al pedido"
+                                      aria-label="Añadir al pedido"
+                                    >
+                                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                      </svg>
+                                    </button>
+                                  ) : (
+                                    <span className="mobile-badge-soldout">Agotado</span>
+                                  )}
+                                </div>
+                              </div>
+                              {getComboStock(combo.id, selectedBranch?.id || 1) > 0 && getComboStock(combo.id, selectedBranch?.id || 1) <= 5 && (
+                                <div style={{ fontSize: '0.72rem', color: 'var(--offer-orange)', fontWeight: 'bold', textAlign: 'left' }}>
+                                  ⚠️ ¡Solo {getComboStock(combo.id, selectedBranch?.id || 1)} disponibles!
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="card-actions-row desktop-only-actions">
+                              {getComboStock(combo.id, selectedBranch?.id || 1) > 0 ? (
+                                <button 
+                                  className="btn-add-cart" 
+                                  style={{ flexGrow: 1, padding: '0.8rem', fontSize: '0.95rem' }}
+                                  onClick={(e) => { 
+                                    e.stopPropagation();
+                                    addToCart(combo, 'combo'); 
+                                  }}
+                                >
+                                  Añadir al Pedido
+                                </button>
+                              ) : (
+                                <button 
+                                  className="btn-add-cart" 
+                                  disabled
+                                  style={{ flexGrow: 1, padding: '0.8rem', fontSize: '0.78rem', fontWeight: 700, background: '#a89e90', cursor: 'not-allowed', color: 'white', border: 'none' }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  Agotado
+                                </button>
+                              )}
+                              <button 
+                                className="btn-share"
+                                style={{ padding: '0.8rem', fontSize: '0.9rem' }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openComboDetails(combo, 'combo');
                                 }}
                               >
                                 Detalles
@@ -2956,9 +4063,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 )}
 
                 {/* Empty search state */}
-                {filteredCombos.length === 0 && (
+                {filteredCombos.length === 0 && filteredProducts.length === 0 && (
                   <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)' }}>
-                    <p style={{ fontSize: '1.25rem', fontWeight: 600 }}>No se encontraron combos para tu búsqueda.</p>
+                    <p style={{ fontSize: '1.25rem', fontWeight: 600 }}>No se encontraron productos o combos para tu búsqueda.</p>
                     <button 
                       className="hero-cta" 
                       style={{ marginTop: '1.5rem', padding: '0.6rem 1.5rem', fontSize: '0.95rem' }}
@@ -2973,7 +4080,6 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
 
           </section>
 
-          {/* TESTIMONIALS SECTION */}
           {testimonials.length > 0 && (
             <section className="testimonials-section">
               <div className="faq-section" style={{ padding: '3rem 1.5rem' }}>
@@ -3110,9 +4216,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                       const currentMedia = mediaList[activeImageIndex] || mediaList[0];
                       if (!currentMedia) return null;
                       if (currentMedia.type === 'video') {
-                        return <video src={currentMedia.url} autoPlay loop muted playsInline />;
+                        return <video src={resolveAssetUrl(currentMedia.url)} autoPlay loop muted playsInline />;
                       } else if (currentMedia.type === 'image') {
-                        return <img src={currentMedia.url} alt={selectedCombo.name} />;
+                        return <img src={resolveAssetUrl(currentMedia.url)} alt={selectedCombo.name} />;
                       } else if (currentMedia.type === 'infographic') {
                         return (
                           <div className="details-infographic-slide">
@@ -3141,7 +4247,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                             <span style={{ fontSize: '9px', color: 'var(--accent-gold)', fontWeight: 'bold' }}>VIDEO</span>
                           </div>
                         ) : media.type === 'image' ? (
-                          <img src={media.url} alt={`Vista ${index + 1}`} />
+                          <img src={resolveAssetUrl(media.url)} alt={`Vista ${index + 1}`} />
                         ) : (
                           <div style={{ fontSize: '18px' }}>💡</div>
                         )}
@@ -3297,7 +4403,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                       <button 
                         type="button" 
                         className="btn-details-buy"
-                        onClick={() => addToCart(selectedCombo)}
+                        onClick={() => addToCart(selectedCombo, selectedCombo.type)}
                       >
                         Añadir al Pedido
                       </button>
@@ -3409,15 +4515,29 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" htmlFor="chk-gps">Enlace Ubicación GPS (Google Maps) (Opcional)</label>
-                  <input 
-                    type="text" 
-                    id="chk-gps" 
-                    className="form-input" 
-                    placeholder="Ej. https://maps.app.goo.gl/..." 
-                    value={formData.gpsCoordinates} 
-                    onChange={(e) => setFormData(prev => ({ ...prev, gpsCoordinates: e.target.value }))}
-                  />
+                  <label className="form-label" htmlFor="chk-gps">Ubicación de GPS / Google Maps (Opcional pero recomendado)</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input 
+                      type="text" 
+                      id="chk-gps" 
+                      className="form-input" 
+                      placeholder="Ej. https://maps.google.com/?q=..." 
+                      value={formData.gpsCoordinates} 
+                      onChange={(e) => setFormData(prev => ({ ...prev, gpsCoordinates: e.target.value }))}
+                      style={{ flexGrow: 1 }}
+                    />
+                    <button
+                      type="button"
+                      className="btn-add-cart"
+                      style={{ width: 'auto', whiteSpace: 'nowrap', padding: '0 1rem', fontSize: '0.85rem', background: 'var(--primary-green)', display: 'flex', alignItems: 'center', gap: '5px' }}
+                      onClick={handleGetLocation}
+                    >
+                      📍 Obtener GPS
+                    </button>
+                  </div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                    Si estás en tu domicilio, haz clic en el botón para adjuntar tus coordenadas de entrega automáticamente.
+                  </span>
                 </div>
 
                 <h4 className="checkout-form-title" style={{ marginTop: '1rem' }}>Forma de Pago</h4>
@@ -3458,19 +4578,40 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             ) : (
               /* ==================== STEP 1: CART LIST ==================== */
               cart.length === 0 ? (
-                <div className="cart-empty-state">
-                  <p style={{ fontWeight: 600, fontSize: '1.1rem' }}>El carrito está vacío</p>
-                  <p style={{ fontSize: '0.9rem' }}>Agrega algunos de nuestros combos para iniciar tu pedido.</p>
+                <div className="cart-empty-state" style={{ padding: '2rem 1rem', textAlign: 'center' }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🛒</div>
+                  <p style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--primary-green)' }}>Tu carrito está vacío</p>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>¿No sabes por dónde empezar? Descubre nuestros recomendados:</p>
+                  
+                  <div className="cart-recommendations" style={{ display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'left' }}>
+                    {products.slice(0, 3).map(prod => (
+                      <div key={prod.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#f8fafc', padding: '8px 12px', borderRadius: '10px', border: '1px solid #ebdcc9' }}>
+                        <img src={resolveAssetUrl(getProductImage(prod.id))} alt="" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+                        <div style={{ flexGrow: 1 }}>
+                          <div style={{ fontSize: '0.82rem', fontWeight: 'bold', color: 'var(--text-dark)' }}>{prod.name}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--accent-gold)', fontWeight: 'bold' }}>Bs. {parseFloat(prod.price_bs).toFixed(1)}</div>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-add-cart"
+                          style={{ padding: '4px 10px', fontSize: '0.75rem', width: 'auto' }}
+                          onClick={() => addToCart(prod, 'product')}
+                        >
+                          + Añadir
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 cart.map(item => (
-                  <div className="cart-item" key={item.id}>
+                  <div className="cart-item" key={item.cartItemId}>
                     <div className="cart-item-image">
                       {item.image_url ? (
                         isVideoUrl(item.image_url) ? (
-                          <video src={item.image_url} muted style={{ width: '45px', height: '65px', objectFit: 'contain', borderRadius: '4px' }} />
+                          <video src={resolveAssetUrl(item.image_url)} muted style={{ width: '45px', height: '65px', objectFit: 'contain', borderRadius: '4px' }} />
                         ) : (
-                          <img src={item.image_url} alt={item.name} style={{ width: '45px', height: '65px', objectFit: 'contain' }} />
+                          <img src={resolveAssetUrl(item.image_url)} alt={item.name} style={{ width: '45px', height: '65px', objectFit: 'contain' }} />
                         )
                       ) : (
                         <div className="doypack-illustration" style={{ width: '30px', height: '45px', borderRadius: '4px', borderWidth: '1px' }}>
@@ -3486,7 +4627,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                         </div>
                         <button 
                           style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', padding: '2px' }}
-                          onClick={() => removeFromCart(item.id)}
+                          onClick={() => removeFromCart(item.cartItemId)}
                           aria-label="Eliminar producto"
                         >
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -3497,9 +4638,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                       </div>
                       <div className="cart-item-bottom">
                         <div className="cart-quantity-controls">
-                          <button className="btn-qty" onClick={() => updateQuantity(item.id, -1)}>-</button>
+                          <button className="btn-qty" onClick={() => updateQuantity(item.cartItemId, -1)}>-</button>
                           <span className="qty-val">{item.quantity}</span>
-                          <button className="btn-qty" onClick={() => updateQuantity(item.id, 1)}>+</button>
+                          <button className="btn-qty" onClick={() => updateQuantity(item.cartItemId, 1)}>+</button>
                         </div>
                         <span className="cart-item-price" style={{ fontSize: '1.1rem' }}>Bs. {(item.price * item.quantity).toFixed(1)}</span>
                       </div>
@@ -3952,6 +5093,44 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
           <p>© {new Date().getFullYear()} Kaldirev. Todos los derechos reservados. Santa Cruz, Bolivia.</p>
         </div>
       </footer>
+
+      {/* SOCIAL PROOF FLOAT NOTIFICATION POPUP */}
+      {socialProofOrder && (
+        <div 
+          className="social-proof-toast"
+          style={{ 
+            position: 'fixed', 
+            bottom: '20px', 
+            left: '20px', 
+            background: 'white', 
+            borderLeft: '4px solid var(--primary-green)', 
+            borderRadius: '8px', 
+            boxShadow: '0 8px 30px rgba(0,0,0,0.15)', 
+            padding: '12px 16px', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '12px', 
+            zIndex: 1000, 
+            maxWidth: '350px',
+            animation: 'slideInLeft 0.5s ease forwards'
+          }}
+        >
+          <div style={{ background: 'rgba(16, 61, 46, 0.05)', color: 'var(--primary-green)', padding: '8px', borderRadius: '50%', fontSize: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            🛍️
+          </div>
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-dark)' }}>
+              {socialProofOrder.name} en {socialProofOrder.city}
+            </div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+              Compró: <strong style={{ color: 'var(--primary-green)' }}>{socialProofOrder.item}</strong>
+            </div>
+            <div style={{ fontSize: '0.72rem', color: '#888', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+              <span>✅ Compra verificada</span> • <span>{socialProofOrder.time}</span>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

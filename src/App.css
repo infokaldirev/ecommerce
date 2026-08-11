@@ -5,18 +5,18 @@
 
 :root {
   /* Color System */
-  --primary-green: #0f3d2e;       /* Deep Forest Green */
-  --primary-green-hover: #072219;
-  --primary-light: #f0f6f3;       /* Soft Mint/Green */
-  --accent-gold: #c5a059;         /* Warm Gold Accent */
+  --primary-green: #0e3e2f;       /* Deep Forest Green */
+  --primary-green-hover: #061d15;
+  --primary-light: #ecfdf5;       /* Soft Emerald Green */
+  --accent-gold: #c5a059;         /* Refined Gold */
   --accent-gold-hover: #b38d47;
-  --accent-gold-light: #f7f3e8;   /* Kraft Accents */
-  --bg-kraft: #faf8f5;            /* Minimalist warm cream */
+  --accent-gold-light: #fcfaf2;   /* Elegant Soft Gold Tint */
+  --bg-kraft: #f8fafc;            /* Clean Slate 50 Background */
   --bg-card: #ffffff;
-  --text-dark: #2a2c2d;
-  --text-muted: #798086;
-  --offer-orange: #d9531e;
-  --border-color: #ebdcc9;        /* Soft gold border tint */
+  --text-dark: #0f172a;           /* Dark Slate 900 */
+  --text-muted: #64748b;          /* Muted Slate 500 */
+  --offer-orange: #f97316;        /* Orange 500 */
+  --border-color: #e2e8f0;        /* Slate 200 Border */
   
   /* Shadows & Radius */
   --shadow-sm: 0 4px 12px rgba(15, 61, 46, 0.02);
@@ -316,8 +316,8 @@ header {
 
 .products-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
 }
 
 @media (min-width: 640px) {
@@ -376,10 +376,10 @@ header {
 }
 
 .product-image-container {
-  height: 125px;
-  background-color: #faf9f6;
+  height: 220px;
+  background-color: #ffffff;
   border-bottom: 1px solid rgba(235, 220, 201, 0.4);
-  padding: 0.5rem;
+  padding: 0.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -504,7 +504,7 @@ header {
 
   .product-image-container {
     height: 220px;
-    padding: 1.5rem;
+    padding: 0.5rem;
   }
 
   .product-details {
@@ -524,7 +524,7 @@ header {
   }
 
   .product-bullet-list {
-    display: flex;
+    display: none;
   }
 
   .product-price-row {
@@ -1141,6 +1141,11 @@ header {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-50px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 /* Footer layout */
@@ -1988,7 +1993,7 @@ footer {
 .details-main-media-box {
   width: 100%;
   height: 350px;
-  background-color: #faf9f6;
+  background-color: #ffffff;
   border: 1px solid #ebdcc9;
   border-radius: 12px;
   display: flex;

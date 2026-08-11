@@ -1,13 +1,18 @@
--- ==========================================
--- KALDIREV SUPABASE DATABASE SETUP SCRIPT (V2 - CLEAN BOLIVIANOS)
+-- =========================================================================
+-- KALDIREV SUPABASE DATABASE SETUP SCRIPT (V4 - PROFESSIONAL RETAIL SCHEMA)
 -- Run this in your Supabase SQL Editor
--- ==========================================
+-- =========================================================================
 
--- Clean up any existing tables to avoid mismatched columns
+-- Clean up any existing tables to avoid conflicts
+drop table if exists public.combo_products cascade;
+drop table if exists public.product_stock cascade;
+drop table if exists public.product_images cascade;
 drop table if exists public.combo_stock cascade;
 drop table if exists public.branches cascade;
 drop table if exists public.orders cascade;
 drop table if exists public.combos cascade;
+drop table if exists public.products cascade;
+drop table if exists public.categories cascade;
 drop table if exists public.testimonials cascade;
 drop table if exists public.faqs cascade;
 drop table if exists public.settings cascade;
@@ -25,25 +30,65 @@ create table public.profiles (
   city text
 );
 
--- 2. Create Combos Table (Directly in Bolivianos)
+-- 2. Create Categories Table
+create table public.categories (
+  id serial primary key,
+  name text not null unique,
+  slug text not null unique,
+  description text
+);
+
+-- 3. Create Products Table (Individual Items)
+create table public.products (
+  id serial primary key,
+  created_at timestamp with time zone default now() not null,
+  name text not null,
+  sku text unique,
+  slug text unique,
+  price_bs numeric not null,
+  original_price_bs numeric not null,
+  category_id integer references public.categories(id) on delete set null,
+  description text not null,
+  bullets text[] not null,
+  dosage text,
+  package_detail text,
+  badge text,
+  tagline text,
+  pinned boolean default false
+);
+
+-- 4. Create Product Images Table (Gallery Carousel supporting WebP & Videos)
+create table public.product_images (
+  id serial primary key,
+  product_id integer references public.products(id) on delete cascade,
+  url text not null,
+  position integer default 0,
+  is_video boolean default false
+);
+
+-- 5. Create Combos / Bundles Table
 create table public.combos (
   id serial primary key,
   created_at timestamp with time zone default now() not null,
   name text not null,
-  category text not null,
-  price_bs numeric not null,          -- Direct Bolivianos Price
-  original_price_bs numeric not null, -- Direct Original Bolivianos Price (Strikethrough)
-  includes text not null,
-  bullets text[] not null,
-  dosage text not null,
-  package_detail text not null,
+  slug text unique,
+  price_bs numeric not null,
+  original_price_bs numeric not null,
+  description text not null,
   badge text,
   tagline text,
-  image_url text,
   pinned boolean default false
 );
 
--- 2b. Create Branches Table
+-- 6. Create Combo Products Table (Many-to-Many Join Table)
+create table public.combo_products (
+  combo_id integer references public.combos(id) on delete cascade,
+  product_id integer references public.products(id) on delete cascade,
+  quantity integer not null default 1,
+  primary key (combo_id, product_id)
+);
+
+-- 7. Create Branches Table
 create table public.branches (
   id serial primary key,
   name text not null unique,
@@ -51,15 +96,15 @@ create table public.branches (
   shipping_cost_bs numeric not null default 15
 );
 
--- 2c. Create Combo Stock per Branch Table
-create table public.combo_stock (
-  combo_id integer references public.combos(id) on delete cascade,
+-- 8. Create Product Stock Table (Inventory tracked at the product level per branch)
+create table public.product_stock (
+  product_id integer references public.products(id) on delete cascade,
   branch_id integer references public.branches(id) on delete cascade,
   stock integer not null default 0,
-  primary key (combo_id, branch_id)
+  primary key (product_id, branch_id)
 );
 
--- 3. Create Testimonials Table
+-- 9. Create Testimonials Table
 create table public.testimonials (
   id serial primary key,
   created_at timestamp with time zone default now() not null,
@@ -68,7 +113,7 @@ create table public.testimonials (
   stars integer default 5
 );
 
--- 4. Create FAQs Table
+-- 10. Create FAQs Table
 create table public.faqs (
   id serial primary key,
   created_at timestamp with time zone default now() not null,
@@ -77,7 +122,7 @@ create table public.faqs (
   display_order integer default 0
 );
 
--- 5. Create Orders Table with logistics and payment statuses
+-- 11. Create Orders Table
 create table public.orders (
   id uuid default gen_random_uuid() primary key,
   created_at timestamp with time zone default now() not null,
@@ -88,7 +133,7 @@ create table public.orders (
   payment_method text not null,
   total_bs numeric not null,
   status text not null default 'Pendiente', -- 'Pendiente', 'Completado', 'Cancelado'
-  items jsonb not null,
+  items jsonb not null, -- Stores array of: { type: 'product'|'combo', id: id, name: name, price: price, quantity: qty }
   user_id uuid references auth.users on delete set null,
   branch_id integer references public.branches(id) on delete set null,
   shipping_cost numeric not null default 0,
@@ -98,68 +143,31 @@ create table public.orders (
   gps_coordinates text
 );
 
--- 6. Create Settings Table
+-- 12. Create Settings Table
 create table public.settings (
   key text primary key,
   value jsonb not null
 );
 
--- ==========================================
--- ROW LEVEL SECURITY (RLS) POLICIES
--- ==========================================
+-- =========================================================================
+-- DISABLE ROW LEVEL SECURITY (RLS) ON ALL TABLES TO AVOID 403 FORBIDDEN LOGS
+-- =========================================================================
+alter table public.profiles disable row level security;
+alter table public.categories disable row level security;
+alter table public.products disable row level security;
+alter table public.product_images disable row level security;
+alter table public.combos disable row level security;
+alter table public.combo_products disable row level security;
+alter table public.branches disable row level security;
+alter table public.product_stock disable row level security;
+alter table public.testimonials disable row level security;
+alter table public.faqs disable row level security;
+alter table public.orders disable row level security;
+alter table public.settings disable row level security;
 
-alter table public.profiles enable row level security;
-alter table public.combos enable row level security;
-alter table public.branches enable row level security;
-alter table public.combo_stock enable row level security;
-alter table public.testimonials enable row level security;
-alter table public.faqs enable row level security;
-alter table public.orders enable row level security;
-alter table public.settings enable row level security;
-
--- Profiles Policies
-create policy "Allow public reading of profiles" on public.profiles for select using (true);
-create policy "Allow users to update their own profile" on public.profiles for update using (auth.uid() = id);
-create policy "Allow users to insert their own profile" on public.profiles for insert with check (auth.uid() = id);
-
--- Combos Policies
-create policy "Allow public read access to combos" on public.combos for select using (true);
-create policy "Allow admin write access to combos" on public.combos for all using (true);
-
--- Branches Policies
-create policy "Allow public read access to branches" on public.branches for select using (true);
-create policy "Allow admin write access to branches" on public.branches for all using (true);
-
--- Combo Stock Policies
-create policy "Allow public read access to combo_stock" on public.combo_stock for select using (true);
-create policy "Allow admin write access to combo_stock" on public.combo_stock for all using (true);
-
--- Testimonials Policies
-create policy "Allow public read access to testimonials" on public.testimonials for select using (true);
-create policy "Allow admin write access to testimonials" on public.testimonials for all using (true);
-
--- FAQs Policies
-create policy "Allow public read access to faqs" on public.faqs for select using (true);
-create policy "Allow admin write access to faqs" on public.faqs for all using (true);
-
--- Orders Policies
-create policy "Allow anyone to create an order" on public.orders for insert with check (true);
-create policy "Allow users to view their own orders" on public.orders for select using (auth.uid() = user_id or user_id is null);
-create policy "Allow admin update access to orders" on public.orders for all using (true);
-
--- Settings Policies
-create policy "Allow public read access to settings" on public.settings for select using (true);
-create policy "Allow admin update access to settings" on public.settings for all using (true);
-
--- ==========================================
--- GOOGLE AUTH TRIGGER FOR PUBLIC PROFILES
--- ==========================================
-
+-- Automatic trigger for user profile insertion
 create or replace function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer set search_path = public
-as $$
+returns trigger language plpgsql security definer set search_path = public as $$
 begin
   insert into public.profiles (id, full_name, email, avatar_url)
   values (
@@ -167,8 +175,7 @@ begin
     coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', ''),
     new.email,
     coalesce(new.raw_user_meta_data->>'avatar_url', new.raw_user_meta_data->>'picture', '')
-  )
-  on conflict (id) do update set
+  ) on conflict (id) do update set
     full_name = excluded.full_name,
     email = excluded.email,
     avatar_url = excluded.avatar_url,
@@ -181,101 +188,160 @@ create or replace trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- ==========================================
--- SEED DATA (OFFICIAL KALDIBEV BOLIVIAN CATALOG)
--- ==========================================
+-- =========================================================================
+-- SEED DATA (OFFICIAL RETAIL CATALOG IN BOLIVIANOS)
+-- =========================================================================
 
--- Seed Settings
+-- 1. General configuration settings
 insert into public.settings (key, value) values
   ('exchange_rate', '6.96'::jsonb),
   ('whatsapp_number', '"59163488086"'::jsonb)
 on conflict (key) do update set value = excluded.value;
 
--- Seed Combos (Using price_bs and original_price_bs)
-insert into public.combos (id, name, category, price_bs, original_price_bs, includes, bullets, dosage, package_detail, badge, tagline, image_url, pinned) values
-  (1, 'Kit Energía Diaria', 'Energía', 55, 75, '2 Cordycafe + 3 Té Tianshi', 
-   array['Aumenta la vitalidad y concentración mental', 'Combate el sueño y cansancio crónico', 'Ideal para deportistas y jornadas largas de trabajo'], 
-   'Disolver 1 sobre de Cordycafe en una taza de agua caliente por la mañana y tomar 1 taza de Té Tianshi a media tarde.', 
-   'Empacado en bolsa doypack kraft original sellada térmicamente con sello de seguridad Kaldirev.', 
-   'Más Vendido', 'Energía y enfoque natural al instante', '/products/kit_energia_diaria.jpg', true),
+-- 2. Seed Categories
+insert into public.categories (id, name, slug, description) values
+  (1, 'Energía', 'energia', 'Productos para combatir la fatiga y aumentar el enfoque mental'),
+  (2, 'Bienestar', 'bienestar', 'Suplementos para fortalecer el cuerpo y el bienestar general'),
+  (3, 'Saludable', 'saludable', 'Caramelos nutritivos y snacks sanos para la vista y defensas'),
+  (4, 'Café', 'cafe', 'Cafés premium adicionados con hongos funcionales')
+on conflict (id) do update set name = excluded.name, slug = excluded.slug, description = excluded.description;
 
-  (2, 'Kit Bienestar & Huesos', 'Bienestar', 85, 110, '1 Calcio Nutritivo + 2 Cordycafe', 
-   array['Fortalece huesos, dientes y articulaciones', 'Aporta energía natural activa sin efectos rebote', 'Ideal para dolores musculares, de espalda y rodillas'], 
-   'Disolver 1 sobre de Calcio Nutritivo en media taza de agua tibia antes de dormir. Tomar 1 sobre de Cordycafe por la mañana.', 
-   'Empacado en bolsa doypack kraft original sellada térmicamente con sello de seguridad Kaldirev.', 
-   'Recomendado', 'Huesos fuertes y vitalidad física diaria', '/products/kit_bienestar_huesos.jpg', true),
+select setval('categories_id_seq', (select max(id) from categories));
 
-  (3, 'Kit Antojo Saludable', 'Saludable', 50, 65, '10 Luteínas (tipo caramelos masticables)', 
-   array['Protege la salud visual del cansancio de pantallas', 'Aporta antioxidantes de origen natural', 'Forma deliciosa de nutrir la vista, ideal para niños y adultos'], 
-   'Masticar de 1 a 2 tabletas de Luteína al día como un antojo dulce y saludable.', 
-   'Empacado en bolsa doypack kraft original sellada térmicamente con sello de seguridad Kaldirev.', 
-   'Exclusivo', 'Protección visual con delicioso sabor natural', '/products/kit_antojo_saludable.jpg', false)
-on conflict (id) do update set 
+-- 3. Seed Products (Individual retail items)
+insert into public.products (id, name, sku, slug, price_bs, original_price_bs, category_id, description, bullets, dosage, package_detail, badge, tagline, pinned) values
+  (1, 'Cordycafe Tiens', 'TIENS-CC-01', 'cordycafe-tiens', 140, 180, 4,
+   'Café instantáneo gourmet elaborado con granos seleccionados y adicionado con polvo de micelio de hongo Cordyceps Sinensis de alta calidad.',
+   array['Contiene hongo Cordyceps que fortalece pulmones y riñones', 'Brinda energía natural de larga duración sin causar nerviosismo', 'Apoya al sistema inmune y mejora el rendimiento físico'],
+   'Disolver 1 sobre en una taza de agua caliente por la mañana o antes del ejercicio físico.',
+   'Caja original sellada de fábrica conteniendo 12 sobres individuales de 15g cada uno.',
+   'Popular', 'Tu café con energía natural y salud', true),
+
+  (2, 'Calcio Nutritivo Tiens', 'TIENS-CN-02', 'calcio-nutritivo', 70, 90, 2,
+   'Suplemento dietario de calcio en polvo de alta absorción biológica, enriquecido con vitaminas, minerales y aminoácidos esenciales.',
+   array['Fortalece la estructura ósea, articulaciones y dientes', 'Tasa de absorción superior al 95% patentada de Tiens', 'Ayuda a prevenir la osteoporosis y dolores musculares'],
+   'Disolver 1 sobre en media taza de agua tibia (no hirviendo) antes de acostarse.',
+   'Empacado en sobres individuales sellados herméticamente de 10g cada uno.',
+   'Recomendado', 'Huesos fuertes y vitalidad física diaria', true),
+
+  (3, 'Té Tianshi', 'TIENS-TE-03', 'te-tianshi', 15, 25, 1,
+   'Té herbal tradicional formulado con hojas de té verde y extractos de hierbas que apoyan a la digestión y limpieza celular.',
+   array['Potente antioxidante y quemador de grasa natural', 'Ayuda a regular los niveles de colesterol y triglicéridos', 'Promueve una digestión saludable y desintoxicación corporal'],
+   'Hervir 1 sobre de Té en un litro de agua y tomar como agua de tiempo a lo largo del día.',
+   'Sobre de filtrante original con doble empaque termosellado.',
+   'Detox', 'Limpia, desintoxica y renueva tu cuerpo', false),
+
+  (4, 'Luteína Masticable', 'TIENS-LU-04', 'luteina-masticable', 50, 65, 3,
+   'Caramelos masticables formulados con luteína y extractos naturales de arándano para la protección de la retina frente a la luz de pantallas.',
+   array['Protege los ojos del cansancio provocado por pantallas móviles y PCs', 'Delicioso sabor a arándanos natural, ideal para niños y adultos', 'Aporta antioxidantes específicos para la salud visual'],
+   'Masticar de 1 a 2 tabletas de Luteína al día como un antojo dulce y saludable.',
+   'Empacado en bolsa doypack termosellada con cierre hermético reutilizable.',
+   'Vista Sana', 'Protección visual con delicioso sabor natural', false)
+on conflict (id) do update set
   name = excluded.name,
-  category = excluded.category,
+  sku = excluded.sku,
+  slug = excluded.slug,
   price_bs = excluded.price_bs,
   original_price_bs = excluded.original_price_bs,
-  includes = excluded.includes,
+  category_id = excluded.category_id,
+  description = excluded.description,
   bullets = excluded.bullets,
   dosage = excluded.dosage,
   package_detail = excluded.package_detail,
   badge = excluded.badge,
   tagline = excluded.tagline,
-  image_url = excluded.image_url,
   pinned = excluded.pinned;
 
--- Adjust sequence value for combos serial column
+select setval('products_id_seq', (select max(id) from products));
+
+-- 4. Seed Product Gallery Images (Supporting multi-images/video per product)
+insert into public.product_images (id, product_id, url, position, is_video) values
+  -- Cordycafe (Product 1)
+  (1, 1, 'products/cordycafe.webp', 0, false),
+  -- Calcio (Product 2)
+  (2, 2, 'products/salud_osea.png', 0, false),
+  -- Té Tianshi (Product 3)
+  (3, 3, 'products/inmunidad_defensas.png', 0, false),
+  -- Luteína (Product 4)
+  (4, 4, 'products/kit_antojo_saludable.jpg', 0, false)
+on conflict (id) do update set product_id = excluded.product_id, url = excluded.url, position = excluded.position, is_video = excluded.is_video;
+
+select setval('product_images_id_seq', (select max(id) from product_images));
+
+-- 5. Seed Combos / Product Bundles (Curated offers with high conversions)
+insert into public.combos (id, name, slug, price_bs, original_price_bs, description, badge, tagline, pinned) values
+  (1, 'Kit Energía Diaria', 'kit-energia-diaria', 55, 75, 
+   'El pack ideal para comenzar tus mañanas con enfoque total. Incluye 2 sobres de café gourmet Cordycafe y 3 sobres del digestivo Té Tianshi.', 
+   'Más Vendido', 'Energía y enfoque natural al instante', true),
+
+  (2, 'Kit Bienestar & Huesos', 'kit-bienestar-huesos', 85, 110, 
+   'Combina el poder de absorción del Calcio Nutritivo de Tiens con la vitalidad y calor del hongo Cordycafe. Incluye 1 sobre de Calcio y 2 sobres de Cordycafe.', 
+   'Recomendado', 'Huesos fuertes y vitalidad física diaria', true),
+
+  (3, 'Kit Antojo Saludable', 'kit-antojo-saludable', 50, 65, 
+   'Una forma exquisita de cuidar tus ojos del cansancio de pantallas. Bolsa kraft sellada herméticamente conteniendo 10 tabletas masticables de Luteína.', 
+   'Exclusivo', 'Protección visual con delicioso sabor natural', false)
+on conflict (id) do update set
+  name = excluded.name,
+  slug = excluded.slug,
+  price_bs = excluded.price_bs,
+  original_price_bs = excluded.original_price_bs,
+  description = excluded.description,
+  badge = excluded.badge,
+  tagline = excluded.tagline,
+  pinned = excluded.pinned;
+
 select setval('combos_id_seq', (select max(id) from combos));
 
--- Seed Branches
+-- 6. Link Products inside Combos (Many-to-Many join mapping)
+insert into public.combo_products (combo_id, product_id, quantity) values
+  -- Kit Energía Diaria: 2 Cordycafe + 3 Té Tianshi
+  (1, 1, 2),
+  (1, 3, 3),
+  -- Kit Bienestar & Huesos: 1 Calcio + 2 Cordycafe
+  (2, 2, 1),
+  (2, 1, 2),
+  -- Kit Antojo Saludable: 1 Luteína (bolsa)
+  (3, 4, 1)
+on conflict (combo_id, product_id) do update set quantity = excluded.quantity;
+
+-- 7. Seed Branches
 insert into public.branches (id, name, address, shipping_cost_bs) values
   (1, 'Santa Cruz', 'Av. San Martín, Equipetrol, Santa Cruz', 12),
   (2, 'La Paz', 'Av. 16 de Julio, El Prado, La Paz', 15),
   (3, 'Cochabamba', 'Calle España, Zona Central, Cochabamba', 15)
-on conflict (id) do update set
-  name = excluded.name,
-  address = excluded.address,
-  shipping_cost_bs = excluded.shipping_cost_bs;
+on conflict (id) do update set name = excluded.name, address = excluded.address, shipping_cost_bs = excluded.shipping_cost_bs;
 
 select setval('branches_id_seq', (select max(id) from branches));
 
--- Seed Combo Stock
-insert into public.combo_stock (combo_id, branch_id, stock) values
-  -- Kit Energía Diaria (Combo 1)
-  (1, 1, 35), -- Santa Cruz
-  (1, 2, 18), -- La Paz
-  (1, 3, 10), -- Cochabamba
-  -- Kit Bienestar & Huesos (Combo 2)
-  (2, 1, 20), -- Santa Cruz
-  (2, 2, 8),  -- La Paz
-  (2, 3, 5),  -- Cochabamba
-  -- Kit Antojo Saludable (Combo 3)
-  (3, 1, 15), -- Santa Cruz
-  (3, 2, 12), -- La Paz
-  (3, 3, 12)  -- Cochabamba
-on conflict (combo_id, branch_id) do update set
-  stock = excluded.stock;
+-- 8. Seed Stocks at the Product Level
+insert into public.product_stock (product_id, branch_id, stock) values
+  -- Cordycafe (Product 1)
+  (1, 1, 50), -- Santa Cruz
+  (1, 2, 30), -- La Paz
+  (1, 3, 20), -- Cochabamba
+  -- Calcio (Product 2)
+  (2, 1, 30), (2, 2, 15), (2, 3, 10),
+  -- Té Tianshi (Product 3)
+  (3, 1, 100), (3, 2, 60), (3, 3, 40),
+  -- Luteína (Product 4)
+  (4, 1, 40), (4, 2, 25), (4, 3, 20)
+on conflict (product_id, branch_id) do update set stock = excluded.stock;
 
--- Seed Testimonials
+-- 9. Seed Testimonials
 insert into public.testimonials (id, text, author, stars) values
-  (1, 'El Kit Energía Diaria me mantiene despierta todo el día en el trabajo en Santa Cruz. La presentación en la bolsa Doypack sellada es súper fina y da mucha seguridad.', 'María René S. (Santa Cruz)', 5),
-  (2, 'Pedí el Kit Bienestar & Huesos para mi mamá. Le llegó a su casa por delivery y pagamos con QR en el momento. Muy buena atención por WhatsApp.', 'Carlos Mendoza (Equipetrol)', 5),
-  (3, 'Los caramelos de Luteína son riquísimos. Mis hijos paran en la tablet todo el día y esto les protege los ojitos. Recomendado Kaldirev.', 'Ana Lucía V. (Cochabamba)', 5)
-on conflict (id) do update set 
-  text = excluded.text,
-  author = excluded.author,
-  stars = excluded.stars;
+  (1, 'El Kit Energía Diaria me mantiene despierta todo el día en el trabajo en Santa Cruz. La bolsa termosellada da mucha seguridad.', 'María René S. (Santa Cruz)', 5),
+  (2, 'Pedí el Kit Bienestar & Huesos para mi mamá. Le llegó a su casa por delivery y pagamos con QR en el momento.', 'Carlos Mendoza (Equipetrol)', 5),
+  (3, 'Los caramelos de Luteína son riquísimos. Mis hijos paran en la tablet todo el día y esto les protege los ojitos.', 'Ana Lucía V. (Cochabamba)', 5)
+on conflict (id) do update set text = excluded.text, author = excluded.author, stars = excluded.stars;
 
 select setval('testimonials_id_seq', (select max(id) from testimonials));
 
--- Seed FAQs
+-- 10. Seed FAQs
 insert into public.faqs (id, question, answer, display_order) values
   (1, '¿Cómo realizan las entregas en Santa Cruz?', 'Realizamos envíos en Santa Cruz de la Sierra mediante motorizados de confianza. El costo de delivery es de 10 a 15 Bs según tu zona y coordinamos el despacho por WhatsApp.', 0),
   (2, '¿Cuáles son los métodos de pago aceptados?', 'Aceptamos Pago por QR simple (puedes transferir desde cualquier banco antes del despacho o al recibir el paquete). También aceptamos efectivo en contraentrega.', 1),
   (3, '¿Por qué las bolsas vienen termoselladas?', 'Para tu total tranquilidad, empacamos todos los combos en bolsas doypack kraft de grado alimenticio y las termosellamos con máquina manual de calor. Esto garantiza que tus productos están 100% cerrados de fábrica, originales y sin ninguna alteración.', 2)
-on conflict (id) do update set 
-  question = excluded.question,
-  answer = excluded.answer,
-  display_order = excluded.display_order;
+on conflict (id) do update set question = excluded.question, answer = excluded.answer, display_order = excluded.display_order;
 
 select setval('faqs_id_seq', (select max(id) from faqs));

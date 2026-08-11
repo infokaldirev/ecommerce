@@ -14,6 +14,16 @@ const copyImagesPlugin = () => ({
       fs.mkdirSync(destDir, { recursive: true });
     }
 
+    // Copy the user's webp image to public/products/
+    const rootWebp = path.resolve(__dirname, '1295618666295402496.webp');
+    const destWebp = path.resolve(destDir, 'cordycafe.webp');
+    const destWebpAlt = path.resolve(destDir, '1295618666295402496.webp');
+    if (fs.existsSync(rootWebp)) {
+      fs.copyFileSync(rootWebp, destWebp);
+      fs.copyFileSync(rootWebp, destWebpAlt);
+      console.log(`[Vite Startup] Copied Cordycafe webp to ${destWebp}`);
+    }
+
     if (fs.existsSync(srcDir)) {
       const files = fs.readdirSync(srcDir);
       const mapping = {

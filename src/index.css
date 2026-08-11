@@ -1,15 +1,15 @@
 :root {
   /* Color Palette */
-  --bg-kraft: #f7f4eb; /* Warm beige paper kraft tone */
+  --bg-kraft: #f8fafc; /* Clean Slate 50 Background */
   --bg-card: #ffffff;
-  --text-dark: #2c2e30;
-  --text-muted: #6b6e70;
-  --primary-green: #1a4d3a; /* Deep forest green for wellness/Tiens */
-  --primary-green-hover: #123628;
-  --accent-gold: #c5a059; /* Warm gold/tan from Kaldirev logo */
-  --accent-gold-light: #f3edd7;
-  --offer-orange: #e65c00; /* Energetic orange for discounts */
-  --border-color: #e2ded5;
+  --text-dark: #0f172a; /* Dark Slate 900 */
+  --text-muted: #64748b; /* Muted Slate 500 */
+  --primary-green: #0e3e2f; /* Deep forest emerald */
+  --primary-green-hover: #061d15;
+  --accent-gold: #c5a059;
+  --accent-gold-light: #fcfaf2;
+  --offer-orange: #f97316;
+  --border-color: #e2e8f0;
   --shadow-sm: 0 2px 8px rgba(43, 45, 47, 0.05);
   --shadow-md: 0 8px 24px rgba(43, 45, 47, 0.08);
   --shadow-lg: 0 16px 40px rgba(43, 45, 47, 0.12);
