@@ -3,28 +3,30 @@ import { supabase } from './supabaseClient';
 import './App.css';
 
 // Fallback Combos Data in Bolivianos
+// Fallback Combos Data in Bolivianos
 const DEFAULT_CATEGORIES = [
   { id: 1, name: "Energía", slug: "energia" },
   { id: 2, name: "Bienestar", slug: "bienestar" },
   { id: 3, name: "Saludable", slug: "saludable" },
-  { id: 4, name: "Café", slug: "cafe" }
+  { id: 4, name: "Café", slug: "cafe" },
+  { id: 5, name: "Belleza", slug: "belleza" }
 ];
 
 const DEFAULT_PRODUCTS = [
   {
     id: 1,
     name: "Cordycafe Tiens",
-    price_bs: 140,
-    original_price_bs: 180,
+    price_bs: 188.5,
+    original_price_bs: 220,
     category_id: 4,
-    description: "Café instantáneo gourmet elaborado con granos seleccionados y adicionado con micelio de hongo Cordyceps Sinensis.",
+    description: "Café instantáneo gourmet elaborado con granos seleccionados y adicionado con polvo de micelio de hongo Cordyceps Sinensis.",
     bullets: [
-      "Contiene hongo Cordyceps que fortalece pulmones y riñones",
-      "Brinda energía natural de larga duración sin nerviosismo",
-      "Apoya al sistema inmune y mejora el rendimiento físico"
+      "Energía natural de larga duración sin nerviosismo",
+      "Fortalece la función pulmonar y renal",
+      "Apoya al sistema inmune y rendimiento físico"
     ],
-    dosage: "Disolver 1 sobre en una taza de agua caliente por la mañana o antes del ejercicio físico.",
-    package_detail: "Caja original sellada de fábrica conteniendo 12 sobres individuales de 15g cada uno.",
+    dosage: "Disolver 1 sobre en una taza de agua caliente por la mañana.",
+    package_detail: "Caja conteniendo 12 sobres de 15g cada uno.",
     badge: "Popular",
     tagline: "Tu café con energía natural y salud",
     pinned: true
@@ -32,64 +34,106 @@ const DEFAULT_PRODUCTS = [
   {
     id: 2,
     name: "Calcio Nutritivo Tiens",
-    price_bs: 70,
-    original_price_bs: 90,
+    price_bs: 260,
+    original_price_bs: 300,
     category_id: 2,
-    description: "Suplemento dietario de calcio en polvo de alta absorción biológica, enriquecido con vitaminas, minerales y aminoácidos esenciales.",
+    description: "Suplemento dietario de calcio en polvo de alta absorción biológica, enriquecido con vitaminas, minerales y aminoácidos.",
     bullets: [
-      "Fortalece la estructura ósea, articulaciones y dientes",
-      "Tasa de absorción superior al 95% patentada de Tiens",
-      "Ayuda a prevenir la osteoporosis y dolores musculares"
+      "Tasa de absorción superior al 95% patentada",
+      "Fortalece la estructura ósea y dientes",
+      "Previene calambres y dolores articulares"
     ],
     dosage: "Disolver 1 sobre en media taza de agua tibia antes de acostarse.",
-    package_detail: "Empacado en sobres individuales sellados herméticamente de 10g cada uno.",
-    badge: "Recomendado",
-    tagline: "Huesos fuertes y vitalidad física diaria",
+    package_detail: "Caja con sobres individuales sellados herméticamente de 10g cada uno.",
+    badge: "Más Vendido",
+    tagline: "Huesos fuertes y vitalidad diaria",
     pinned: true
   },
   {
     id: 3,
     name: "Té Tianshi",
-    price_bs: 15,
-    original_price_bs: 25,
+    price_bs: 260,
+    original_price_bs: 300,
     category_id: 1,
-    description: "Té herbal tradicional formulado con hojas de té verde y extractos de hierbas que apoyan a la digestión y limpieza celular.",
+    description: "Té herbal tradicional formulado con hojas de té verde y extractos naturales para la desintoxicación celular.",
     bullets: [
-      "Potente antioxidante y quemador de grasa natural",
-      "Ayuda a regular los niveles de colesterol y triglicéridos",
-      "Promueve una digestión saludable y desintoxicación corporal"
+      "Potente antioxidante y desintoxicador natural",
+      "Ayuda a regular el colesterol y triglicéridos",
+      "Promueve una digestión saludable"
     ],
-    dosage: "Hervir 1 sobre de Té en un litro de agua y tomar como agua de tiempo a lo largo del día.",
-    package_detail: "Sobre de filtrante original con doble empaque termosellado.",
+    dosage: "Hervir 1 sobre en un litro de agua y tomar como agua de tiempo.",
+    package_detail: "Caja conteniendo sobres filtrantes con doble empaque sellado.",
     badge: "Detox",
     tagline: "Limpia, desintoxica y renueva tu cuerpo",
     pinned: false
   },
   {
     id: 4,
-    name: "Luteína Masticable",
-    price_bs: 50,
-    original_price_bs: 65,
-    category_id: 3,
-    description: "Caramelos masticables formulados con luteína y extractos naturales de arándano para la protección de la retina frente a la luz de pantallas.",
+    name: "Calcio para Niños",
+    price_bs: 260,
+    original_price_bs: 300,
+    category_id: 2,
+    description: "Fórmula de calcio en polvo enriquecida para apoyar el sano desarrollo óseo e intelectual de los niños.",
     bullets: [
-      "Protege los ojos del cansancio provocado por pantallas móviles y PCs",
-      "Delicioso sabor a arándanos natural, ideal para niños y adultos",
-      "Aporta antioxidantes específicos para la salud visual"
+      "Apoya el desarrollo físico y el crecimiento óseo",
+      "Enriquecido con taurina, lecitina y vitaminas esenciales",
+      "Apoya al desarrollo intelectual y memoria infantil"
     ],
-    dosage: "Masticar de 1 a 2 tabletas de Luteína al día como un antojo dulce y saludable.",
-    package_detail: "Empacado en bolsa doypack termosellada con cierre hermético reutilizable.",
-    badge: "Vista Sana",
-    tagline: "Protección visual con delicioso sabor natural",
+    dosage: "Disolver 1 sobre en media taza de agua tibia antes de dormir.",
+    package_detail: "Caja conteniendo 10 sobres de 10g cada uno.",
+    badge: "Infantil",
+    tagline: "Crecimiento fuerte y desarrollo inteligente",
     pinned: false
+  },
+  {
+    id: 5,
+    name: "Spakare Aceite Corporal",
+    price_bs: 249.6,
+    original_price_bs: 290,
+    category_id: 5,
+    description: "Aceite corporal nutritivo con extractos de hierbas y aceites esenciales para la suavidad de la piel.",
+    bullets: [
+      "Hidratación profunda sin efecto grasoso",
+      "Ideal para masajes y alivio de tensión muscular",
+      "Combate la resequedad de la piel"
+    ],
+    dosage: "Aplicar sobre la piel limpia y masajear suavemente hasta absorber.",
+    package_detail: "Botella dispensadora premium sellada de fábrica.",
+    badge: "Cuidado Piel",
+    tagline: "Suavidad e hidratación profunda",
+    pinned: true
+  },
+  {
+    id: 6,
+    name: "Gel Rejuvenecedor Tiens",
+    price_bs: 313.3,
+    original_price_bs: 360,
+    category_id: 5,
+    description: "Gel facial tensor enriquecido con extractos de plantas naturales para una piel más firme y radiante.",
+    bullets: [
+      "Efecto tensor inmediato que disminuye líneas",
+      "Estimula la producción de colágeno",
+      "Fórmula refrescante e hidratante"
+    ],
+    dosage: "Aplicar unas gotas sobre el rostro limpio por la mañana y noche.",
+    package_detail: "Frasco premium con dosificador sellado.",
+    badge: "Antiedad",
+    tagline: "Juventud y firmeza en tu rostro",
+    pinned: true
   }
 ];
 
 const DEFAULT_PRODUCT_IMAGES = [
-  { id: 1, product_id: 1, url: "products/cordycafe.webp", position: 0, is_video: false },
-  { id: 2, product_id: 2, url: "products/salud_osea.png", position: 0, is_video: false },
-  { id: 3, product_id: 3, url: "products/inmunidad_defensas.png", position: 0, is_video: false },
-  { id: 4, product_id: 4, url: "products/kit_antojo_saludable.jpg", position: 0, is_video: false }
+  { id: 1, product_id: 1, url: 'https://res.cloudinary.com/dv6d41ect/image/upload/v1758840055/A75_vzmmrq.png', position: 0, is_video: false },
+  { id: 2, product_id: 1, url: 'https://res.cloudinary.com/dv6d41ect/video/upload/v1774966537/video-1005263159337962_zpdaac.mp4', position: 1, is_video: true },
+  { id: 3, product_id: 2, url: 'https://res.cloudinary.com/dv6d41ect/image/upload/v1758840051/A01_zf5hc8.png', position: 0, is_video: false },
+  { id: 4, product_id: 2, url: 'https://res.cloudinary.com/dv6d41ect/video/upload/v1775017763/create-a-hyper-realistic-video-of-a-nutritional-ca_uienjb.mp4', position: 1, is_video: true },
+  { id: 5, product_id: 3, url: 'https://res.cloudinary.com/dv6d41ect/image/upload/v1758840052/A05_eazlgz.png', position: 0, is_video: false },
+  { id: 6, product_id: 3, url: 'https://res.cloudinary.com/dv6d41ect/video/upload/v1775064602/quiero-que-las-imagenes-dentro-del-producto-se-mue_b3bqjw.mp4', position: 1, is_video: true },
+  { id: 7, product_id: 4, url: 'https://res.cloudinary.com/dv6d41ect/image/upload/v1758840051/A03_huuq0n.png', position: 0, is_video: false },
+  { id: 8, product_id: 4, url: 'https://res.cloudinary.com/dv6d41ect/video/upload/v1775017763/video-1055317540999190_ian3cg.mp4', position: 1, is_video: true },
+  { id: 9, product_id: 5, url: 'products/belleza_antienvejecimiento.png', position: 0, is_video: false },
+  { id: 10, product_id: 6, url: 'products/belleza_antienvejecimiento.png', position: 0, is_video: false }
 ];
 
 const DEFAULT_COMBOS = [
@@ -212,6 +256,8 @@ function App() {
   const [authName, setAuthName] = useState("");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [pendingCartItem, setPendingCartItem] = useState(null);
 
   // Admin Passcode Lock state
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
@@ -454,6 +500,154 @@ function App() {
     if (comboId === 2) return "products/kit_bienestar_huesos.jpg";
     if (comboId === 3) return "products/kit_antojo_saludable.jpg";
     return "";
+  };
+
+  // One-time database sync trigger for new products, Cloudinary images, videos, and stock levels (Added by Antigravity)
+  const syncDatabaseItemsOnce = async () => {
+    const hasSynced = localStorage.getItem('db_cloudinary_synced_v6');
+    if (hasSynced) return;
+    
+    console.log("[Antigravity] Starting dynamic DB sync for Cloudinary assets...");
+    try {
+      // 1. Categories
+      await supabase.from('categories').upsert([
+        { id: 1, name: "Energía", slug: "energia" },
+        { id: 2, name: "Bienestar", slug: "bienestar" },
+        { id: 3, name: "Saludable", slug: "saludable" },
+        { id: 4, name: "Café", slug: "cafe" },
+        { id: 5, name: 'Belleza', slug: 'belleza', description: 'Cuidado corporal y rejuvenecimiento de la piel' }
+      ]);
+      
+      // 2. Products
+      const productsList = [
+        {
+          id: 1,
+          name: 'Cordycafe Tiens',
+          sku: 'TIENS-A75',
+          slug: 'cordycafe-tiens',
+          price_bs: 188.5,
+          original_price_bs: 220,
+          category_id: 4,
+          description: 'Café instantáneo gourmet elaborado con granos seleccionados y adicionado con polvo de micelio de hongo Cordyceps Sinensis.',
+          bullets: ['Energía natural de larga duración sin nerviosismo', 'Fortalece la función pulmonar y renal', 'Apoya al sistema inmune y rendimiento físico'],
+          dosage: 'Disolver 1 sobre en una taza de agua caliente por la mañana.',
+          package_detail: 'Caja conteniendo 12 sobres de 15g cada uno.',
+          badge: 'Popular',
+          tagline: 'Tu café con energía natural y salud',
+          pinned: true
+        },
+        {
+          id: 2,
+          name: 'Calcio Nutritivo Tiens',
+          sku: 'TIENS-A01',
+          slug: 'calcio-nutritivo',
+          price_bs: 260,
+          original_price_bs: 300,
+          category_id: 2,
+          description: 'Suplemento dietario de calcio en polvo de alta absorción biológica, enriquecido con vitaminas, minerales y aminoácidos.',
+          bullets: ['Tasa de absorción superior al 95% patentada', 'Fortalece la estructura ósea y dientes', 'Previene calambres y dolores articulares'],
+          dosage: 'Disolver 1 sobre en media taza de agua tibia antes de acostarse.',
+          package_detail: 'Caja con sobres individuales sellados herméticamente de 10g cada uno.',
+          badge: 'Más Vendido',
+          tagline: 'Huesos fuertes y vitalidad diaria',
+          pinned: true
+        },
+        {
+          id: 3,
+          name: 'Té Tianshi',
+          sku: 'TIENS-A05',
+          slug: 'te-tianshi',
+          price_bs: 260,
+          original_price_bs: 300,
+          category_id: 1,
+          description: 'Té herbal tradicional formulado con hojas de té verde y extractos naturales para la desintoxicación celular.',
+          bullets: ['Potente antioxidante y desintoxicador natural', 'Ayuda a regular el colesterol y triglicéridos', 'Promueve una digestión saludable'],
+          dosage: 'Hervir 1 sobre en un litro de agua y tomar como agua de tiempo.',
+          package_detail: 'Caja conteniendo sobres filtrantes con doble empaque sellado.',
+          badge: 'Detox',
+          tagline: 'Limpia, desintoxica y renueva tu cuerpo',
+          pinned: false
+        },
+        {
+          id: 4,
+          name: 'Calcio para Niños',
+          sku: 'TIENS-A03',
+          slug: 'calcio-ninos',
+          price_bs: 260,
+          original_price_bs: 300,
+          category_id: 2,
+          description: 'Fórmula de calcio en polvo enriquecida para apoyar el sano desarrollo óseo e intelectual de los niños.',
+          bullets: ['Apoya el desarrollo físico y el crecimiento óseo', 'Enriquecido con taurina, lecitina y vitaminas esenciales', 'Apoya al desarrollo intelectual y memoria infantil'],
+          dosage: 'Disolver 1 sobre en media taza de agua tibia antes de dormir.',
+          package_detail: 'Caja conteniendo 10 sobres de 10g cada uno.',
+          badge: 'Infantil',
+          tagline: 'Crecimiento fuerte y desarrollo inteligente',
+          pinned: false
+        },
+        {
+          id: 5,
+          name: 'Spakare Aceite Corporal',
+          sku: 'TIENS-C63',
+          slug: 'spakare-aceite-corporal',
+          price_bs: 249.6,
+          original_price_bs: 290,
+          category_id: 5,
+          description: 'Aceite corporal nutritivo con extractos de hierbas y aceites esenciales para la suavidad de la piel.',
+          bullets: ['Hidratación profunda sin efecto grasoso', 'Ideal para masajes y alivio de tensión muscular', 'Combate la resequedad de la piel'],
+          dosage: 'Aplicar sobre la piel limpia y masajear suavemente hasta absorber.',
+          package_detail: 'Botella dispensadora premium sellada de fábrica.',
+          badge: 'Cuidado Piel',
+          tagline: 'Suavidad e hidratación profunda',
+          pinned: true
+        },
+        {
+          id: 6,
+          name: 'Gel Rejuvenecedor Tiens',
+          sku: 'TIENS-C64',
+          slug: 'gel-rejuvenecedor',
+          price_bs: 313.3,
+          original_price_bs: 360,
+          category_id: 5,
+          description: 'Gel facial tensor enriquecido con extractos de plantas naturales para una piel más firme y radiante.',
+          bullets: ['Efecto tensor inmediato que disminuye líneas', 'Estimula la producción de colágeno', 'Fórmula refrescante e hidratante'],
+          dosage: 'Aplicar unas gotas sobre el rostro limpio por la mañana y noche.',
+          package_detail: 'Frasco premium con dosificador sellado.',
+          badge: 'Antiedad',
+          tagline: 'Juventud y firmeza en tu rostro',
+          pinned: true
+        }
+      ];
+      await supabase.from('products').upsert(productsList);
+      
+      // 3. Product Images & Videos
+      const productImagesList = [
+        { id: 1, product_id: 1, url: 'https://res.cloudinary.com/dv6d41ect/image/upload/v1758840055/A75_vzmmrq.png', position: 0, is_video: false },
+        { id: 2, product_id: 1, url: 'https://res.cloudinary.com/dv6d41ect/video/upload/v1774966537/video-1005263159337962_zpdaac.mp4', position: 1, is_video: true },
+        { id: 3, product_id: 2, url: 'https://res.cloudinary.com/dv6d41ect/image/upload/v1758840051/A01_zf5hc8.png', position: 0, is_video: false },
+        { id: 4, product_id: 2, url: 'https://res.cloudinary.com/dv6d41ect/video/upload/v1775017763/create-a-hyper-realistic-video-of-a-nutritional-ca_uienjb.mp4', position: 1, is_video: true },
+        { id: 5, product_id: 3, url: 'https://res.cloudinary.com/dv6d41ect/image/upload/v1758840052/A05_eazlgz.png', position: 0, is_video: false },
+        { id: 6, product_id: 3, url: 'https://res.cloudinary.com/dv6d41ect/video/upload/v1775064602/quiero-que-las-imagenes-dentro-del-producto-se-mue_b3bqjw.mp4', position: 1, is_video: true },
+        { id: 7, product_id: 4, url: 'https://res.cloudinary.com/dv6d41ect/image/upload/v1758840051/A03_huuq0n.png', position: 0, is_video: false },
+        { id: 8, product_id: 4, url: 'https://res.cloudinary.com/dv6d41ect/video/upload/v1775017763/video-1055317540999190_ian3cg.mp4', position: 1, is_video: true },
+        { id: 9, product_id: 5, url: 'products/belleza_antienvejecimiento.png', position: 0, is_video: false },
+        { id: 10, product_id: 6, url: 'products/belleza_antienvejecimiento.png', position: 0, is_video: false }
+      ];
+      await supabase.from('product_images').upsert(productImagesList);
+      
+      // 4. Product Stocks per branch (Santa Cruz: 50, La Paz: 30, Cochabamba: 20)
+      const stockList = [];
+      productsList.forEach(p => {
+        [1, 2, 3].forEach(b => {
+          stockList.push({ product_id: p.id, branch_id: b, stock: b === 1 ? 50 : (b === 2 ? 30 : 20) });
+        });
+      });
+      await supabase.from('product_stock').upsert(stockList);
+
+      localStorage.setItem('db_cloudinary_synced_v6', 'true');
+      console.log("[Antigravity] Database synced with Cloudinary assets successfully!");
+    } catch (e) {
+      console.error("[Antigravity] Failed to sync database items on startup:", e);
+    }
   };
 
   // Helper to check if any item in cart is low stock or out of stock in selected branch
@@ -782,7 +976,11 @@ function App() {
   };
 
   useEffect(() => {
-    fetchStoreData();
+    const initStore = async () => {
+      await syncDatabaseItemsOnce();
+      await fetchStoreData();
+    };
+    initStore();
   }, []);
 
   // Handle QR code timer countdown
@@ -895,7 +1093,13 @@ function App() {
   }, [cart]);
 
   // Cart operations
-  const addToCart = (item, type = 'combo') => {
+  const addToCart = (item, type = 'combo', bypassAuthCheck = false) => {
+    if (!user && !bypassAuthCheck) {
+      setPendingCartItem({ item, type });
+      setShowLoginPrompt(true);
+      return;
+    }
+
     const computedPrice = parseFloat(item.price_bs);
     const computedOriginalPrice = parseFloat(item.original_price_bs);
     const cartItemId = `${type}-${item.id}`;
@@ -1752,7 +1956,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
     const detailsObj = { ...item, type };
     
     if (type === 'product') {
-      const imgs = productImages.filter(img => img.product_id === item.id).sort((a,b) => a.position - b.position);
+      const imgs = productImages.filter(img => String(img.product_id) === String(item.id)).sort((a,b) => a.position - b.position);
       if (imgs.length > 0) {
         detailsObj.image_url = imgs.map(img => img.url).join(',');
       } else {
@@ -1764,9 +1968,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
         comboImgList.push(item.image_url);
       }
       
-      const linked = comboProducts.filter(cp => cp.combo_id === item.id);
+      const linked = comboProducts.filter(cp => String(cp.combo_id) === String(item.id));
       for (const cp of linked) {
-        const prodImgs = productImages.filter(img => img.product_id === cp.product_id).sort((a,b) => a.position - b.position);
+        const prodImgs = productImages.filter(img => String(img.product_id) === String(cp.product_id)).sort((a,b) => a.position - b.position);
         prodImgs.forEach(img => {
           if (!comboImgList.includes(img.url)) {
             comboImgList.push(img.url);
@@ -3507,7 +3711,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 </svg>
               </div>
               <div>
-                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--accent-gold)' }}>Despacho Express ⚡</h4>
+                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--accent-gold)' }}>Despacho Express</h4>
                 <p style={{ margin: '4px 0 0', fontSize: '0.85rem', opacity: 0.9 }}>Entregas coordinadas en menos de 2 horas en Santa Cruz por courier express.</p>
               </div>
             </div>
@@ -3519,7 +3723,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 </svg>
               </div>
               <div>
-                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--primary-green)' }}>Garantía 100% Sellado 🛡️</h4>
+                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--primary-green)' }}>Garantía 100% Sellado</h4>
                 <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Bolsas kraft termoselladas manuales con precinto de seguridad anti-manipulación.</p>
               </div>
             </div>
@@ -3531,7 +3735,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 </svg>
               </div>
               <div>
-                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#b89047' }}>Asesoría Directa 💬</h4>
+                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#b89047' }}>Asesoría Directa</h4>
                 <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>¿Dudas sobre dosis? Chatea en vivo con nuestros asesores de salud autorizados.</p>
               </div>
             </div>
@@ -3801,8 +4005,12 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 {/* 2. INDIVIDUAL PRODUCTS GRID */}
                 {filteredProducts.length > 0 && (
                   <div style={{ marginBottom: '3rem' }}>
-                    <div className="section-title-wrapper">
-                      <h2 className="section-title" style={{ fontSize: '1.7rem', fontWeight: 800 }}>Suplementos Individuales 🌿</h2>
+                    <div className="section-title-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                        <path d="M12 2v20"></path>
+                      </svg>
+                      <h2 className="section-title" style={{ fontSize: '1.7rem', fontWeight: 800, margin: 0 }}>Suplementos Individuales</h2>
                     </div>
                     <div className="products-grid" style={{ marginTop: '1rem' }}>
                       {filteredProducts.map(product => (
@@ -3816,23 +4024,28 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           <span className="card-packaging-badge">Original Tiens</span>
                           
                           <div className="product-image-container">
-                            {product.image_url ? (
-                              isVideoUrl(product.image_url) ? (
-                                <video src={resolveAssetUrl(product.image_url)} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                              ) : (
-                                <img src={resolveAssetUrl(product.image_url)} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                              )
-                            ) : (
-                              <div className="product-image-placeholder">
-                                <div className="doypack-illustration">
-                                  <div className="doypack-zipper"></div>
-                                  <div className="doypack-tag">
-                                    <span className="doypack-tag-logo">TIENS</span>
-                                    <div className="doypack-tag-dot"></div>
+                            {(() => {
+                              const mainImg = getProductImage(product.id);
+                              if (mainImg) {
+                                if (isVideoUrl(mainImg)) {
+                                  return <video src={resolveAssetUrl(mainImg)} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
+                                } else {
+                                  return <img src={resolveAssetUrl(mainImg)} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
+                                }
+                              } else {
+                                return (
+                                  <div className="product-image-placeholder">
+                                    <div className="doypack-illustration">
+                                      <div className="doypack-zipper"></div>
+                                      <div className="doypack-tag">
+                                        <span className="doypack-tag-logo">TIENS</span>
+                                        <div className="doypack-tag-dot"></div>
+                                      </div>
+                                    </div>
                                   </div>
-                                </div>
-                              </div>
-                            )}
+                                );
+                              }
+                            })()}
                           </div>
 
                           <div className="product-details">
@@ -3931,8 +4144,11 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 {/* 3. OTHER COMBOS GRID */}
                 {otherCombos.length > 0 && (
                   <div style={{ marginBottom: '3rem' }}>
-                    <div className="section-title-wrapper" style={{ marginTop: '1.5rem' }}>
-                      <h2 className="section-title" style={{ fontSize: '1.7rem', fontWeight: 800 }}>Otros Combos en Oferta 🔥</h2>
+                    <div className="section-title-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '1.5rem' }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--offer-orange)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
+                      </svg>
+                      <h2 className="section-title" style={{ fontSize: '1.7rem', fontWeight: 800, margin: 0 }}>Otros Combos en Oferta</h2>
                     </div>
                     <div className="products-grid" style={{ marginTop: '1rem' }}>
                       {otherCombos.map(combo => (
@@ -4529,10 +4745,14 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     <button
                       type="button"
                       className="btn-add-cart"
-                      style={{ width: 'auto', whiteSpace: 'nowrap', padding: '0 1rem', fontSize: '0.85rem', background: 'var(--primary-green)', display: 'flex', alignItems: 'center', gap: '5px' }}
+                      style={{ width: 'auto', whiteSpace: 'nowrap', padding: '0 1rem', fontSize: '0.85rem', background: 'var(--primary-green)', display: 'flex', alignItems: 'center', gap: '6px', height: '42px', border: 'none', borderRadius: '8px' }}
                       onClick={handleGetLocation}
                     >
-                      📍 Obtener GPS
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                      </svg>
+                      Obtener GPS
                     </button>
                   </div>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
@@ -4579,7 +4799,13 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
               /* ==================== STEP 1: CART LIST ==================== */
               cart.length === 0 ? (
                 <div className="cart-empty-state" style={{ padding: '2rem 1rem', textAlign: 'center' }}>
-                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🛒</div>
+                  <div style={{ color: 'var(--primary-green)', opacity: 0.3, marginBottom: '0.75rem', display: 'flex', justifyContent: 'center' }}>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="9" cy="21" r="1"></circle>
+                      <circle cx="20" cy="21" r="1"></circle>
+                      <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                    </svg>
+                  </div>
                   <p style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--primary-green)' }}>Tu carrito está vacío</p>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>¿No sabes por dónde empezar? Descubre nuestros recomendados:</p>
                   
@@ -4861,6 +5087,61 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
         </div>
       </div>
 
+      {/* GUEST OR LOGIN PROMPT MODAL */}
+      {showLoginPrompt && (
+        <div className="auth-modal-overlay open" onClick={() => setShowLoginPrompt(false)}>
+          <div className="auth-modal" style={{ maxWidth: '400px', padding: '2rem', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+            <button className="auth-modal-close" onClick={() => setShowLoginPrompt(false)} aria-label="Cerrar">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', color: 'var(--accent-gold)' }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-green)', marginBottom: '0.75rem' }}>
+              ¿Deseas iniciar sesión?
+            </h3>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: '1.4', marginBottom: '1.5rem' }}>
+              Te sugerimos ingresar a tu cuenta para guardar tu ubicación de entrega automáticamente. O puedes continuar como invitado si prefieres realizar tu compra rápido.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                type="button"
+                className="btn-add-cart"
+                style={{ width: '100%', padding: '0.75rem', background: 'var(--primary-green)', border: 'none', color: 'white', fontWeight: 800, borderRadius: '8px', cursor: 'pointer' }}
+                onClick={() => {
+                  setShowLoginPrompt(false);
+                  setIsAuthModalOpen(true);
+                  setAuthMode('login');
+                  setAuthError('');
+                }}
+              >
+                Iniciar Sesión / Registrarse
+              </button>
+              <button
+                type="button"
+                className="btn-details-back"
+                style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-dark)', fontWeight: 700, borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
+                onClick={() => {
+                  setShowLoginPrompt(false);
+                  if (pendingCartItem) {
+                    addToCart(pendingCartItem.item, pendingCartItem.type, true);
+                    setPendingCartItem(null);
+                  }
+                }}
+              >
+                Continuar como Invitado
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* AUTHENTICATION MODAL (GOOGLE + EMAIL/PASSWORD) */}
       {isAuthModalOpen && (
         <div className="auth-modal-overlay open" onClick={() => setIsAuthModalOpen(false)}>
@@ -5099,36 +5380,23 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
         <div 
           className="social-proof-toast"
           style={{ 
-            position: 'fixed', 
-            bottom: '20px', 
-            left: '20px', 
             background: 'white', 
             borderLeft: '4px solid var(--primary-green)', 
             borderRadius: '8px', 
-            boxShadow: '0 8px 30px rgba(0,0,0,0.15)', 
-            padding: '12px 16px', 
+            boxShadow: '0 4px 15px rgba(0,0,0,0.1)', 
+            padding: '10px 14px', 
             display: 'flex', 
             alignItems: 'center', 
-            gap: '12px', 
-            zIndex: 1000, 
-            maxWidth: '350px',
-            animation: 'slideInLeft 0.5s ease forwards'
+            gap: '8px', 
+            zIndex: 1000
           }}
         >
-          <div style={{ background: 'rgba(16, 61, 46, 0.05)', color: 'var(--primary-green)', padding: '8px', borderRadius: '50%', fontSize: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            🛍️
-          </div>
-          <div style={{ textAlign: 'left' }}>
-            <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-dark)' }}>
-              {socialProofOrder.name} en {socialProofOrder.city}
-            </div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-              Compró: <strong style={{ color: 'var(--primary-green)' }}>{socialProofOrder.item}</strong>
-            </div>
-            <div style={{ fontSize: '0.72rem', color: '#888', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-              <span>✅ Compra verificada</span> • <span>{socialProofOrder.time}</span>
-            </div>
-          </div>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2e7d32" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-dark)', textAlign: 'left' }}>
+            <strong>{socialProofOrder.name}</strong> ({socialProofOrder.city}) compró <strong style={{ color: 'var(--primary-green)' }}>{socialProofOrder.item}</strong> • <span style={{ color: '#888', fontSize: '0.75rem' }}>{socialProofOrder.time}</span>
+          </span>
         </div>
       )}
     </>
