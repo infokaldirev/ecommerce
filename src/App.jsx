@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from './supabaseClient';
 import './App.css';
 
@@ -237,6 +237,8 @@ function App() {
     is_active: true
   });
   const [socialProofOrder, setSocialProofOrder] = useState(null);
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+  const [infoActiveTab, setInfoActiveTab] = useState("mision"); // "mision" or "legal"
   
   // Orders history (fetched for Admin only)
   const [orders, setOrders] = useState([]);
@@ -247,6 +249,7 @@ function App() {
   const [userOrders, setUserOrders] = useState([]);
   const [userOrdersLoading, setUserOrdersLoading] = useState(false);
   const [isMyOrdersOpen, setIsMyOrdersOpen] = useState(false);
+  const preloadedUrls = useRef(new Set());
 
   // Email/Password Auth Modal states
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -505,6 +508,36 @@ function App() {
     return "";
   };
 
+  // Dynamic Image Preloading Algorithm to speed up image rendering (Added by Antigravity)
+  useEffect(() => {
+    if (products.length > 0) {
+      products.forEach(p => {
+        const imgUrl = getProductImage(p.id) || p.image_url;
+        if (imgUrl) {
+          const resolvedUrl = resolveAssetUrl(imgUrl);
+          if (!preloadedUrls.current.has(resolvedUrl)) {
+            preloadedUrls.current.add(resolvedUrl);
+            const img = new Image();
+            img.src = resolvedUrl;
+          }
+        }
+      });
+    }
+    if (combos.length > 0) {
+      combos.forEach(c => {
+        const imgUrl = getComboImage(c.id) || c.image_url;
+        if (imgUrl) {
+          const resolvedUrl = resolveAssetUrl(imgUrl);
+          if (!preloadedUrls.current.has(resolvedUrl)) {
+            preloadedUrls.current.add(resolvedUrl);
+            const img = new Image();
+            img.src = resolvedUrl;
+          }
+        }
+      });
+    }
+  }, [products, combos, productImages]);
+
   // One-time database sync trigger for new products, Cloudinary images, videos, and stock levels (Added by Antigravity)
   const syncDatabaseItemsOnce = async () => {
     const hasSynced = localStorage.getItem('db_cloudinary_synced_v6');
@@ -673,10 +706,12 @@ function App() {
   // Google Sign-In helper
   const handleGoogleLogin = async () => {
     try {
+      const base = import.meta.env.BASE_URL || '/';
+      const cleanBase = base.startsWith('/') ? base : '/' + base;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: window.location.origin + cleanBase
         }
       });
       if (error) throw error;
@@ -1045,42 +1080,7 @@ function App() {
         }
       });
     }, 1000);
-    return () => clearInterval(timerInterval);
-  }, []);
-
-  // Cycle social proof mock notifications
-  useEffect(() => {
-    const mockBuyers = [
-      { name: "Alejandro M.", city: "Santa Cruz", item: "Kit Energía Diaria", time: "hace 2 min" },
-      { name: "María R.", city: "La Paz", item: "Cordycafe Tiens", time: "hace 5 min" },
-      { name: "Carlos S.", city: "Cochabamba", item: "Kit Bienestar & Huesos", time: "hace 8 min" },
-      { name: "Gabriela Y.", city: "Tarija", item: "Calcio Nutritivo", time: "hace 4 min" },
-      { name: "Roberto V.", city: "Oruro", item: "Kit Antojo Saludable", time: "hace 11 min" },
-      { name: "Fernanda L.", city: "Sucre", item: "Cordycafe Tiens", time: "hace 1 min" },
-      { name: "Jose Daniel O.", city: "Santa Cruz", item: "Kit Bienestar & Huesos", time: "hace 7 min" },
-      { name: "Patricia P.", city: "Potosí", item: "Zinc Tiens", time: "hace 12 min" },
-      { name: "Gustavo B.", city: "Trinidad", item: "Kit Energía Diaria", time: "hace 3 min" },
-      { name: "Ana Isabel C.", city: "Cobija", item: "Luteína Masticable", time: "hace 15 min" },
-      { name: "Diego F.", city: "La Paz", item: "Kit Antojo Saludable", time: "hace 9 min" },
-      { name: "Andrea S.", city: "Cochabamba", item: "Té Reductor Tianshi", time: "hace 6 min" },
-      { name: "Mauricio G.", city: "Tarija", item: "Kit Energía Diaria", time: "hace 10 min" },
-      { name: "Luciana M.", city: "Sucre", item: "Calcio Nutritivo", time: "hace 14 min" },
-      { name: "Juan de Dios R.", city: "Santa Cruz", item: "Cordycafe Tiens", time: "hace 2 min" },
-      { name: "Sofía T.", city: "Oruro", item: "Zinc Tiens", time: "hace 5 min" },
-      { name: "Ricardo H.", city: "Potosí", item: "Kit Bienestar & Huesos", time: "hace 13 min" },
-      { name: "Elena K.", city: "Trinidad", item: "Cordycafe Tiens", time: "hace 16 min" }
-    ];
-
-    let index = 0;
-    const notificationInterval = setInterval(() => {
-      setSocialProofOrder(mockBuyers[index]);
-      setTimeout(() => {
-        setSocialProofOrder(null);
-      }, 6000);
-      index = (index + 1) % mockBuyers.length;
-    }, 18000);
-
-    return () => clearInterval(notificationInterval);
+    return () => window.clearInterval(timerInterval);
   }, []);
 
   // Load orders when admin is unlocked and admin tab changes
@@ -1235,8 +1235,8 @@ function App() {
   };
 
 
-  // Upload image to Cloudinary (Unsigned upload)
-  const handleCloudinaryUpload = async (e) => {
+  // Upload image/video to Cloudinary (Unsigned upload)
+  const handleCloudinaryUpload = async (e, target = 'combo') => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -1258,18 +1258,48 @@ function App() {
       });
       const resJson = await res.json();
       if (resJson.secure_url) {
-        setEditingCombo(prev => ({
-          ...prev,
-          image_url: resJson.secure_url
-        }));
+        if (target === 'combo') {
+          setEditingCombo(prev => ({
+            ...prev,
+            image_url: resJson.secure_url
+          }));
+          if (window.Swal) {
+            window.Swal.fire('Subido', 'Archivo subido correctamente a Cloudinary.', 'success');
+          } else {
+            alert('Archivo subido correctamente a Cloudinary.');
+          }
+        } else if (target === 'product') {
+          setEditingProduct(prev => {
+            const currentUrls = prev.media_urls ? prev.media_urls.trim() : "";
+            const newUrls = currentUrls ? `${currentUrls}\n${resJson.secure_url}` : resJson.secure_url;
+            return {
+              ...prev,
+              media_urls: newUrls
+            };
+          });
+          if (window.Swal) {
+            window.Swal.fire('Subido', 'Archivo subido correctamente a Cloudinary y agregado a la lista.', 'success');
+          } else {
+            alert('Archivo subido correctamente a Cloudinary y agregado a la lista.');
+          }
+        }
       } else {
-        alert("Fallo al subir la imagen. Por favor revise el Preset de Cloudinary.");
+        if (window.Swal) {
+          window.Swal.fire('Error', 'Fallo al subir el archivo. Revisa el Preset de Cloudinary.', 'error');
+        } else {
+          alert("Fallo al subir la imagen. Por favor revise el Preset de Cloudinary.");
+        }
       }
     } catch (err) {
       console.error("Cloudinary upload error:", err);
-      alert("Error en la conexión con Cloudinary.");
+      if (window.Swal) {
+        window.Swal.fire('Error', 'Error en la conexión con Cloudinary.', 'error');
+      } else {
+        alert("Error en la conexión con Cloudinary.");
+      }
     } finally {
       setUploadingImage(false);
+      e.target.value = "";
     }
   };
 
@@ -1801,27 +1831,27 @@ function App() {
         ).join("\n");
 
         const subtotal = qrModalOrder.total_bs - qrModalOrder.shipping_cost;
-        const message = `¡Hola Kaldirev! Acabo de pagar mi pedido por la Pasarela QR de Libélula:
+        const message = `*¡HOLA KALDIREV BOLIVIA!* 🚀 Acabo de pagar mi pedido por la Pasarela QR de Libélula:
 
-*Estado del Pago: [APROBADO & VERIFICADO AUTOMÁTICAMENTE]*
-ID Pedido: ${qrModalOrder.id.substring(0, 8)}...
+*ESTADO DEL PAGO:* *[APROBADO & VERIFICADO AUTOMÁTICAMENTE]* ✅
+*ID PEDIDO:* ${qrModalOrder.id.substring(0, 8)}...
 
-Detalle del Pedido:
+*DETALLE DEL PEDIDO:*
 ${itemsText}
 
-Subtotal: Bs. ${subtotal.toFixed(1)}
-Costo de Envío (${qrModalOrder.delivery_method}): Bs. ${parseFloat(qrModalOrder.shipping_cost).toFixed(1)}
-*Total Pagado: Bs. ${parseFloat(qrModalOrder.total_bs).toFixed(1)}*
+*Subtotal:* Bs. ${subtotal.toFixed(1)}
+*Costo de Envío (${qrModalOrder.delivery_method}):* Bs. ${parseFloat(qrModalOrder.shipping_cost).toFixed(1)}
+*TOTAL PAGADO:* *Bs. ${parseFloat(qrModalOrder.total_bs).toFixed(1)}*
 
-Datos de Envío:
-- Almacén de Despacho: ${branches.find(b => b.id === branchId)?.name || 'Santa Cruz'}
-- Nombre: ${qrModalOrder.customer_name}
-- Teléfono: ${qrModalOrder.phone}
-- Dirección: ${qrModalOrder.address}
-- Ciudad/Destino: ${qrModalOrder.city}
-${qrModalOrder.gps_coordinates ? `- Coordenadas GPS: ${qrModalOrder.gps_coordinates}\n` : ''}- Método de Pago: Pasarela QR Libélula (Confirmado)
+*DATOS DE ENVÍO:*
+- *Almacén de Despacho:* ${branches.find(b => b.id === branchId)?.name || 'Santa Cruz'}
+- *Nombre:* ${qrModalOrder.customer_name}
+- *Teléfono:* ${qrModalOrder.phone}
+- *Dirección:* ${qrModalOrder.address}
+- *Ciudad/Destino:* ${qrModalOrder.city}
+${qrModalOrder.gps_coordinates ? `- *Coordenadas GPS:* ${qrModalOrder.gps_coordinates}\n` : ''}- *Método de Pago:* *Pasarela QR Libélula (Confirmado)*
 
-Presentación: Bolsa Kraft eco-amigable con termosellado manual de seguridad.`;
+*Presentación:* Bolsa Kraft eco-amigable con termosellado manual de seguridad.`;
 
         const encodedMessage = encodeURIComponent(message);
         const whatsappUrl = `https://api.whatsapp.com/send?phone=${config.whatsappNumber}&text=${encodedMessage}`;
@@ -1936,7 +1966,7 @@ Por favor, ayúdenme a coordinar el envío completando estos datos:
     
     window.Swal.fire({
       title: 'Obteniendo ubicación...',
-      text: 'Por favor, permite el acceso a tu ubicación cuando el navegador te lo solicite.',
+      text: 'Por favor, permite el acceso a tu ubicación exacta para garantizar que el delivery llegue sin errores a tu puerta.',
       allowOutsideClick: false,
       didOpen: () => {
         window.Swal.showLoading();
@@ -1945,21 +1975,29 @@ Por favor, ayúdenme a coordinar el envío completando estos datos:
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const { latitude, longitude } = position.coords;
+        const { latitude, longitude, accuracy } = position.coords;
         const mapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
-        setFormData(prev => ({ ...prev, gpsCoordinates: mapsLink }));
+        
+        setFormData(prev => ({ 
+          ...prev, 
+          gpsCoordinates: mapsLink,
+          address: prev.address ? prev.address : "📍 Dirección vía Ubicación GPS (Entregar en este punto exacto)"
+        }));
+
         window.Swal.fire({
           title: '📍 ¡Ubicación Obtenida!',
-          text: 'Hemos enlazado tu ubicación exacta al formulario de entrega.',
+          text: `Coordenadas GPS registradas con alta precisión (precisión: ±${Math.round(accuracy)} metros).`,
           icon: 'success',
           confirmButtonColor: 'var(--primary-green)'
         });
       },
       (error) => {
         console.error("Geolocation error:", error);
-        let msg = "No pudimos obtener tu ubicación. Por favor, asegúrate de activar el GPS y dar permisos.";
+        let msg = "No pudimos obtener tu ubicación. Por favor, asegúrate de activar el GPS en tu teléfono y dar permisos.";
         if (error.code === error.PERMISSION_DENIED) {
-          msg = "Permiso denegado. Por favor, habilita los permisos de ubicación en tu navegador.";
+          msg = "Permiso de ubicación denegado. Habilita los permisos de ubicación para esta página en la configuración de tu navegador.";
+        } else if (error.code === error.TIMEOUT) {
+          msg = "La solicitud de GPS expiró. Por favor, inténtalo nuevamente.";
         }
         window.Swal.fire({
           title: 'Error de Ubicación',
@@ -1968,13 +2006,21 @@ Por favor, ayúdenme a coordinar el envío completando estos datos:
           confirmButtonColor: 'var(--primary-green)'
         });
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { 
+        enableHighAccuracy: true, 
+        timeout: 20000, 
+        maximumAge: 0 
+      }
     );
   };
 
   // Synchronize city selection with the active branch (Added by Antigravity)
   const handleCityChange = (cityName) => {
-    setFormData(prev => ({ ...prev, city: cityName }));
+    setFormData(prev => ({ 
+      ...prev, 
+      city: cityName,
+      deliveryMethod: cityName.toLowerCase().includes('santa cruz') ? 'Local (Yango)' : 'Envíos Nacionales'
+    }));
     const matchingBranch = branches.find(b => b.name.toLowerCase().includes(cityName.toLowerCase()));
     if (matchingBranch) {
       setSelectedBranch(matchingBranch);
@@ -2066,22 +2112,22 @@ Por favor, ayúdenme a coordinar el envío completando estos datos:
         `• *${item.quantity}x ${item.name}* - Bs. ${(item.price * item.quantity).toFixed(1)}`
       ).join("\n");
 
-      const message = `¡Hola Kaldirev Bolivia! Deseo confirmar mi pedido de combos:
+      const message = `*¡HOLA KALDIREV BOLIVIA!* 🚀 Deseo confirmar mi pedido de combos:
 
-Detalle del Pedido:
+*DETALLE DEL PEDIDO:*
 ${itemsText}
 
-Subtotal: Bs. ${subtotal.toFixed(1)}
-Costo de Envío (${formData.deliveryMethod}): Bs. ${shippingCost.toFixed(1)}
-*Total a Pagar: Bs. ${totalOrderAmount.toFixed(1)}*
-*(Envío en bolsa Kraft eco-amigable con termosellado manual de seguridad)*
+*Subtotal:* Bs. ${subtotal.toFixed(1)}
+*Costo de Envío (${formData.deliveryMethod}):* Bs. ${shippingCost.toFixed(1)}
+*TOTAL A PAGAR:* *Bs. ${totalOrderAmount.toFixed(1)}*
+_(Envío en bolsa Kraft eco-amigable con termosellado manual de seguridad)_
 
-Mis Datos de Despacho:
-- Nombre Completo: ${formData.name}
-- Teléfono / WhatsApp: ${formData.phone}
-- Ciudad de Entrega: ${formData.city}
-- Dirección de Entrega: ${formData.address}
-${formData.gpsCoordinates ? `- Ubicación GPS (Link): ${formData.gpsCoordinates}\n` : ''}- Método de Pago: ${formData.paymentMethod}
+*MIS DATOS DE DESPACHO:*
+- *Nombre Completo:* ${formData.name}
+- *Teléfono / WhatsApp:* ${formData.phone}
+- *Ciudad de Entrega:* ${formData.city}
+- *Dirección de Entrega:* ${formData.address}
+${formData.gpsCoordinates ? `- *Ubicación GPS (Link):* ${formData.gpsCoordinates}\n` : ''}- *Método de Pago:* *Pago QR Directo*
 
 Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas gracias!`;
 
@@ -2215,8 +2261,44 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
     return matchesCategory && matchesSearch;
   });
 
-  const pinnedCombos = filteredCombos.filter(c => c.pinned);
-  const otherCombos = filteredCombos.filter(c => !c.pinned);
+  // Stable lists of featured and standard combos (Removed random shuffling to keep cards static)
+  const pinnedCombos = useMemo(() => {
+    const items = combos.filter(c => c.pinned);
+    // Filter by category
+    return items.filter(c => {
+      const linked = comboProducts.filter(cp => cp.combo_id === c.id);
+      const comboProductCategories = linked.map(cp => {
+        const p = products.find(prod => prod.id === cp.product_id);
+        if (!p) return "";
+        const cat = categoriesList.find(catObj => catObj.id === p.category_id);
+        return cat ? cat.name : "";
+      }).filter(Boolean);
+      
+      const matchesCategory = activeCategory === "Todos" || comboProductCategories.includes(activeCategory);
+      const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            c.description.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesCategory && matchesSearch;
+    });
+  }, [combos, comboProducts, products, categoriesList, activeCategory, searchTerm]);
+
+  const otherCombos = useMemo(() => {
+    const items = combos.filter(c => !c.pinned);
+    // Filter by category
+    return items.filter(c => {
+      const linked = comboProducts.filter(cp => cp.combo_id === c.id);
+      const comboProductCategories = linked.map(cp => {
+        const p = products.find(prod => prod.id === cp.product_id);
+        if (!p) return "";
+        const cat = categoriesList.find(catObj => catObj.id === p.category_id);
+        return cat ? cat.name : "";
+      }).filter(Boolean);
+      
+      const matchesCategory = activeCategory === "Todos" || comboProductCategories.includes(activeCategory);
+      const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            c.description.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesCategory && matchesSearch;
+    });
+  }, [combos, comboProducts, products, categoriesList, activeCategory, searchTerm]);
 
   // Filter orders for Admin display
   const filteredOrders = orders.filter(o => {
@@ -2926,6 +3008,23 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                       onChange={(e) => setEditingProduct({...editingProduct, media_urls: e.target.value})}
                                       required
                                     ></textarea>
+                                    <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                      <label className="form-label" style={{ fontSize: '0.88rem', color: 'var(--primary-green)', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 800 }}>
+                                        📥 Subir imagen o video a Cloudinary:
+                                      </label>
+                                      <input 
+                                        type="file" 
+                                        accept="image/*,video/*"
+                                        onChange={(e) => handleCloudinaryUpload(e, 'product')}
+                                        disabled={uploadingImage}
+                                        style={{ fontSize: '0.88rem' }}
+                                      />
+                                      {uploadingImage && (
+                                        <span style={{ fontSize: '0.85rem', color: 'var(--offer-orange)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          ⏳ Subiendo archivo... por favor espere...
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               )}
@@ -3240,27 +3339,46 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                   <div className="form-group">
                                     <label className="form-label" style={{ fontWeight: 800 }}>Imagen o Video Oficial (URL de Cloudinary) *</label>
                                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
-                                      Enlace directo. Si lo dejas vacío, se autogenerará un mosaico con las fotos de los productos incluidos en el pack.
+                                      Enlace directo o sube un archivo. Si lo dejas vacío, se autogenerará un mosaico.
                                     </span>
-                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                      <input 
-                                        type="text" 
-                                        className="form-input"
-                                        placeholder="https://res.cloudinary.com/..."
-                                        value={editingCombo.image_url || ""}
-                                        onChange={(e) => setEditingCombo({...editingCombo, image_url: e.target.value})}
-                                        style={{ flexGrow: 1 }}
-                                      />
-                                      {editingCombo.image_url && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                          {isVideoUrl(editingCombo.image_url) ? (
-                                            <video src={editingCombo.image_url} muted style={{ height: '55px', width: '55px', objectFit: 'cover', borderRadius: '4px' }} />
-                                          ) : (
-                                            <img src={editingCombo.image_url} alt="Cargada" style={{ height: '55px', objectFit: 'contain' }} />
-                                          )}
-                                          <button type="button" className="btn-qty" style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold' }} onClick={() => setEditingCombo({...editingCombo, image_url: ''})}>Eliminar</button>
-                                        </div>
-                                      )}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                        <input 
+                                          type="text" 
+                                          className="form-input"
+                                          placeholder="https://res.cloudinary.com/..."
+                                          value={editingCombo.image_url || ""}
+                                          onChange={(e) => setEditingCombo({...editingCombo, image_url: e.target.value})}
+                                          style={{ flexGrow: 1 }}
+                                        />
+                                        {editingCombo.image_url && (
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            {isVideoUrl(editingCombo.image_url) ? (
+                                              <video src={editingCombo.image_url} muted style={{ height: '55px', width: '55px', objectFit: 'cover', borderRadius: '4px' }} />
+                                            ) : (
+                                              <img src={editingCombo.image_url} alt="Cargada" style={{ height: '55px', objectFit: 'contain' }} />
+                                            )}
+                                            <button type="button" className="btn-qty" style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold' }} onClick={() => setEditingCombo({...editingCombo, image_url: ''})}>Eliminar</button>
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <label className="form-label" style={{ fontSize: '0.88rem', color: 'var(--primary-green)', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 800 }}>
+                                          📥 Subir imagen o video para este Combo:
+                                        </label>
+                                        <input 
+                                          type="file" 
+                                          accept="image/*,video/*"
+                                          onChange={(e) => handleCloudinaryUpload(e, 'combo')}
+                                          disabled={uploadingImage}
+                                          style={{ fontSize: '0.88rem' }}
+                                        />
+                                        {uploadingImage && (
+                                          <span style={{ fontSize: '0.85rem', color: 'var(--offer-orange)', fontWeight: 'bold' }}>
+                                            ⏳ Subiendo archivo... por favor espere...
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
@@ -4256,7 +4374,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             <div className="user-badge-container" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div 
                 style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                onClick={() => { setIsMyOrdersOpen(true); fetchUserOrders(user.id); }}
+                onClick={() => { setView("pedidos"); fetchUserOrders(user.id); }}
                 title="Ver mis pedidos"
               >
                 {profile?.avatar_url ? (
@@ -4270,13 +4388,13 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
               <div className="user-info-text-desktop" style={{ fontSize: '0.85rem' }}>
                 <span 
                   style={{ display: 'block', fontWeight: 700, color: 'var(--primary-green)', cursor: 'pointer' }}
-                  onClick={() => { setIsMyOrdersOpen(true); fetchUserOrders(user.id); }}
+                  onClick={() => { setView("pedidos"); fetchUserOrders(user.id); }}
                 >
                   {profile?.full_name || "Cliente"}
                 </span>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button 
-                    onClick={() => { setIsMyOrdersOpen(true); fetchUserOrders(user.id); }} 
+                    onClick={() => { setView("pedidos"); fetchUserOrders(user.id); }} 
                     style={{ background: 'none', border: 'none', color: 'var(--accent-gold)', cursor: 'pointer', padding: 0, textDecoration: 'underline', fontSize: '0.75rem', fontWeight: 600 }}
                   >
                     Mis Pedidos
@@ -4289,7 +4407,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
           ) : (
             <button 
               className="btn-google-login" 
-              onClick={() => { setIsAuthModalOpen(true); setAuthError(""); setAuthMode("login"); }}
+              onClick={() => { setView("perfil"); setAuthError(""); }}
               title="Iniciar sesión / Registrarse"
               style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0.5rem 0.8rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'white', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}
             >
@@ -4325,7 +4443,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
       )}
 
       {/* CORE PAGES ROUTING */}
-      {view === "catalog" ? (
+      {view === "catalog" && (
         /* ==================== VIEW 1: PRODUCT CATALOG ==================== */
         <main>
           {/* HERO BANNER SECTION */}
@@ -4540,14 +4658,6 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           onClick={() => openComboDetails(combo, 'combo')}
                           style={{ cursor: 'pointer' }}
                         >
-                          <span className="pinned-badge">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '3px' }}>
-                              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                            </svg>
-                            {combo.badge || "Destacado"}
-                          </span>
-                          <span className="card-packaging-badge">Termosellado</span>
-                          
                           <div className="product-image-container">
                             {getComboImage(combo.id) ? (
                               isVideoUrl(getComboImage(combo.id)) ? (
@@ -4679,9 +4789,6 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           onClick={() => openComboDetails(product, 'product')}
                           style={{ cursor: 'pointer' }}
                         >
-                          {product.badge && <span className="card-badge">{product.badge}</span>}
-                          <span className="card-packaging-badge">Original Tiens</span>
-                          
                           <div className="product-image-container">
                             {(() => {
                               const mainImg = getProductImage(product.id);
@@ -4832,9 +4939,6 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           onClick={() => openComboDetails(combo, 'combo')}
                           style={{ cursor: 'pointer' }}
                         >
-                          {combo.badge && <span className="card-badge">{combo.badge}</span>}
-                          <span className="card-packaging-badge">Termosellado</span>
-                          
                           <div className="product-image-container">
                             {getComboImage(combo.id) ? (
                               isVideoUrl(getComboImage(combo.id)) ? (
@@ -5030,7 +5134,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             </section>
           )}
         </main>
-      ) : (
+      )}
+
+      {view === "details" && selectedCombo && (
         /* ==================== VIEW 2: DEDICATED DETAILS PAGE ==================== */
         <main className="details-page-wrapper" style={{ padding: '2rem 1.5rem' }}>
           <div className="details-back-bar" style={{ marginBottom: '1.5rem' }}>
@@ -5059,97 +5165,38 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
               });
             }
             
-            // Add Amazon-style A+ Trust and Lifestyle infographic slides
-            mediaList.push({
-              type: 'infographic',
-              icon: (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                </svg>
-              ),
-              title: 'Sellado de Seguridad',
-              desc: 'Bolsa doypack Kraft termosellada manual para garantizar higiene absoluta y cero manipulación manual.'
+            // Sort videos first, then images
+            mediaList.sort((a, b) => {
+              if (a.type === 'video' && b.type !== 'video') return -1;
+              if (a.type !== 'video' && b.type === 'video') return 1;
+              return 0;
             });
-
-            mediaList.push({
-              type: 'infographic',
-              icon: (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <polyline points="12 6 12 12 16 14"></polyline>
-                </svg>
-              ),
-              title: 'Garantía Original Tiens',
-              desc: 'Suplementos 100% auténticos y legítimos provistos de manera oficial en envases sellados.'
-            });
-
-            mediaList.push({
-              type: 'infographic',
-              icon: (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <rect x="1" y="3" width="15" height="13"></rect>
-                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
-                  <circle cx="5.5" cy="18.5" r="2.5"></circle>
-                  <circle cx="18.5" cy="18.5" r="2.5"></circle>
-                </svg>
-              ),
-              title: 'Despacho Express Rápido',
-              desc: 'Coordinación inmediata. Delivery en el día por Yango/PedidosYa en Santa Cruz y envíos nacionales.'
-            });
-
+            
             return (
               <div className="details-grid">
-                {/* Image Gallery Column */}
-                <div className="details-gallery-container">
-                  <div className="details-main-media-box">
-                    {(() => {
-                      const currentMedia = mediaList[activeImageIndex] || mediaList[0];
-                      if (!currentMedia) return null;
-                      if (currentMedia.type === 'video') {
-                        return <video src={resolveAssetUrl(currentMedia.url)} autoPlay loop muted playsInline />;
-                      } else if (currentMedia.type === 'image') {
-                        return <img src={resolveAssetUrl(currentMedia.url)} alt={selectedCombo.name} />;
-                      } else if (currentMedia.type === 'infographic') {
-                        return (
-                          <div className="details-infographic-slide">
-                            <div className="details-infographic-icon">
-                              {currentMedia.icon}
-                            </div>
-                            <h4 className="details-infographic-title">{currentMedia.title}</h4>
-                            <p className="details-infographic-desc">{currentMedia.desc}</p>
-                          </div>
-                        );
-                      }
-                    })()}
-                  </div>
-                  
-                  {/* Thumbnails Row */}
-                  <div className="details-thumbnails-row">
-                    {mediaList.map((media, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        className={`details-thumbnail-btn ${activeImageIndex === index ? 'active' : ''}`}
-                        onClick={() => setActiveImageIndex(index)}
-                      >
-                        {media.type === 'video' ? (
-                          <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <span style={{ fontSize: '9px', color: 'var(--accent-gold)', fontWeight: 'bold' }}>VIDEO</span>
-                          </div>
-                        ) : media.type === 'image' ? (
-                          <img src={resolveAssetUrl(media.url)} alt={`Vista ${index + 1}`} />
-                        ) : (
-                          <div style={{ fontSize: '18px' }}>💡</div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
+                {/* Image/Video Stack Column */}
+                <div className="details-gallery-container" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {mediaList.map((media, index) => {
+                    if (media.type === 'video') {
+                      return (
+                        <div key={index} className="details-main-media-box" style={{ overflow: 'hidden', borderRadius: '12px', background: '#faf9f6', border: '1px solid var(--border-color)', aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <video src={resolveAssetUrl(media.url)} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        </div>
+                      );
+                    } else if (media.type === 'image') {
+                      return (
+                        <div key={index} className="details-main-media-box" style={{ overflow: 'hidden', borderRadius: '12px', background: '#faf9f6', border: '1px solid var(--border-color)', aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <img src={resolveAssetUrl(media.url)} alt={selectedCombo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        </div>
+                      );
+                    }
+                    return null;
+                  })}
                 </div>
 
                 {/* Info Column */}
                 <div className="details-content-section" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   <div>
-                    <span className="details-category">Tiens • {selectedCombo.category}</span>
                     <h1 className="details-title">{selectedCombo.name}</h1>
                     
                     {/* Amazon-style Rating Breakdown */}
@@ -5313,6 +5360,500 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
         </main>
       )}
 
+
+      {/* ==================== VIEW 4: DEDICATED ORDERS TRACKING PAGE ==================== */}
+      {view === "pedidos" && (
+        <main className="orders-page-wrapper animate-fade-in" style={{ padding: '2rem 1.5rem', maxWidth: '750px', margin: '0 auto', minHeight: '60vh' }}>
+          <h2 style={{ fontSize: '1.6rem', color: 'var(--primary-green)', marginBottom: '0.25rem' }}>Mis Pedidos Realizados 📦</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Rastreo de tus compras de suplementos en tiempo real.</p>
+
+          {!user ? (
+            /* Logged out orders screen */
+            <div style={{ background: 'white', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '2.5rem 1.5rem', boxShadow: 'var(--shadow-sm)', textAlign: 'center' }}>
+              <div style={{ color: 'var(--accent-gold)', opacity: 0.3, marginBottom: '0.75rem', display: 'flex', justifyContent: 'center' }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+                  <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+                </svg>
+              </div>
+              <h3 style={{ fontWeight: 700, fontSize: '1.15rem', color: 'var(--primary-green)', marginBottom: '8px' }}>Historial Inactivo</h3>
+              <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '1.5rem', maxWidth: '380px', margin: '0 auto' }}>Inicia sesión de forma segura para rastrear el despacho de tus compras y guardar tus datos.</p>
+              <button 
+                type="button" 
+                onClick={() => setView("perfil")}
+                style={{ padding: '10px 20px', background: 'var(--primary-green)', border: 'none', color: 'white', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                Ir a Iniciar Sesión
+              </button>
+            </div>
+          ) : userOrdersLoading ? (
+            <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--text-muted)' }}>
+              <div style={{ border: '3px solid rgba(0,0,0,0.1)', borderTop: '3px solid var(--accent-gold)', borderRadius: '50%', width: '30px', height: '30px', animation: 'spin 1s linear infinite', margin: '0 auto 10px auto' }}></div>
+              <p>Descargando tu historial de compras...</p>
+            </div>
+          ) : userOrders.length === 0 ? (
+            <div style={{ background: 'white', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '2.5rem 1.5rem', boxShadow: 'var(--shadow-sm)', textAlign: 'center' }}>
+              <p style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '8px', color: 'var(--primary-green)' }}>No registras pedidos todavía</p>
+              <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>¡Explora la tienda y realiza tu primera compra hoy mismo!</p>
+              <button 
+                type="button" 
+                onClick={() => setView("catalog")}
+                style={{ padding: '10px 20px', background: 'var(--primary-green)', border: 'none', color: 'white', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+              >
+                Explorar Catálogo
+              </button>
+            </div>
+          ) : (
+            /* Orders tracking feed list */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {userOrders.map(order => {
+                let currentStep = 1;
+                if (order.status === 'Completado') currentStep = 4;
+                else if (order.status === 'En Camino') currentStep = 3;
+                else if (order.status === 'Pendiente') currentStep = 2; // Preparing state
+
+                return (
+                  <div 
+                    key={order.id} 
+                    className="order-history-card animate-fade-in" 
+                    style={{ 
+                      background: 'white', 
+                      border: '1px solid var(--border-color)', 
+                      borderRadius: '16px', 
+                      padding: '1.25rem',
+                      boxShadow: 'var(--shadow-sm)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px',
+                      textAlign: 'left'
+                    }}
+                  >
+                    {/* ID and date */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                      <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                        📅 {new Date(order.created_at).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <span 
+                        className={`order-status-badge ${order.status}`} 
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 800,
+                          padding: '4px 12px',
+                          borderRadius: '20px',
+                          background: order.status === 'Completado' ? '#e6f4ea' : order.status === 'Cancelado' ? '#fce8e6' : '#fff7e6',
+                          color: order.status === 'Completado' ? '#137333' : order.status === 'Cancelado' ? '#c5221f' : '#b06000',
+                          border: `1px solid ${order.status === 'Completado' ? '#c2e7c9' : order.status === 'Cancelado' ? '#fad2cf' : '#ffe7b3'}`
+                        }}
+                      >
+                        {order.status === 'Completado' ? '✅ Completado' : order.status === 'Cancelado' ? '❌ Cancelado' : '⏳ Pendiente'}
+                      </span>
+                    </div>
+
+                    {/* Stepper timeline */}
+                    <div style={{ background: '#fcfbf7', padding: '1rem 0.5rem', borderRadius: '12px', border: '1px solid rgba(235,220,201,0.5)', margin: '4px 0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', alignItems: 'center' }}>
+                        <div style={{ position: 'absolute', top: '15px', left: '10%', right: '10%', height: '3px', background: '#e2e8f0', zIndex: 1 }}></div>
+                        <div style={{ position: 'absolute', top: '15px', left: '10%', width: `${(currentStep - 1) * 26.6}%`, height: '3px', background: 'var(--primary-green)', zIndex: 2, transition: 'width 0.3s' }}></div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, flex: 1 }}>
+                          <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: currentStep >= 1 ? 'var(--primary-green)' : '#e2e8f0', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}>✓</div>
+                          <span style={{ fontSize: '0.68rem', fontWeight: 'bold', color: currentStep >= 1 ? 'var(--primary-green)' : 'var(--text-muted)', marginTop: '4px' }}>Recibido</span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, flex: 1 }}>
+                          <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: currentStep >= 2 ? 'var(--primary-green)' : '#e2e8f0', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}>📦</div>
+                          <span style={{ fontSize: '0.68rem', fontWeight: 'bold', color: currentStep >= 2 ? 'var(--primary-green)' : 'var(--text-muted)', marginTop: '4px' }}>Preparando</span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, flex: 1 }}>
+                          <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: currentStep >= 3 ? 'var(--primary-green)' : '#e2e8f0', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}>🛵</div>
+                          <span style={{ fontSize: '0.68rem', fontWeight: 'bold', color: currentStep >= 3 ? 'var(--primary-green)' : 'var(--text-muted)', marginTop: '4px' }}>En Camino</span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, flex: 1 }}>
+                          <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: currentStep >= 4 ? 'var(--primary-green)' : '#e2e8f0', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}>★</div>
+                          <span style={{ fontSize: '0.68rem', fontWeight: 'bold', color: currentStep >= 4 ? 'var(--primary-green)' : 'var(--text-muted)', marginTop: '4px' }}>Entregado</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Order items */}
+                    <div style={{ border: '1px solid rgba(235,220,201,0.5)', borderRadius: '8px', padding: '8px 12px', background: '#faf9f6' }}>
+                      {order.items && Array.isArray(order.items) ? (
+                        order.items.map((item, idx) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', padding: '3px 0', borderBottom: idx < order.items.length - 1 ? '1px solid #f1ece4' : 'none' }}>
+                            <span><strong>{item.quantity}x</strong> {item.name}</span>
+                            <span style={{ color: 'var(--primary-green)', fontWeight: 600 }}>Bs. {(item.price * item.quantity).toFixed(1)}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Detalle de productos no disponible</span>
+                      )}
+                    </div>
+
+                    {/* Delivery address */}
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-dark)' }}>
+                      📍 <strong>Destino:</strong> {order.address} ({order.city})
+                      {order.gps_coordinates && (
+                        <a 
+                          href={order.gps_coordinates} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '8px', color: '#1a73e8', textDecoration: 'underline', fontWeight: 'bold' }}
+                        >
+                          Ver en Google Maps
+                        </a>
+                      )}
+                    </div>
+
+                    {/* WhatsApp check support */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--primary-green)' }}>
+                        Total: Bs. {parseFloat(order.total_bs).toFixed(1)}
+                      </div>
+
+                      {order.status !== 'Cancelado' && (
+                        <button
+                          type="button"
+                          className="btn-whatsapp-submit"
+                          style={{ padding: '8px 12px', fontSize: '0.78rem', width: 'auto', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', background: '#25d366', border: 'none', borderRadius: '8px', color: 'white', cursor: 'pointer' }}
+                          onClick={() => {
+                            const trackingMsg = `Hola Kaldirev Bolivia, quería consultar el despacho de mi pedido:\n- ID Pedido: ${order.id.substring(0,8)}\n- Cliente: ${order.customer_name}\n- Total: Bs. ${parseFloat(order.total_bs).toFixed(1)}\n- Estado: ${order.status}`;
+                            const waUrl = `https://api.whatsapp.com/send?phone=${config.whatsappNumber}&text=${encodeURIComponent(trackingMsg)}`;
+                            window.open(waUrl, '_blank');
+                          }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.249 8.477 3.517 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.739-1.446L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.625 1.451 5.436 0 9.86-4.42 9.864-9.856.002-2.63-1.023-5.101-2.887-6.967C16.38 1.916 13.91 1.012 11.285 1.012 5.848 1.012 1.425 5.435 1.422 10.873c-.001 1.5.399 2.969 1.157 4.298l-.997 3.642 3.73-.978c-.001.002-.001.002-.001.002zm12.338-7.989c-.334-.168-1.977-.975-2.28-1.087-.302-.111-.522-.168-.742.168-.22.33-.852 1.079-1.044 1.302-.192.223-.385.253-.718.084-.334-.168-1.409-.52-2.684-1.657-1.002-.894-1.677-2.002-1.874-2.337-.197-.335-.021-.516.146-.682.151-.15.334-.385.501-.58.167-.192.222-.334.334-.56.111-.223.056-.417-.028-.585-.084-.168-.742-1.787-1.016-2.45-.269-.65-.539-.562-.742-.573-.191-.01-.41-.01-.628-.01-.22 0-.577.082-.88.411-.303.33-1.154 1.128-1.154 2.75 0 1.622 1.18 3.19 1.346 3.414.167.223 2.323 3.548 5.626 4.974.786.34 1.398.543 1.877.697.79.25 1.509.215 2.078.13.633-.095 1.977-.807 2.254-1.59.277-.783.277-1.456.195-1.59-.082-.134-.302-.253-.633-.421z"/>
+                          </svg>
+                          Consultar por WhatsApp
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </main>
+      )}
+
+      {/* ==================== VIEW 5: DEDICATED CORPORATE NOSOTROS PAGE ==================== */}
+      {view === "nosotros" && (
+        <main className="nosotros-page-wrapper animate-fade-in" style={{ padding: '2rem 1.5rem', maxWidth: '800px', margin: '0 auto', minHeight: '60vh' }}>
+          <h2 style={{ fontSize: '1.6rem', color: 'var(--primary-green)', marginBottom: '0.25rem' }}>Sobre Nosotros 📖</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Identidad, misión y deslinde de responsabilidad corporativa.</p>
+
+          <div style={{ display: 'flex', borderBottom: '1px solid #ebdcc9', background: 'white', borderRadius: '8px 8px 0 0', overflow: 'hidden' }}>
+            <button 
+              type="button" 
+              style={{ flex: 1, padding: '12px', border: 'none', borderBottom: infoActiveTab === 'mision' ? '3px solid var(--accent-gold)' : 'none', background: infoActiveTab === 'mision' ? '#fff' : '#f8f9fa', fontSize: '0.92rem', fontWeight: 700, color: infoActiveTab === 'mision' ? 'var(--primary-green)' : 'var(--text-muted)', cursor: 'pointer' }}
+              onClick={() => setInfoActiveTab('mision')}
+            >
+              Misión, Visión y Valores
+            </button>
+            <button 
+              type="button" 
+              style={{ flex: 1, padding: '12px', border: 'none', borderBottom: infoActiveTab === 'legal' ? '3px solid var(--accent-gold)' : 'none', background: infoActiveTab === 'legal' ? '#fff' : '#f8f9fa', fontSize: '0.92rem', fontWeight: 700, color: infoActiveTab === 'legal' ? 'var(--primary-green)' : 'var(--text-muted)', cursor: 'pointer' }}
+              onClick={() => setInfoActiveTab('legal')}
+            >
+              Deslinde Legal & Compliance
+            </button>
+          </div>
+
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: '0 0 8px 8px', border: '1px solid var(--border-color)', borderTop: 'none', fontSize: '0.95rem', color: 'var(--text-dark)', lineHeight: '1.6' }}>
+            {infoActiveTab === 'mision' ? (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div>
+                  <h4 style={{ color: 'var(--primary-green)', fontSize: '1.15rem', margin: '0 0 8px 0', fontWeight: 800 }}>Nuestra Misión</h4>
+                  <p style={{ margin: 0, background: '#fcfbf7', padding: '12px 16px', borderRadius: '8px', borderLeft: '4px solid var(--accent-gold)' }}>
+                    "Proveer un sistema operativo y logístico integral que profesionalice la distribución de suplementos de bienestar en Bolivia, ofreciendo a clientes y emprendedores tecnología de cobro, atención estandarizada y entregas eficientes con absoluta transparencia comercial."
+                  </p>
+                </div>
+
+                <div>
+                  <h4 style={{ color: 'var(--primary-green)', fontSize: '1.15rem', margin: '0 0 8px 0', fontWeight: 800 }}>Nuestra Visión</h4>
+                  <p style={{ margin: 0, background: '#fcfbf7', padding: '12px 16px', borderRadius: '8px', borderLeft: '4px solid var(--accent-gold)' }}>
+                    "Consolidarse para el año 2028 como la red independiente de distribución e intermediación comercial más confiable y mejor estructurada de Bolivia, reconocida por su excelencia operativa, rigor ético y modernización tecnológica de canales de venta."
+                  </p>
+                </div>
+
+                <div>
+                  <h4 style={{ color: 'var(--primary-green)', fontSize: '1.15rem', margin: '0 0 10px 0', fontWeight: 800 }}>Valores Corporativos</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ background: '#fcfbf7', padding: '10px 14px', borderRadius: '8px' }}>
+                      <strong style={{ color: 'var(--primary-green)' }}>• Excelencia Operativa:</strong> Rigor y exactitud en el cumplimiento de tiempos, empaque secundario y trazabilidad de cada pedido.
+                    </div>
+                    <div style={{ background: '#fcfbf7', padding: '10px 14px', borderRadius: '8px' }}>
+                      <strong style={{ color: 'var(--primary-green)' }}>• Transparencia y Compliance:</strong> Delimitación clara de roles comerciales, respetando las marcas registradas de terceros y las normativas vigentes.
+                    </div>
+                    <div style={{ background: '#fcfbf7', padding: '10px 14px', borderRadius: '8px' }}>
+                      <strong style={{ color: 'var(--primary-green)' }}>• Innovación Digital:</strong> Implementación continua de herramientas tecnológicas para cobros inmediatos vía QR y atención al cliente ágil.
+                    </div>
+                    <div style={{ background: '#fcfbf7', padding: '10px 14px', borderRadius: '8px' }}>
+                      <strong style={{ color: 'var(--primary-green)' }}>• Dignificación Comercial:</strong> Promoción de un modelo de venta ético, estandarizado y transparente que eleve la confianza del consumidor final.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', fontSize: '0.92rem' }}>
+                <div style={{ borderBottom: '1px solid #ebdcc9', paddingBottom: '1rem' }}>
+                  <h4 style={{ color: '#d93025', fontSize: '1.05rem', margin: '0 0 6px 0', fontWeight: 800 }}>KALDIREV • RED EMPRESARIAL DE DISTRIBUCIÓN</h4>
+                  <p style={{ margin: 0, color: 'var(--text-dark)' }}>
+                    Kaldirev es un emprendimiento y marca independiente dedicado a la intermediación comercial, logística urbana y facilitación de ventas mediante herramientas tecnológicas. No constituimos una subsidiaria, filial, ni representación corporativa directa de marcas multinacionales.
+                  </p>
+                </div>
+
+                <div>
+                  <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.95rem' }}>Aviso de Autonomía de Marcas Terciarias</h5>
+                  <p style={{ margin: 0, fontStyle: 'italic', color: '#555' }}>
+                    Todos los nombres de productos, marcas registradas y logotipos de terceros citados en esta plataforma (incluyendo Tiens Bolivia, Yango, PedidosYa, inDrive, BCP y Yape) son propiedad exclusiva de sus respectivos titulares.
+                  </p>
+                </div>
+
+                <div>
+                  <h5 style={{ margin: '0 0 8px 0', fontWeight: 700, fontSize: '0.95rem' }}>Marco de Relación y Responsabilidad</h5>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left', border: '1px solid #ebdcc9', borderRadius: '8px', overflow: 'hidden' }}>
+                    <thead>
+                      <tr style={{ background: '#fcfbf7' }}>
+                        <th style={{ padding: '8px 12px', borderBottom: '1px solid #ebdcc9', fontWeight: 'bold' }}>Ámbito Legal</th>
+                        <th style={{ padding: '8px 12px', borderBottom: '1px solid #ebdcc9', fontWeight: 'bold' }}>Fabricante (Tiens)</th>
+                        <th style={{ padding: '8px 12px', borderBottom: '1px solid #ebdcc9', fontWeight: 'bold' }}>Intermediario (Kaldirev)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style={{ padding: '8px 12px', borderBottom: '1px solid #ebdcc9', fontWeight: 'bold' }}>Registro / Importación</td>
+                        <td style={{ padding: '8px 12px', borderBottom: '1px solid #ebdcc9' }}>Titular de registros sanitarios (SENASAG/UNIMED), calidad de origen.</td>
+                        <td style={{ padding: '8px 12px', borderBottom: '1px solid #ebdcc9' }}>Comercialización independiente de unidades oficiales adquiridas legítimamente.</td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '8px 12px', borderBottom: '1px solid #ebdcc9', fontWeight: 'bold' }}>Garantía</td>
+                        <td style={{ padding: '8px 12px', borderBottom: '1px solid #ebdcc9' }}>Respaldo técnico de laboratorio y sellos de fábrica.</td>
+                        <td style={{ padding: '8px 12px', borderBottom: '1px solid #ebdcc9' }}>Gestión de entrega, empaque secundario y recepción en conformidad.</td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '8px 12px', fontWeight: 'bold' }}>Estructura</td>
+                        <td style={{ padding: '8px 12px' }}>Estructura corporativa multinacional y almacenes autorizados.</td>
+                        <td style={{ padding: '8px 12px' }}>Plataforma digital independiente de atención, cobro QR y despacho.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', padding: '12px 14px', borderRadius: '8px', color: '#c2410c' }}>
+                  <strong>Cláusula de Exención de Responsabilidad Sanitaria:</strong> Los productos comercializados por la red KALDIREV no son medicamentos ni sustituyen tratamientos médicos profesionales. KALDIREV prohíbe taxativamente la emisión de diagnósticos o curaciones no respaldadas legalmente.
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
+      )}
+
+      {/* ==================== VIEW 6: DEDICATED PROFILE PAGE ==================== */}
+      {view === "perfil" && (
+        <main className="perfil-page-wrapper animate-fade-in" style={{ padding: '2rem 1.5rem', maxWidth: '500px', margin: '0 auto', minHeight: '60vh' }}>
+          {!user ? (
+            /* Login native box */
+            <div style={{ background: 'white', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '2rem', boxShadow: 'var(--shadow-md)', textAlign: 'center' }}>
+              <div style={{ width: '50px', height: '50px', background: 'var(--primary-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto', color: 'var(--primary-green)' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </div>
+              <h2 style={{ fontSize: '1.4rem', color: 'var(--primary-green)', marginBottom: '0.5rem' }}>Iniciar Sesión</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '1.5rem' }}>Guarda tu dirección de entrega y accede al rastreo de tus pedidos al instante.</p>
+
+              {authError && (
+                <div style={{ background: '#ffeeee', border: '1px solid #ffcccc', color: '#cc0000', padding: '8px 12px', borderRadius: '8px', fontSize: '0.82rem', marginBottom: '1rem', textAlign: 'left' }}>
+                  {authError}
+                </div>
+              )}
+
+              {/* Google Button */}
+              <button 
+                type="button" 
+                onClick={handleGoogleLogin}
+                className="btn-google-login"
+                style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #ebdcc9', background: '#fcfaf2', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.95rem' }}
+                onMouseEnter={(e) => { e.target.style.background = '#f2edd9'; }}
+                onMouseLeave={(e) => { e.target.style.background = '#fcfaf2'; }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.56-2.77c-.98.66-2.23 1.06-3.72 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+                Entrar con Google
+              </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', margin: '1.5rem 0', color: '#bbb' }}>
+                <div style={{ flexGrow: 1, height: '1px', background: '#e2e8f0' }}></div>
+                <span style={{ padding: '0 10px', fontSize: '0.8rem' }}>o utiliza tu correo</span>
+                <div style={{ flexGrow: 1, height: '1px', background: '#e2e8f0' }}></div>
+              </div>
+
+              {/* Email Form */}
+              <form onSubmit={handleEmailLogin} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', textAlign: 'left' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: '0.82rem' }}>Correo Electrónico</label>
+                  <input 
+                    type="email" 
+                    required 
+                    className="form-input" 
+                    placeholder="correo@ejemplo.com"
+                    value={authEmail} 
+                    onChange={(e) => setAuthEmail(e.target.value)} 
+                    style={{ padding: '8px 12px', fontSize: '0.9rem' }}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: '0.82rem' }}>Contraseña</label>
+                  <input 
+                    type="password" 
+                    required 
+                    className="form-input" 
+                    placeholder="••••••••" 
+                    value={authPassword} 
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    style={{ padding: '8px 12px', fontSize: '0.9rem' }}
+                  />
+                </div>
+                <button type="submit" className="btn-add-cart" style={{ width: '100%', padding: '10px', border: 'none', background: 'var(--primary-green)', color: 'white', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '0.5rem' }}>
+                  {authLoading ? "Cargando..." : "Ingresar con Correo"}
+                </button>
+              </form>
+            </div>
+          ) : (
+            /* User profile dashboard */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div style={{ background: 'white', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '1.5rem', boxShadow: 'var(--shadow-sm)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="Avatar" style={{ width: '60px', height: '60px', borderRadius: '50%', border: '3px solid var(--accent-gold)' }} />
+                ) : (
+                  <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--accent-gold)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.5rem' }}>
+                    {profile?.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div style={{ textAlign: 'left' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--primary-green)' }}>{profile?.full_name || "Cliente"}</h3>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{user.email}</span>
+                </div>
+              </div>
+
+              {/* Form details defaults */}
+              <div style={{ background: 'white', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '1.5rem', boxShadow: 'var(--shadow-sm)', textAlign: 'left' }}>
+                <h4 style={{ margin: '0 0 1rem 0', fontSize: '1.05rem', color: 'var(--primary-green)' }}>Mis Datos de Entrega Predeterminados</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.82rem' }}>Nombre de Contacto</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={formData.name} 
+                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                      style={{ padding: '8px 12px', fontSize: '0.9rem' }}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.82rem' }}>Celular o WhatsApp</label>
+                    <input 
+                      type="tel" 
+                      className="form-input" 
+                      value={formData.phone} 
+                      onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                      style={{ padding: '8px 12px', fontSize: '0.9rem' }}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.82rem' }}>Ciudad</label>
+                    <select 
+                      className="form-select" 
+                      value={formData.city} 
+                      onChange={(e) => handleCityChange(e.target.value)}
+                      style={{ padding: '8px 12px', fontSize: '0.9rem', height: '38px' }}
+                    >
+                      {branches.map(b => (
+                        <option key={b.id} value={b.name}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.82rem' }}>Dirección de Entrega</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={formData.address} 
+                      onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                      style={{ padding: '8px 12px', fontSize: '0.9rem' }}
+                    />
+                  </div>
+
+                  <button 
+                    type="button" 
+                    className="btn-add-cart" 
+                    style={{ width: '100%', padding: '12px', border: 'none', background: 'var(--primary-green)', color: 'white', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s', marginTop: '0.5rem' }}
+                    onClick={async () => {
+                      try {
+                        const updatedProfile = {
+                          ...profile,
+                          full_name: formData.name,
+                          phone: formData.phone,
+                          address: formData.address,
+                          city: formData.city
+                        };
+                        const { error } = await supabase.from('profiles').upsert(updatedProfile);
+                        if (error) throw error;
+                        setProfile(updatedProfile);
+                        localStorage.setItem(`kaldirev_local_profile_${user.id}`, JSON.stringify(updatedProfile));
+                        window.Swal.fire({
+                          title: '¡Guardado!',
+                          text: 'Datos actualizados de forma segura.',
+                          icon: 'success',
+                          confirmButtonColor: 'var(--primary-green)'
+                        });
+                      } catch (err) {
+                        console.warn("Could not save profile directly, fallback to local storage:", err);
+                        localStorage.setItem(`kaldirev_local_profile_${user.id}`, JSON.stringify({
+                          id: user.id,
+                          full_name: formData.name,
+                          phone: formData.phone,
+                          address: formData.address,
+                          city: formData.city
+                        }));
+                        window.Swal.fire({
+                          title: '¡Guardado Local!',
+                          text: 'Datos guardados en este dispositivo (RLS activo).',
+                          icon: 'success',
+                          confirmButtonColor: 'var(--primary-green)'
+                        });
+                      }
+                    }}
+                  >
+                    Guardar Cambios
+                  </button>
+                </div>
+              </div>
+
+              {/* Logout */}
+              <button 
+                type="button" 
+                style={{ width: '100%', padding: '10px', background: 'none', border: '2px solid #ff4d4d', color: '#ff4d4d', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}
+                onClick={handleLogout}
+              >
+                Cerrar Sesión
+              </button>
+            </div>
+          )}
+        </main>
+      )}
+
       {/* SHOPPING CART DRAWER */}
       <div className={`cart-drawer-overlay ${isCartOpen ? 'open' : ''}`} onClick={() => setIsCartOpen(false)}>
         <div className="cart-drawer" onClick={(e) => e.stopPropagation()}>
@@ -5332,117 +5873,120 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
           <div className="cart-items-container">
             {isCheckingOut ? (
               /* ==================== STEP 2: CHECKOUT FORM ==================== */
-              <div className="checkout-form-container animate-fade-in">
-                <h4 className="checkout-form-title">Detalles del Cliente</h4>
+              <div className="checkout-form-container animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <h4 className="checkout-form-title" style={{ margin: 0, fontSize: '1.1rem' }}>Información de Contacto</h4>
                 
-                <div className="form-group">
-                  <label className="form-label" htmlFor="chk-name">Nombre Completo *</label>
-                  <input 
-                    type="text" 
-                    id="chk-name" 
-                    required
-                    className="form-input" 
-                    placeholder="Ej. Juan Pérez" 
-                    value={formData.name} 
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  />
+                {/* Nombre y Celular en fila de 2 columnas */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="chk-name" style={{ fontSize: '0.82rem' }}>Nombre *</label>
+                    <input 
+                      type="text" 
+                      id="chk-name" 
+                      required
+                      className="form-input" 
+                      placeholder="Tu nombre" 
+                      value={formData.name} 
+                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                      style={{ padding: '8px 12px', fontSize: '0.9rem' }}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="chk-phone" style={{ fontSize: '0.82rem' }}>WhatsApp *</label>
+                    <input 
+                      type="tel" 
+                      id="chk-phone" 
+                      required
+                      className="form-input" 
+                      placeholder="Celular" 
+                      value={formData.phone} 
+                      onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                      style={{ padding: '8px 12px', fontSize: '0.9rem' }}
+                    />
+                  </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label" htmlFor="chk-phone">Celular / WhatsApp *</label>
-                  <input 
-                    type="tel" 
-                    id="chk-phone" 
-                    required
-                    className="form-input" 
-                    placeholder="Ej. 70012345" 
-                    value={formData.phone} 
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                  />
-                </div>
+                <h4 className="checkout-form-title" style={{ margin: '0.5rem 0 0 0', fontSize: '1.1rem' }}>Dirección de Entrega</h4>
 
-                <h4 className="checkout-form-title" style={{ marginTop: '1rem' }}>Envío & Despacho</h4>
+                {/* Ciudad y Botón de Ubicación */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', alignItems: 'end' }}>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="chk-city" style={{ fontSize: '0.82rem' }}>Ciudad *</label>
+                    <select 
+                      id="chk-city" 
+                      className="form-select" 
+                      value={formData.city} 
+                      onChange={(e) => handleCityChange(e.target.value)}
+                      style={{ padding: '8px 12px', fontSize: '0.9rem', height: '38px' }}
+                    >
+                      {branches.map(b => (
+                        <option key={b.id} value={b.name}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div className="form-group">
-                  <label className="form-label" htmlFor="chk-city">Ciudad de Destino *</label>
-                  <select 
-                    id="chk-city" 
-                    className="form-select" 
-                    value={formData.city} 
-                    onChange={(e) => handleCityChange(e.target.value)}
+                  <button
+                    type="button"
+                    className="btn-add-cart"
+                    style={{ 
+                      width: '100%', 
+                      whiteSpace: 'nowrap', 
+                      padding: '0 8px', 
+                      fontSize: '0.82rem', 
+                      background: 'var(--primary-green)', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      gap: '4px', 
+                      height: '38px', 
+                      border: 'none', 
+                      borderRadius: '8px',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      cursor: 'pointer'
+                    }}
+                    onClick={handleGetLocation}
                   >
-                    {branches.map(b => (
-                      <option key={b.id} value={b.name}>{b.name}</option>
-                    ))}
-                  </select>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
+                      <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"></path>
+                      <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    Fijar GPS (Exacto)
+                  </button>
                 </div>
 
+                {formData.gpsCoordinates && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#e6f4ea', border: '1px solid #c2e7c9', padding: '6px 10px', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '0.78rem', color: '#137333', fontWeight: 'bold' }}>📍 GPS Cargado Correctamente</span>
+                    <button type="button" style={{ border: 'none', background: 'none', color: '#d93025', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }} onClick={() => setFormData(prev => ({ ...prev, gpsCoordinates: '', address: prev.address === "📍 Dirección vía Ubicación GPS (Entregar en este punto exacto)" ? "" : prev.address }))}>Quitar</button>
+                  </div>
+                )}
+
                 <div className="form-group">
-                  <label className="form-label" htmlFor="chk-address">Dirección de Entrega (calle, número, zona) *</label>
+                  <label className="form-label" htmlFor="chk-address" style={{ fontSize: '0.82rem' }}>Dirección Específica (Calle, Nro, Zona) *</label>
                   <input 
                     type="text" 
                     id="chk-address" 
                     required
                     className="form-input" 
-                    placeholder="Ej. Av. Bush, Calle 4, Nro 125, Zona Centro" 
+                    placeholder="Ej. Av. Bush, Calle 4, Nro 125" 
                     value={formData.address} 
                     onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                    style={{ padding: '8px 12px', fontSize: '0.9rem' }}
                   />
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label" htmlFor="chk-delivery">Método de Envío *</label>
-                  <select 
-                    id="chk-delivery" 
-                    className="form-select" 
-                    value={formData.deliveryMethod} 
-                    onChange={(e) => setFormData(prev => ({ ...prev, deliveryMethod: e.target.value }))}
-                  >
-                    <option value="Local (Yango)">Servicio Courier / Delivery (Yango/PedidosYa)</option>
-                    <option value="Envíos Nacionales">Envío por Flota/Transportadora Nacional</option>
-                    <option value="Retiro en Oficina">Retiro en Sucursal Oficial (Envío Bs. 0)</option>
-                  </select>
-                </div>
+                <h4 className="checkout-form-title" style={{ margin: '0.5rem 0 0 0', fontSize: '1.1rem' }}>Forma de Pago</h4>
 
                 <div className="form-group">
-                  <label className="form-label" htmlFor="chk-gps">Ubicación de GPS / Google Maps (Opcional pero recomendado)</label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input 
-                      type="text" 
-                      id="chk-gps" 
-                      className="form-input" 
-                      placeholder="Ej. https://maps.google.com/?q=..." 
-                      value={formData.gpsCoordinates} 
-                      onChange={(e) => setFormData(prev => ({ ...prev, gpsCoordinates: e.target.value }))}
-                      style={{ flexGrow: 1 }}
-                    />
-                    <button
-                      type="button"
-                      className="btn-add-cart"
-                      style={{ width: 'auto', whiteSpace: 'nowrap', padding: '0 1rem', fontSize: '0.85rem', background: 'var(--primary-green)', display: 'flex', alignItems: 'center', gap: '6px', height: '42px', border: 'none', borderRadius: '8px' }}
-                      onClick={handleGetLocation}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                        <path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"></path>
-                        <circle cx="12" cy="10" r="3"></circle>
-                      </svg>
-                      Obtener GPS
-                    </button>
-                  </div>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-                    Si estás en tu domicilio, haz clic en el botón para adjuntar tus coordenadas de entrega automáticamente.
-                  </span>
-                </div>
-
-                <h4 className="checkout-form-title" style={{ marginTop: '1rem' }}>Forma de Pago</h4>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="chk-payment">Método de Pago *</label>
+                  <label className="form-label" htmlFor="chk-payment" style={{ fontSize: '0.82rem' }}>Método de Pago *</label>
                   <select 
                     id="chk-payment" 
                     className="form-select" 
                     value={formData.paymentMethod} 
                     onChange={(e) => setFormData(prev => ({ ...prev, paymentMethod: e.target.value }))}
+                    style={{ padding: '8px 12px', fontSize: '0.9rem', height: '38px' }}
                   >
                     <option value="Contraentrega">Efectivo / QR al recibir (Contraentrega)</option>
                     <option value="Pago QR Directo">Pago QR Inmediato (Pasarela Libélula)</option>
@@ -5639,7 +6183,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                   <div className="checkout-steps">
                     <button 
                       className="btn-checkout" 
-                      style={{ fontSize: '1.1rem', padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }} 
+                      style={{ fontSize: '1.1rem', padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }} 
                       onClick={() => setIsCheckingOut(true)}
                     >
                       Proceder con el Pedido
@@ -5649,115 +6193,6 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
               )}
             </div>
           )}
-        </div>
-      </div>
-
-      {/* MY ORDERS HISTORICAL DRAWER */}
-      <div className={`cart-drawer-overlay ${isMyOrdersOpen ? 'open' : ''}`} onClick={() => setIsMyOrdersOpen(false)}>
-        <div className="cart-drawer orders-drawer" onClick={(e) => e.stopPropagation()}>
-          <div className="cart-drawer-header">
-            <h3 className="cart-drawer-title">Mis Pedidos 📦</h3>
-            <button className="btn-close-cart" onClick={() => setIsMyOrdersOpen(false)} aria-label="Cerrar">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-
-          <div className="cart-items-container" style={{ padding: '1rem' }}>
-            {userOrdersLoading ? (
-              <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--text-muted)' }}>
-                <p>Cargando tu historial de pedidos...</p>
-              </div>
-            ) : userOrders.length === 0 ? (
-              <div className="cart-empty-state" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
-                <p style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '8px' }}>No tienes pedidos registrados</p>
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Tus compras en Kaldirev Bolivia aparecerán aquí automáticamente.</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {userOrders.map(order => (
-                  <div 
-                    key={order.id} 
-                    className="order-history-card" 
-                    style={{ 
-                      background: 'white', 
-                      border: '1px solid var(--border-color)', 
-                      borderRadius: '12px', 
-                      padding: '1rem',
-                      boxShadow: 'var(--shadow-sm)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                      textAlign: 'left'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                        {new Date(order.created_at).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      <span 
-                        className={`order-status-badge ${order.status}`} 
-                        style={{
-                          fontSize: '0.72rem',
-                          fontWeight: 800,
-                          padding: '4px 10px',
-                          borderRadius: '12px',
-                          background: order.status === 'Completado' ? '#eef6f2' : order.status === 'Cancelado' ? '#ffeeee' : '#fff9eb',
-                          color: order.status === 'Completado' ? 'var(--primary-green)' : order.status === 'Cancelado' ? '#d32f2f' : '#b89047',
-                          border: `1px solid ${order.status === 'Completado' ? 'rgba(26, 77, 58, 0.2)' : order.status === 'Cancelado' ? 'rgba(211, 47, 47, 0.2)' : 'rgba(184, 144, 71, 0.2)'}`
-                        }}
-                      >
-                        {order.status}
-                      </span>
-                    </div>
-
-                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary-green)' }}>
-                      Total: Bs. {parseFloat(order.total_bs).toFixed(1)}
-                    </div>
-
-                    <div style={{ fontSize: '0.8rem', background: '#faf9f6', padding: '8px', borderRadius: '6px', border: '1px solid rgba(235,220,201,0.4)' }}>
-                      <span style={{ fontWeight: 600, display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Items:</span>
-                      {order.items && Array.isArray(order.items) ? (
-                        order.items.map((item, idx) => (
-                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem' }}>
-                            <span>{item.quantity}x {item.name}</span>
-                            <span>Bs. {(item.price * item.quantity).toFixed(1)}</span>
-                          </div>
-                        ))
-                      ) : (
-                        <p style={{ fontSize: '0.78rem' }}>Detalle no disponible</p>
-                      )}
-                    </div>
-
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-dark)', lineHeight: '1.4' }}>
-                      <strong>Dirección:</strong> {order.address} ({order.city})
-                      {order.tracking_id && (
-                        <div style={{ marginTop: '4px', background: '#eef6f2', color: 'var(--primary-green)', padding: '4px 8px', borderRadius: '4px', display: 'inline-block', fontWeight: 600 }}>
-                          ID Courier/Tracking: {order.tracking_id}
-                        </div>
-                      )}
-                    </div>
-
-                    {order.status === 'Pendiente' && (
-                      <button
-                        className="btn-whatsapp-submit"
-                        style={{ padding: '0.6rem', fontSize: '0.82rem', marginTop: '6px', width: '100%', fontWeight: 700 }}
-                        onClick={() => {
-                          const trackingMsg = `Hola Kaldirev Bolivia, quería consultar el estado de mi pedido pendiente:\n- ID Pedido: ${order.id}\n- Cliente: ${order.customer_name}\n- Dirección: ${order.address} (${order.city})\n- Total: Bs. ${parseFloat(order.total_bs).toFixed(1)}`;
-                          const waUrl = `https://api.whatsapp.com/send?phone=${config.whatsappNumber}&text=${encodeURIComponent(trackingMsg)}`;
-                          window.open(waUrl, '_blank');
-                        }}
-                      >
-                        Coordinar Despacho por WhatsApp 💬
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
@@ -6061,16 +6496,250 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             padding: '10px 14px', 
             display: 'flex', 
             alignItems: 'center', 
-            gap: '8px', 
+            gap: '10px', 
             zIndex: 1000
           }}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2e7d32" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-dark)', textAlign: 'left' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-dark)', textAlign: 'left', flexGrow: 1 }}>
             <strong>{socialProofOrder.name}</strong> ({socialProofOrder.city}) compró <strong style={{ color: 'var(--primary-green)' }}>{socialProofOrder.item}</strong> • <span style={{ color: '#888', fontSize: '0.75rem' }}>{socialProofOrder.time}</span>
           </span>
+          <button 
+            type="button" 
+            style={{ 
+              background: 'none', 
+              border: 'none', 
+              fontSize: '18px', 
+              color: '#bbb', 
+              cursor: 'pointer', 
+              padding: '0 4px', 
+              lineHeight: '1',
+              fontWeight: 'bold',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'color 0.2s'
+            }}
+            onMouseEnter={(e) => e.target.style.color = '#ef4444'}
+            onMouseLeave={(e) => e.target.style.color = '#bbb'}
+            onClick={() => setSocialProofOrder(null)}
+            title="Cerrar"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* PWA BOTTOM NAVIGATION BAR (Mobile & App Tab Navigation) */}
+      <div 
+        className="pwa-bottom-navbar"
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: '65px',
+          background: 'white',
+          borderTop: '1px solid var(--border-color)',
+          boxShadow: '0 -4px 15px rgba(0,0,0,0.06)',
+          display: 'flex',
+          justifyContent: 'space-around',
+          alignItems: 'center',
+          zIndex: 999,
+          padding: '0 5px'
+        }}
+      >
+        <button 
+          type="button" 
+          className={view === 'catalog' ? 'active-tab' : ''}
+          onClick={() => { setActiveCategory("Todos"); setSearchTerm(""); closeComboDetails(); setView("catalog"); }}
+          style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', color: view === 'catalog' ? 'var(--primary-green)' : '#888', flexGrow: 1 }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+          <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>Tienda</span>
+        </button>
+
+
+        <button 
+          type="button" 
+          className={view === 'pedidos' ? 'active-tab' : ''}
+          onClick={() => {
+            if (user) {
+              setView("pedidos");
+              fetchUserOrders(user.id);
+            } else {
+              setView("perfil");
+              setAuthError("Inicia sesión para ver tu historial de pedidos.");
+            }
+          }}
+          style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', color: view === 'pedidos' ? 'var(--primary-green)' : '#888', flexGrow: 1 }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+            <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+          </svg>
+          <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>Mis Pedidos</span>
+        </button>
+
+        <button 
+          type="button" 
+          className={view === 'nosotros' ? 'active-tab' : ''}
+          onClick={() => setView("nosotros")}
+          style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', color: view === 'nosotros' ? 'var(--primary-green)' : '#888', flexGrow: 1 }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+          </svg>
+          <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>Nosotros</span>
+        </button>
+
+        <button 
+          type="button" 
+          className={view === 'perfil' ? 'active-tab' : ''}
+          onClick={() => {
+            setView("perfil");
+            setAuthError("");
+          }}
+          style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', color: view === 'perfil' ? 'var(--primary-green)' : '#888', flexGrow: 1 }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>Perfil</span>
+        </button>
+      </div>
+
+      {/* NOSOTROS & DOSSIER LEGAL MODAL */}
+      {isInfoModalOpen && (
+        <div className="modal-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '1rem' }} onClick={() => setIsInfoModalOpen(false)}>
+          <div className="modal-content" style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '650px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.25)', animation: 'slideUp 0.3s ease-out' }} onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #ebdcc9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--primary-green)', color: 'white' }}>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'white' }}>Dossier & Información Corporativa</h3>
+              <button style={{ background: 'none', border: 'none', color: 'white', fontSize: '24px', cursor: 'pointer', lineHeight: 1 }} onClick={() => setIsInfoModalOpen(false)}>×</button>
+            </div>
+
+            {/* Modal Tabs */}
+            <div style={{ display: 'flex', borderBottom: '1px solid #ebdcc9', background: '#fcfbf7' }}>
+              <button 
+                type="button" 
+                style={{ flex: 1, padding: '12px', border: 'none', borderBottom: infoActiveTab === 'mision' ? '3px solid var(--accent-gold)' : 'none', background: 'none', fontSize: '0.92rem', fontWeight: 700, color: infoActiveTab === 'mision' ? 'var(--primary-green)' : 'var(--text-muted)', cursor: 'pointer' }}
+                onClick={() => setInfoActiveTab('mision')}
+              >
+                Misión, Visión y Valores
+              </button>
+              <button 
+                type="button" 
+                style={{ flex: 1, padding: '12px', border: 'none', borderBottom: infoActiveTab === 'legal' ? '3px solid var(--accent-gold)' : 'none', background: 'none', fontSize: '0.92rem', fontWeight: 700, color: infoActiveTab === 'legal' ? 'var(--primary-green)' : 'var(--text-muted)', cursor: 'pointer' }}
+                onClick={() => setInfoActiveTab('legal')}
+              >
+                Deslinde Legal & Compliance
+              </button>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div style={{ padding: '1.5rem', overflowY: 'auto', fontSize: '0.95rem', color: 'var(--text-dark)', lineHeight: '1.6' }}>
+              {infoActiveTab === 'mision' ? (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div>
+                    <h4 style={{ color: 'var(--primary-green)', fontSize: '1.1rem', margin: '0 0 4px 0', fontWeight: 800 }}>Nuestra Misión</h4>
+                    <p style={{ margin: 0, background: '#fcfbf7', padding: '10px 14px', borderRadius: '8px', borderLeft: '4px solid var(--accent-gold)' }}>
+                      "Proveer un sistema operativo y logístico integral que profesionalice la distribución de suplementos de bienestar en Bolivia, ofreciendo a clientes y emprendedores tecnología de cobro, atención estandarizada y entregas eficientes con absoluta transparencia comercial."
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 style={{ color: 'var(--primary-green)', fontSize: '1.1rem', margin: '0 0 4px 0', fontWeight: 800 }}>Nuestra Visión</h4>
+                    <p style={{ margin: 0, background: '#fcfbf7', padding: '10px 14px', borderRadius: '8px', borderLeft: '4px solid var(--accent-gold)' }}>
+                      "Consolidarse para el año 2028 como la red independiente de distribución e intermediación comercial más confiable y mejor estructurada de Bolivia, reconocida por su excelencia operativa, rigor ético y modernización tecnológica de canales de venta."
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 style={{ color: 'var(--primary-green)', fontSize: '1.1rem', margin: '0 0 8px 0', fontWeight: 800 }}>Valores Corporativos</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem' }}>
+                      <div>
+                        <strong>• Excelencia Operativa:</strong> Rigor y exactitud en el cumplimiento de tiempos, empaque secundario y trazabilidad de cada pedido.
+                      </div>
+                      <div>
+                        <strong>• Transparencia y Compliance:</strong> Delimitación clara de roles comerciales, respetando las marcas registradas de terceros y las normativas vigentes.
+                      </div>
+                      <div>
+                        <strong>• Innovation Digital:</strong> Implementación continua de herramientas tecnológicas para cobros inmediatos vía QR y atención al cliente ágil.
+                      </div>
+                      <div>
+                        <strong>• Dignificación Comercial:</strong> Promoción de un modelo de venta ético, estandarizado y transparente que eleve la confianza del consumidor final.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', fontSize: '0.9rem' }}>
+                  <div style={{ borderBottom: '1px solid #ebdcc9', paddingBottom: '0.75rem' }}>
+                    <h4 style={{ color: '#d93025', fontSize: '1rem', margin: '0 0 4px 0', fontWeight: 800 }}>KALDIREV • RED EMPRESARIAL DE DISTRIBUCIÓN</h4>
+                    <p style={{ margin: 0 }}>
+                      Kaldirev es un emprendimiento y marca independiente dedicado a la intermediación comercial, logística urbana y facilitación de ventas mediante herramientas tecnológicas. No constituimos una subsidiaria, filial, ni representación corporativa directa de marcas multinacionales.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h5 style={{ margin: '0 0 4px 0', fontWeight: 700 }}>Aviso de Autonomía de Marcas Terciarias</h5>
+                    <p style={{ margin: 0, fontStyle: 'italic', color: '#666' }}>
+                      Todos los nombres de productos, marcas registradas y logotipos de terceros citados en esta app (incluyendo Tiens Bolivia, Yango, PedidosYa, inDrive, BCP y Yape) son propiedad exclusiva de sus respectivos titulares.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h5 style={{ margin: '0 0 6px 0', fontWeight: 700 }}>Marco de Relación y Responsabilidad</h5>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', textAlign: 'left', border: '1px solid #ebdcc9' }}>
+                      <thead>
+                        <tr style={{ background: '#fcfbf7' }}>
+                          <th style={{ padding: '6px 10px', borderBottom: '1px solid #ebdcc9' }}>Ámbito Legal</th>
+                          <th style={{ padding: '6px 10px', borderBottom: '1px solid #ebdcc9' }}>Fabricante (Tiens)</th>
+                          <th style={{ padding: '6px 10px', borderBottom: '1px solid #ebdcc9' }}>Intermediario (Kaldirev)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td style={{ padding: '6px 10px', borderBottom: '1px solid #ebdcc9', fontWeight: 'bold' }}>Registro / Importación</td>
+                          <td style={{ padding: '6px 10px', borderBottom: '1px solid #ebdcc9' }}>Titular de registros sanitarios (SENASAG/UNIMED), calidad de origen.</td>
+                          <td style={{ padding: '6px 10px', borderBottom: '1px solid #ebdcc9' }}>Comercialización independiente de unidades oficiales adquiridas legítimamente.</td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: '6px 10px', borderBottom: '1px solid #ebdcc9', fontWeight: 'bold' }}>Garantía</td>
+                          <td style={{ padding: '6px 10px', borderBottom: '1px solid #ebdcc9' }}>Respaldo técnico de laboratorio y sellos de fábrica.</td>
+                          <td style={{ padding: '6px 10px', borderBottom: '1px solid #ebdcc9' }}>Gestión de entrega, empaque secundario y recepción conforme.</td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: '6px 10px', fontWeight: 'bold' }}>Estructura</td>
+                          <td style={{ padding: '6px 10px' }}>Estructura corporativa multinacional y almacenes autorizados.</td>
+                          <td style={{ padding: '6px 10px' }}>Plataforma digital independiente de atención, cobro QR y despacho.</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', padding: '10px 12px', borderRadius: '8px' }}>
+                    <strong>Cláusula de Exención de Responsabilidad Sanitaria:</strong> Los productos comercializados no son medicamentos ni sustituyen tratamientos médicos. Prohibida la emisión de diagnósticos o curaciones no respaldadas legalmente.
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #ebdcc9', display: 'flex', justifyContent: 'flex-end', background: '#fcfbf7' }}>
+              <button className="btn-add-cart" style={{ width: 'auto', padding: '0.5rem 1.5rem', background: 'var(--primary-green)', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => setIsInfoModalOpen(false)}>Entendido</button>
+            </div>
+
+          </div>
         </div>
       )}
     </>

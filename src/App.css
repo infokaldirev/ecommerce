@@ -48,6 +48,7 @@ body {
   min-height: 100vh;
   position: relative;
   background-color: var(--bg-kraft);
+  padding-bottom: 75px;
 }
 
 /* Headings */
@@ -1507,6 +1508,10 @@ footer {
     grid-template-columns: 1.1fr 1.3fr;
     gap: 3rem;
   }
+  .details-content-section {
+    position: sticky;
+    top: 90px;
+  }
 }
 
 .details-image-container {
@@ -2457,6 +2462,219 @@ footer {
   .details-action-bar .btn-add-cart {
     width: 100% !important;
   }
+}
+
+/* PWA Bottom Navbar Styles */
+.pwa-bottom-navbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 65px;
+  background: #ffffff;
+  border-top: 1px solid var(--border-color);
+  box-shadow: 0 -4px 20px rgba(15, 61, 46, 0.08);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 999;
+  padding: 0 10px;
+  transition: var(--transition-smooth);
+}
+
+.pwa-bottom-navbar button {
+  background: none;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  flex-grow: 1;
+  height: 100%;
+  transition: var(--transition-smooth);
+  padding: 5px 0;
+}
+
+.pwa-bottom-navbar button svg {
+  transition: transform 0.2s ease, stroke 0.2s ease;
+}
+
+.pwa-bottom-navbar button:hover svg {
+  transform: translateY(-2px);
+}
+
+.pwa-bottom-navbar button.active-tab {
+  background-color: rgba(14, 62, 47, 0.05);
+  color: var(--primary-green) !important;
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .pwa-bottom-navbar {
+    bottom: 20px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: 480px;
+    height: 70px;
+    border: 1px solid var(--border-color);
+    border-radius: 35px;
+    box-shadow: 0 10px 30px rgba(15, 61, 46, 0.12);
+    padding: 0 15px;
+  }
+}
+
+@media (min-width: 1024px) {
+  #root {
+    display: block !important;
+    position: relative !important;
+  }
+
+  header {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 1rem 2rem !important;
+  }
+
+  .pwa-bottom-navbar {
+    position: fixed !important;
+    top: 95px !important;
+    left: calc(max(20px, (100vw - 1200px) / 2)) !important;
+    bottom: auto !important;
+    right: auto !important;
+    width: 220px !important;
+    height: auto !important;
+    max-height: calc(100vh - 120px) !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+    background: #ffffff !important;
+    border: 1px solid rgba(212, 175, 55, 0.15) !important; /* Elegant gold border */
+    border-radius: 16px !important;
+    box-shadow: 0 10px 30px rgba(15, 61, 46, 0.04) !important;
+    padding: 20px 10px !important;
+    transform: none !important;
+    z-index: 100 !important;
+  }
+
+  .pwa-bottom-navbar button {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+    width: 100% !important;
+    height: 48px !important;
+    padding: 0 15px !important;
+    flex-grow: 0 !important;
+    border-radius: 10px !important;
+    color: #666 !important;
+    border-left: 4px solid transparent !important;
+    transition: all 0.25s ease !important;
+    background: none !important;
+  }
+
+  .pwa-bottom-navbar button svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .pwa-bottom-navbar button span {
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+  }
+
+  .pwa-bottom-navbar button:hover {
+    background-color: #f7f5ed !important;
+    color: var(--primary-green) !important;
+    border-left-color: rgba(212, 175, 55, 0.4) !important;
+  }
+
+  .pwa-bottom-navbar button.active-tab {
+    background-color: #FAF6F0 !important; /* Option 2 background */
+    color: var(--primary-green) !important;
+    border-left: 4px solid var(--accent-gold) !important;
+    border-radius: 0 10px 10px 0 !important;
+    padding-left: 11px !important;
+  }
+
+  .pwa-bottom-navbar button:hover svg {
+    transform: translateX(3px) !important;
+  }
+
+  /* Shift main app layout to the right on desktop, keeping it centered alongside sidebar */
+  main, 
+  .orders-page-wrapper, 
+  .nosotros-page-wrapper, 
+  .perfil-page-wrapper {
+    margin-left: calc(max(20px, (100vw - 1200px) / 2) + 250px) !important;
+    max-width: calc(100vw - max(20px, (100vw - 1200px) / 2) - 290px) !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+}
+
+@media (min-width: 1240px) {
+  header {
+    padding: 1rem calc((100vw - 1200px) / 2) !important;
+  }
+  
+  main, 
+  .orders-page-wrapper, 
+  .nosotros-page-wrapper, 
+  .perfil-page-wrapper {
+    margin-left: calc((100vw - 1200px) / 2 + 250px) !important;
+    max-width: 950px !important;
+  }
+}
+
+/* Premium Orders Tracking Stepper Animation & Card */
+.order-history-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.order-history-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Stepper step glow */
+.stepper-node-active {
+  box-shadow: 0 0 10px rgba(14, 62, 47, 0.3);
+}
+
+/* Search input focus outline */
+.search-input:focus {
+  outline: none;
+  border-color: var(--primary-green) !important;
+  box-shadow: 0 0 0 3px rgba(14, 62, 47, 0.1);
+}
+
+/* Category Quick chips hover */
+.category-btn {
+  transition: all 0.2s ease;
+}
+.category-btn:hover {
+  background-color: var(--primary-light) !important;
+  color: var(--primary-green) !important;
+  border-color: var(--primary-green) !important;
+}
+
+/* General Page Layout Max Width wrappers */
+.orders-page-wrapper, .nosotros-page-wrapper, .perfil-page-wrapper {
+  margin-top: 1rem;
+  margin-bottom: 2rem;
+  box-sizing: border-box;
+}
+
+
+
+.nosotros-page-wrapper table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.nosotros-page-wrapper table th, .nosotros-page-wrapper table td {
+  padding: 10px 14px;
 }
 
 
