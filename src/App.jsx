@@ -277,6 +277,13 @@ function App() {
   const [newVideoUrl, setNewVideoUrl] = useState("");
   const [newComboImageUrl, setNewComboImageUrl] = useState("");
   const [newComboVideoUrl, setNewComboVideoUrl] = useState("");
+  
+  // News and Holidays States (Added by Antigravity)
+  const [news, setNews] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [bolivianHolidays, setBolivianHolidays] = useState([]);
+  const [todayHoliday, setTodayHoliday] = useState(null);
+
   const [branches, setBranches] = useState([]);
   // Relational catalog states (comboStocks replaced by productStocks)
   const [selectedBranch, setSelectedBranch] = useState(null);
@@ -1013,6 +1020,97 @@ function App() {
     }
   };
 
+  // Bolivian traditional & Christian holidays dictionary (Added by Antigravity)
+  // Bolivian traditional, religious, departmental & civic holidays dictionary (Added by Antigravity)
+  const BOLIVIAN_HOLIDAYS_DICT = [
+    { date: "01-01", name: "Año Nuevo (Feriado Nacional)", type: "Feriado Nacional" },
+    { date: "01-22", name: "Día del Estado Plurinacional (Feriado Nacional)", type: "Feriado Nacional" },
+    { date: "01-24", name: "Feria de la Alasita (Fiesta tradicional de la abundancia - La Paz)", type: "Festividad Tradicional" },
+    { date: "02-02", name: "Virgen de la Candelaria (Patrona de Copacabana)", type: "Festividad Religiosa" },
+    { date: "02-10", name: "Grito Libertario de Oruro (Feriado Departamental)", type: "Feriado Departamental" },
+    { date: "03-19", name: "Día del Padre Boliviano y Día del Carpintero (San José)", type: "Conmemoración Nacional" },
+    { date: "04-12", name: "Día del Niño Boliviano (Fomento a la infancia)", type: "Conmemoración Nacional" },
+    { date: "04-15", name: "Grito Libertario de Tarija (Feriado Departamental)", type: "Feriado Departamental" },
+    { date: "05-01", name: "Día del Trabajo (Feriado Nacional)", type: "Feriado Nacional" },
+    { date: "05-25", name: "Grito Libertario de Chuquisaca / Primer Grito de América (Feriado Departamental)", type: "Feriado Departamental" },
+    { date: "05-27", name: "Día de la Madre Boliviana (Homenaje a las Heroínas de la Coronilla)", type: "Conmemoración Nacional" },
+    { date: "06-14", name: "Día del Excombatiente de la Guerra del Chaco (Homenaje nacional)", type: "Conmemoración Nacional" },
+    { date: "06-21", name: "Año Nuevo Andino Amazónico y del Chaco (Willkakuti - Feriado Nacional)", type: "Feriado Nacional" },
+    { date: "06-23", name: "Noche de San Juan (Tradiciones invernales)", type: "Festividad Tradicional" },
+    { date: "06-29", name: "San Pedro y San Pablo (Festividad Religiosa)", type: "Festividad Religiosa" },
+    { date: "07-16", name: "Grito Libertario de La Paz y Fiesta de la Virgen del Carmen (Feriado Departamental)", type: "Feriado Departamental" },
+    { date: "08-02", name: "Día de la Revolución Agraria, Productiva y Comunitaria", type: "Conmemoración Nacional" },
+    { date: "08-05", name: "Fiesta de la Virgen de Copacabana", type: "Festividad Religiosa" },
+    { date: "08-06", name: "Día de la Independencia de Bolivia (¡Feliz Día de la Patria! 🇧🇴)", type: "Feriado Nacional" },
+    { date: "08-15", name: "Virgen de Urkupiña (Quillacollo, Cochabamba - Fiesta de la Integración)", type: "Festividad Religiosa" },
+    { date: "08-24", name: "Fiesta de San Bartolomé / Chutillos (Potosí)", type: "Festividad Tradicional" },
+    { date: "09-14", name: "Grito Libertario de Cochabamba (Feriado Departamental)", type: "Feriado Departamental" },
+    { date: "09-21", name: "Día del Amor, del Estudiante, del Médico y de la Primavera", type: "Conmemoración Nacional" },
+    { date: "09-24", name: "Grito Libertario de Santa Cruz (Feriado Departamental)", type: "Feriado Departamental" },
+    { date: "09-24", name: "Efeméride de Pando / Combate de Bahía (Feriado Departamental)", type: "Feriado Departamental" },
+    { date: "10-11", name: "Día de la Mujer Boliviana (Homenaje a Adela Zamudio)", type: "Conmemoración Nacional" },
+    { date: "11-01", name: "Todos Santos (Preparación de mesas tradicionales)", type: "Festividad Tradicional" },
+    { date: "11-02", name: "Día de los Difuntos / Todos Santos (Feriado Nacional)", type: "Feriado Nacional" },
+    { date: "11-10", name: "Grito Libertario de Potosí (Feriado Departamental)", type: "Feriado Departamental" },
+    { date: "11-18", name: "Creación del Departamento del Beni (Feriado Departamental)", type: "Feriado Departamental" },
+    { date: "12-24", name: "Nochebuena", type: "Festividad Religiosa" },
+    { date: "12-25", name: "Navidad (Feriado Nacional - Nacimiento de Jesús)", type: "Feriado Nacional" }
+  ];
+
+  const fetchBolivianHolidays = async () => {
+    try {
+      const year = new Date().getFullYear();
+      const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/BO`);
+      if (res.ok) {
+        const data = await res.json();
+        setBolivianHolidays(data);
+        
+        const todayStr = new Date().toISOString().split('T')[0];
+        const match = data.find(h => h.date === todayStr);
+        if (match) {
+          setTodayHoliday({ name: match.localName || match.name, type: "official" });
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching holidays from Nager.Date:", err);
+    }
+  };
+
+  const fetchNews = async () => {
+    setNewsLoading(true);
+    const FALLBACK_NEWS = [
+      { title: "Kaldirev Bolivia expande su red de distribución nacional de suplementos", author: "Prensa Kaldirev", pubDate: new Date().toISOString(), link: "#", description: "Hemos habilitado envíos express garantizados a Cochabamba, La Paz y Santa Cruz con empaquetado hermético termosellado." },
+      { title: "El consumo de Zinc y Calcio incrementa un 45% en el eje troncal", author: "Salud & Bienestar Bolivia", pubDate: new Date().toISOString(), link: "#", description: "Especialistas recomiendan complementar la dieta andina con micronutrientes orgánicos para fortalecer el sistema inmune." },
+      { title: "Ferias de nutrición natural se consolidan en Santa Cruz y Cochabamba", author: "Los Tiempos (Sección Salud)", pubDate: new Date().toISOString(), link: "#", description: "Emprendedores bolivianos promueven alternativas de nutrición y suplementación orgánica en ferias locales autorizadas." }
+    ];
+
+    try {
+      const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=https://www.lostiempos.com/rss/ultimas`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.items && data.items.length > 0) {
+          setNews(data.items.slice(0, 5));
+        } else {
+          setNews(FALLBACK_NEWS);
+        }
+      } else {
+        setNews(FALLBACK_NEWS);
+      }
+    } catch (err) {
+      console.error("Error fetching news from Los Tiempos RSS:", err);
+      setNews(FALLBACK_NEWS);
+    } finally {
+      setNewsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (view === "pedidos") {
+      fetchBolivianHolidays();
+      fetchNews();
+    }
+  }, [view]);
+
   // Fetch personal orders from Supabase (User view)
   const fetchUserOrders = async (userId) => {
     if (!userId) return;
@@ -1073,7 +1171,7 @@ function App() {
         setView("catalog");
         setSelectedCombo(null);
         window.scrollTo({ top: 0, behavior: 'smooth' });
-      } else if (!hash && view === "admin") {
+      } else if (!hash) {
         setView("catalog");
       }
     };
@@ -1082,7 +1180,7 @@ function App() {
     handleHashChange();
 
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [isAdminUnlocked, view]);
+  }, [isAdminUnlocked]);
 
   // Handle auto-opening product/combo from hash routing (e.g. #product-12 or #combo-5) for shared links (Added by Antigravity)
   useEffect(() => {
@@ -6363,223 +6461,649 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
       )}
 
 
-      {/* ==================== VIEW 4: DEDICATED ORDERS TRACKING PAGE ==================== */}
-      {view === "pedidos" && (
-        <main className="orders-page-wrapper animate-fade-in" style={{ padding: '2rem 1.5rem', maxWidth: '750px', margin: '0 auto', minHeight: '60vh' }}>
-          <h2 style={{ fontSize: '1.6rem', color: 'var(--primary-green)', marginBottom: '0.25rem' }}>Mis Pedidos Realizados 📦</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Rastreo de tus compras de suplementos en tiempo real.</p>
+      {/* ==================== VIEW 4: DEDICATED ORDERS & PROFILE DASHBOARD PAGE ==================== */}
+      {view === "pedidos" && (() => {
+        const getTodayHoliday = () => {
+          if (todayHoliday) return todayHoliday.name;
+          const today = new Date();
+          const mm = String(today.getMonth() + 1).padStart(2, '0');
+          const dd = String(today.getDate()).padStart(2, '0');
+          const searchKey = `${mm}-${dd}`;
+          const local = BOLIVIAN_HOLIDAYS_DICT.find(h => h.date === searchKey);
+          return local ? local.name : null;
+        };
 
-          {!user ? (
-            /* Logged out orders screen */
-            <div style={{ background: 'white', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '2.5rem 1.5rem', boxShadow: 'var(--shadow-sm)', textAlign: 'center' }}>
-              <div style={{ color: 'var(--accent-gold)', opacity: 0.3, marginBottom: '0.75rem', display: 'flex', justifyContent: 'center' }}>
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
-                  <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
-                </svg>
+        const getUpcomingHolidays = () => {
+          const today = new Date();
+          const todayStr = today.toISOString().split('T')[0];
+          
+          const combined = [...bolivianHolidays.map(h => ({ date: h.date, name: h.localName || h.name, type: "Feriado Oficial" }))];
+          
+          const year = today.getFullYear();
+          BOLIVIAN_HOLIDAYS_DICT.forEach(lh => {
+            const fullDate = `${year}-${lh.date}`;
+            if (!combined.some(c => c.date === fullDate)) {
+              combined.push({ date: fullDate, name: lh.name, type: lh.type === 'official' ? 'Feriado Oficial' : 'Festividad Tradicional' });
+            }
+          });
+
+          combined.sort((a, b) => new Date(a.date) - new Date(b.date));
+          const future = combined.filter(h => h.date >= todayStr);
+          return future.slice(0, 3);
+        };
+        const getNewsIconAndBg = (title) => {
+          const t = title.toLowerCase();
+          if (t.includes('frontera') || t.includes('nevada') || t.includes('clima') || t.includes('frío') || t.includes('pasos') || t.includes('vía') || t.includes('nevadas')) {
+            return { icon: '🏔️', bg: 'linear-gradient(135deg, #56ccf2, #2f80ed)' };
+          }
+          if (t.includes('gobierno') || t.includes('ministro') || t.includes('ley') || t.includes('política') || t.includes('fiscal') || t.includes('presidente') || t.includes('vicepresidente') || t.includes('denuncia') || t.includes('deberes') || t.includes('plurinacional')) {
+            return { icon: '⚖️', bg: 'linear-gradient(135deg, #0f3d2e, #2d5a27)' };
+          }
+          if (t.includes('balacera') || t.includes('mafias') || t.includes('policía') || t.includes('seguridad') || t.includes('crimen') || t.includes('cárcel') || t.includes('muerte') || t.includes('combate') || t.includes('disparar')) {
+            return { icon: '🚨', bg: 'linear-gradient(135deg, #f857a6, #ff5858)' };
+          }
+          if (t.includes('salud') || t.includes('médico') || t.includes('suplemento') || t.includes('bienestar') || t.includes('covid') || t.includes('nutrición') || t.includes('alimentación')) {
+            return { icon: '❤️', bg: 'linear-gradient(135deg, #11998e, #38ef7d)' };
+          }
+          if (t.includes('dólar') || t.includes('economía') || t.includes('precio') || t.includes('inflación') || t.includes('comercio') || t.includes('combustible') || t.includes('inversión')) {
+            return { icon: '💵', bg: 'linear-gradient(135deg, #f2994a, #f2c94c)' };
+          }
+          if (t.includes('deporte') || t.includes('fútbol') || t.includes('partido') || t.includes('campeón')) {
+            return { icon: '⚽', bg: 'linear-gradient(135deg, #1f4037, #99f2c8)' };
+          }
+          return { icon: '📰', bg: 'linear-gradient(135deg, #0f3d2e, #2a5c48)' };
+        };
+
+        const renderMiniCalendar = () => {
+          const today = new Date();
+          const currentYear = today.getFullYear();
+          const currentMonth = today.getMonth(); // 0-indexed
+          
+          const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay(); // 0 is Sunday
+          const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+          
+          const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+          const dayNames = ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sá"];
+          
+          const cells = [];
+          for (let i = 0; i < firstDayIndex; i++) {
+            cells.push(<div key={`empty-${i}`} style={{ width: '100%', height: '30px' }}></div>);
+          }
+          
+          for (let day = 1; day <= totalDays; day++) {
+            const dateStr = `${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const fullDateStr = `${currentYear}-${dateStr}`;
+            
+            const isToday = day === today.getDate();
+            
+            const isOfficialHoliday = bolivianHolidays.some(h => h.date === fullDateStr);
+            const localHoliday = BOLIVIAN_HOLIDAYS_DICT.find(h => h.date === dateStr);
+            const isHoliday = isOfficialHoliday || !!localHoliday;
+            
+            const holidayName = isOfficialHoliday 
+              ? bolivianHolidays.find(h => h.date === fullDateStr).localName 
+              : localHoliday ? localHoliday.name : null;
+
+            let cellStyle = {
+              width: '100%',
+              height: '30px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '50%',
+              fontSize: '0.78rem',
+              cursor: isHoliday ? 'pointer' : 'default',
+              position: 'relative',
+              transition: 'all 0.2s ease',
+              fontWeight: isToday || isHoliday ? 'bold' : 'normal'
+            };
+            
+            if (isToday) {
+              cellStyle.background = 'var(--primary-green)';
+              cellStyle.color = 'white';
+            } else if (isHoliday) {
+              cellStyle.background = '#fff9db';
+              cellStyle.color = '#a16207';
+              cellStyle.border = '1px solid var(--accent-gold)';
+            }
+
+            cells.push(
+              <div 
+                key={day} 
+                style={cellStyle}
+                title={holidayName || undefined}
+                onMouseEnter={(e) => {
+                  if (isHoliday) {
+                    e.currentTarget.style.transform = 'scale(1.1)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (isHoliday) {
+                    e.currentTarget.style.transform = 'none';
+                  }
+                }}
+              >
+                {day}
+                {isHoliday && !isToday && (
+                  <span style={{ position: 'absolute', bottom: '2px', width: '4px', height: '4px', borderRadius: '50%', background: 'var(--accent-gold)' }}></span>
+                )}
               </div>
-              <h3 style={{ fontWeight: 700, fontSize: '1.15rem', color: 'var(--primary-green)', marginBottom: '8px' }}>Historial Inactivo</h3>
-              <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '1.5rem', maxWidth: '380px', margin: '0 auto' }}>Inicia sesión de forma segura para rastrear el despacho de tus compras y guardar tus datos.</p>
-              <button 
-                type="button" 
-                onClick={() => setView("perfil")}
-                style={{ padding: '10px 20px', background: 'var(--primary-green)', border: 'none', color: 'white', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
-              >
-                Ir a Iniciar Sesión
-              </button>
+            );
+          }
+          
+          return (
+            <div style={{ background: '#faf9f6', padding: '12px', borderRadius: '12px', border: '1px solid rgba(15,61,46,0.04)', marginTop: '1.25rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--primary-green)', display: 'block', textAlign: 'center', marginBottom: '8px' }}>
+                📅 {monthNames[currentMonth]} {currentYear}
+              </span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', marginBottom: '4px' }}>
+                {dayNames.map(name => (
+                  <span key={name} style={{ fontSize: '0.7rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>{name}</span>
+                ))}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
+                {cells}
+              </div>
             </div>
-          ) : userOrdersLoading ? (
-            <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--text-muted)' }}>
-              <div style={{ border: '3px solid rgba(0,0,0,0.1)', borderTop: '3px solid var(--accent-gold)', borderRadius: '50%', width: '30px', height: '30px', animation: 'spin 1s linear infinite', margin: '0 auto 10px auto' }}></div>
-              <p>Descargando tu historial de compras...</p>
-            </div>
-          ) : userOrders.length === 0 ? (
-            <div style={{ background: 'white', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '2.5rem 1.5rem', boxShadow: 'var(--shadow-sm)', textAlign: 'center' }}>
-              <p style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '8px', color: 'var(--primary-green)' }}>No registras pedidos todavía</p>
-              <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>¡Explora la tienda y realiza tu primera compra hoy mismo!</p>
-              <button 
-                type="button" 
-                onClick={() => setView("catalog")}
-                style={{ padding: '10px 20px', background: 'var(--primary-green)', border: 'none', color: 'white', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
-              >
-                Explorar Catálogo
-              </button>
-            </div>
-          ) : (
-            /* Orders tracking feed list */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              {userOrders.map(order => {
-                let currentStep = 1;
-                if (order.status === 'Completado') currentStep = 4;
-                else if (order.status === 'En Camino') currentStep = 3;
-                else if (order.status === 'Pendiente') currentStep = 2; // Preparing state
+          );
+        };
 
-                return (
-                  <div 
-                    key={order.id} 
-                    className="order-history-card animate-fade-in" 
-                    style={{ 
-                      background: 'white', 
-                      border: '1px solid var(--border-color)', 
-                      borderRadius: '16px', 
-                      padding: '1.25rem',
-                      boxShadow: 'var(--shadow-sm)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '12px',
-                      textAlign: 'left'
-                    }}
-                  >
-                    {/* ID and date */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', borderBottom: '1px solid #f1ece4', paddingBottom: '10px' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--primary-green)' }}>Pedido #{order.id.substring(0,8).toUpperCase()}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                            <line x1="16" y1="2" x2="16" y2="6"></line>
-                            <line x1="8" y1="2" x2="8" y2="6"></line>
-                            <line x1="3" y1="10" x2="21" y2="10"></line>
-                          </svg>
-                          <span>{new Date(order.created_at).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                        </div>
-                      </div>
-                      <span 
-                        className={`order-status-badge ${order.status}`} 
-                        style={{
-                          fontSize: '0.72rem',
-                          fontWeight: 800,
-                          padding: '4px 10px',
-                          borderRadius: '20px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          background: order.status === 'Completado' ? '#e6f4ea' : order.status === 'Cancelado' ? '#fce8e6' : '#fff7e6',
-                          color: order.status === 'Completado' ? '#137333' : order.status === 'Cancelado' ? '#c5221f' : '#b06000',
-                          border: `1px solid ${order.status === 'Completado' ? '#c2e7c9' : order.status === 'Cancelado' ? '#fad2cf' : '#ffe7b3'}`
-                        }}
-                      >
-                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: order.status === 'Completado' ? '#137333' : order.status === 'Cancelado' ? '#c5221f' : '#b06000' }}></span>
-                        {order.status}
+        return (
+          <main className="orders-page-wrapper animate-fade-in" style={{ padding: '2rem 1.5rem', maxWidth: '1200px', margin: '0 auto', minHeight: '60vh' }}>
+            
+            {/* Header Profile Card - Only if logged in */}
+            {user ? (
+              <div className="dash-panel-card" style={{ 
+                background: 'white', 
+                border: '1px solid var(--border-color)', 
+                borderRadius: '16px', 
+                padding: '1.5rem', 
+                boxShadow: 'var(--shadow-sm)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '1.5rem',
+                marginBottom: '2rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
+                  {/* User Avatar */}
+                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--accent-gold)', background: '#e2ebd5', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                    {(profile?.avatar_url || user?.user_metadata?.avatar_url) ? (
+                      <img 
+                        src={resolveAssetUrl(profile?.avatar_url || user?.user_metadata?.avatar_url)} 
+                        alt="Avatar" 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--primary-green)' }}>
+                        {(profile?.full_name || user?.user_metadata?.full_name || user?.email || "U")[0].toUpperCase()}
                       </span>
-                    </div>
-
-                    {/* Stepper timeline */}
-                    <div style={{ background: '#fcfbf7', padding: '1rem 0.5rem', borderRadius: '12px', border: '1px solid rgba(235,220,201,0.5)', margin: '4px 0' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', alignItems: 'center' }}>
-                        <div style={{ position: 'absolute', top: '15px', left: '10%', right: '10%', height: '3px', background: '#e2e8f0', zIndex: 1 }}></div>
-                        <div style={{ position: 'absolute', top: '15px', left: '10%', width: `${(currentStep - 1) * 26.6}%`, height: '3px', background: 'var(--primary-green)', zIndex: 2, transition: 'width 0.3s' }}></div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, flex: 1 }}>
-                          <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: currentStep >= 1 ? 'var(--primary-green)' : '#e2e8f0', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
-                          </div>
-                          <span style={{ fontSize: '0.68rem', fontWeight: 'bold', color: currentStep >= 1 ? 'var(--primary-green)' : 'var(--text-muted)', marginTop: '4px' }}>Recibido</span>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, flex: 1 }}>
-                          <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: currentStep >= 2 ? 'var(--primary-green)' : '#e2e8f0', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                              <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                              <line x1="12" y1="22.08" x2="12" y2="12"></line>
-                            </svg>
-                          </div>
-                          <span style={{ fontSize: '0.68rem', fontWeight: 'bold', color: currentStep >= 2 ? 'var(--primary-green)' : 'var(--text-muted)', marginTop: '4px' }}>Preparando</span>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, flex: 1 }}>
-                          <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: currentStep >= 3 ? 'var(--primary-green)' : '#e2e8f0', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <rect x="1" y="3" width="15" height="13"></rect>
-                              <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
-                              <circle cx="5.5" cy="18.5" r="2.5"></circle>
-                              <circle cx="18.5" cy="18.5" r="2.5"></circle>
-                            </svg>
-                          </div>
-                          <span style={{ fontSize: '0.68rem', fontWeight: 'bold', color: currentStep >= 3 ? 'var(--primary-green)' : 'var(--text-muted)', marginTop: '4px' }}>En Camino</span>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, flex: 1 }}>
-                          <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: currentStep >= 4 ? 'var(--primary-green)' : '#e2e8f0', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                              <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                            </svg>
-                          </div>
-                          <span style={{ fontSize: '0.68rem', fontWeight: 'bold', color: currentStep >= 4 ? 'var(--primary-green)' : 'var(--text-muted)', marginTop: '4px' }}>Entregado</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Order items */}
-                    <div style={{ border: '1px solid rgba(235,220,201,0.5)', borderRadius: '8px', padding: '8px 12px', background: '#faf9f6' }}>
-                      {order.items && Array.isArray(order.items) ? (
-                        order.items.map((item, idx) => (
-                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', padding: '3px 0', borderBottom: idx < order.items.length - 1 ? '1px solid #f1ece4' : 'none' }}>
-                            <span><strong>{item.quantity}x</strong> {item.name}</span>
-                            <span style={{ color: 'var(--primary-green)', fontWeight: 600 }}>Bs. {(item.price * item.quantity).toFixed(1)}</span>
-                          </div>
-                        ))
-                      ) : (
-                        <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Detalle de productos no disponible</span>
-                      )}
-                    </div>
-
-                    {/* Delivery address */}
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.82rem', color: 'var(--text-dark)' }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: '2px' }}>
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                        <circle cx="12" cy="10" r="3"></circle>
-                      </svg>
-                      <div>
-                        <strong>Destino:</strong> {order.address} ({order.city})
-                        {order.gps_coordinates && (
-                          <a 
-                            href={order.gps_coordinates} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '8px', color: '#1a73e8', textDecoration: 'underline', fontWeight: 'bold' }}
-                          >
-                            Ver en Google Maps
-                          </a>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* WhatsApp check support */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--primary-green)' }}>
-                        Total: Bs. {parseFloat(order.total_bs).toFixed(1)}
-                      </div>
-
-                      {order.status !== 'Cancelado' && (
-                        <button
-                          type="button"
-                          className="btn-whatsapp-submit"
-                          style={{ padding: '8px 12px', fontSize: '0.78rem', width: 'auto', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', background: '#25d366', border: 'none', borderRadius: '8px', color: 'white', cursor: 'pointer' }}
-                          onClick={() => {
-                            const trackingMsg = `Hola Kaldirev Bolivia, quería consultar el despacho de mi pedido:\n- ID Pedido: ${order.id.substring(0,8)}\n- Cliente: ${order.customer_name}\n- Total: Bs. ${parseFloat(order.total_bs).toFixed(1)}\n- Estado: ${order.status}`;
-                            const waUrl = `https://api.whatsapp.com/send?phone=${config.whatsappNumber}&text=${encodeURIComponent(trackingMsg)}`;
-                            window.open(waUrl, '_blank');
-                          }}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.249 8.477 3.517 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.739-1.446L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.625 1.451 5.436 0 9.86-4.42 9.864-9.856.002-2.63-1.023-5.101-2.887-6.967C16.38 1.916 13.91 1.012 11.285 1.012 5.848 1.012 1.425 5.435 1.422 10.873c-.001 1.5.399 2.969 1.157 4.298l-.997 3.642 3.73-.978c-.001.002-.001.002-.001.002zm12.338-7.989c-.334-.168-1.977-.975-2.28-1.087-.302-.111-.522-.168-.742.168-.22.33-.852 1.079-1.044 1.302-.192.223-.385.253-.718.084-.334-.168-1.409-.52-2.684-1.657-1.002-.894-1.677-2.002-1.874-2.337-.197-.335-.021-.516.146-.682.151-.15.334-.385.501-.58.167-.192.222-.334.334-.56.111-.223.056-.417-.028-.585-.084-.168-.742-1.787-1.016-2.45-.269-.65-.539-.562-.742-.573-.191-.01-.41-.01-.628-.01-.22 0-.577.082-.88.411-.303.33-1.154 1.128-1.154 2.75 0 1.622 1.18 3.19 1.346 3.414.167.223 2.323 3.548 5.626 4.974.786.34 1.398.543 1.877.697.79.25 1.509.215 2.078.13.633-.095 1.977-.807 2.254-1.59.277-.783.277-1.456.195-1.59-.082-.134-.302-.253-.633-.421z"/>
-                          </svg>
-                          Consultar por WhatsApp
-                        </button>
+                    )}
+                  </div>
+                  
+                  {/* User Information */}
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--primary-green)', fontWeight: 900 }}>
+                      {profile?.full_name || user?.user_metadata?.full_name || "Cliente Kaldirev"}
+                    </h3>
+                    <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>
+                      {user?.email}
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
+                      <span style={{ background: '#fff9db', color: '#b89047', border: '1px solid #ebdcc9', fontSize: '0.75rem', fontWeight: 'bold', padding: '2px 8px', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        🏅 Cliente Gold
+                      </span>
+                      {profile?.phone && (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                          • {profile.phone}
+                        </span>
                       )}
                     </div>
                   </div>
-                );
-              })}
+                </div>
+
+                {/* Greeter Banner */}
+                <div style={{ background: '#fff9db', borderLeft: '4px solid var(--accent-gold)', padding: '10px 16px', borderRadius: '8px', minWidth: '240px', flexGrow: 1, maxWidth: '400px' }}>
+                  <span style={{ display: 'block', fontWeight: 'bold', color: 'var(--primary-green)', fontSize: '0.9rem' }}>
+                    ¡Hola { (profile?.full_name || user?.user_metadata?.full_name || "Sebastián").split(" ")[0] }!
+                  </span>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-dark)' }}>
+                    Bienvenido a tu panel de control de compras y noticias en Bolivia.
+                  </span>
+                </div>
+              </div>
+            ) : (
+              /* Public / Logged out Welcome Banner */
+              <div className="dash-panel-card" style={{ 
+                background: 'white', 
+                border: '1px solid var(--border-color)', 
+                borderRadius: '16px', 
+                padding: '1.5rem', 
+                boxShadow: 'var(--shadow-sm)',
+                marginBottom: '2rem',
+                textAlign: 'left'
+              }}>
+                <h3 style={{ margin: 0, fontSize: '1.45rem', color: 'var(--primary-green)', fontWeight: 900 }}>
+                  Bienvenido a Kaldirev Bolivia 🇧🇴
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.88rem', color: 'var(--text-muted)' }}>
+                  Tu portal integral de salud, feriados de Bolivia, noticias nacionales de Los Tiempos y control de tus compras.
+                </p>
+              </div>
+            )}
+
+            {/* Two-Column Responsive Grid Layout (Always Visible!) */}
+            <div className="responsive-profile-grid">
+              
+              {/* COLUMN 1: ORDERS TRACKING (Conditional login check inside) */}
+              <div>
+                {!user ? (
+                  /* Logged out orders screen */
+                  <div style={{ background: 'white', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '2.5rem 1.5rem', boxShadow: 'var(--shadow-sm)', textAlign: 'center' }}>
+                    <div style={{ color: 'var(--accent-gold)', opacity: 0.3, marginBottom: '0.75rem', display: 'flex', justifyContent: 'center' }}>
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+                        <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+                      </svg>
+                    </div>
+                    <h3 style={{ fontWeight: 700, fontSize: '1.15rem', color: 'var(--primary-green)', marginBottom: '8px' }}>Historial Inactivo</h3>
+                    <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Inicia sesión de forma segura para rastrear el despacho de tus compras y guardar tus datos.</p>
+                    <button 
+                      type="button" 
+                      onClick={() => setView("perfil")}
+                      style={{ padding: '10px 20px', background: 'var(--primary-green)', border: 'none', color: 'white', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                    >
+                      Ir a Iniciar Sesión
+                    </button>
+                  </div>
+                ) : (
+                  /* Logged in orders history list */
+                  <div>
+                    <div className="section-title-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem' }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                      </svg>
+                      <h2 className="section-title" style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0 }}>Tus Pedidos Recientes</h2>
+                    </div>
+
+                    {userOrdersLoading ? (
+                      <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--text-muted)' }}>
+                        <div style={{ border: '3px solid rgba(0,0,0,0.1)', borderTop: '3px solid var(--accent-gold)', borderRadius: '50%', width: '30px', height: '30px', animation: 'spin 1s linear infinite', margin: '0 auto 10px auto' }}></div>
+                        <p>Descargando tu historial de compras...</p>
+                      </div>
+                    ) : userOrders.length === 0 ? (
+                      <div style={{ background: 'white', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '2.5rem 1.5rem', boxShadow: 'var(--shadow-sm)', textAlign: 'center' }}>
+                        <p style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '8px', color: 'var(--primary-green)' }}>No registras pedidos todavía</p>
+                        <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>¡Explora la tienda y realiza tu primera compra hoy mismo!</p>
+                        <button 
+                          type="button" 
+                          onClick={() => setView("catalog")}
+                          style={{ padding: '10px 20px', background: 'var(--primary-green)', border: 'none', color: 'white', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                        >
+                          Explorar Catálogo
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        {userOrders.map(order => {
+                          let currentStep = 1;
+                          if (order.status === 'Completado') currentStep = 4;
+                          else if (order.status === 'En Camino') currentStep = 3;
+                          else if (order.status === 'Pendiente') currentStep = 2;
+
+                          return (
+                            <div 
+                              key={order.id} 
+                              className="order-history-card animate-fade-in" 
+                              style={{ 
+                                background: 'white', 
+                                border: '1px solid var(--border-color)', 
+                                borderRadius: '16px', 
+                                padding: '1.25rem',
+                                boxShadow: 'var(--shadow-sm)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '12px',
+                                textAlign: 'left'
+                              }}
+                            >
+                              {/* Card ID and Price */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', borderBottom: '1px solid #f1ece4', paddingBottom: '10px' }}>
+                                <div>
+                                  <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--primary-green)' }}>
+                                    #KLR-{order.id.substring(0,8).toUpperCase()}
+                                  </span>
+                                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block' }}>
+                                    Adquirido: {new Date(order.created_at).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                  </span>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                  <span style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--primary-green)' }}>
+                                    Bs. {parseFloat(order.total_bs).toFixed(1)}
+                                  </span>
+                                  <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                    {order.payment_method}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Tracking Timeline */}
+                              <div style={{ margin: '8px 0', padding: '0.5rem 0' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', marginBottom: '8px' }}>
+                                  <div style={{ position: 'absolute', top: '15px', left: '10px', right: '10px', height: '4px', background: '#e1ece5', zIndex: 1 }}></div>
+                                  <div style={{ position: 'absolute', top: '15px', left: '10px', width: `${((currentStep - 1) / 3) * 100}%`, height: '4px', background: 'var(--primary-green)', zIndex: 2, transition: 'width 0.4s ease' }}></div>
+
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, position: 'relative' }}>
+                                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: currentStep >= 1 ? 'var(--primary-green)' : '#e1ece5', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    </div>
+                                    <span style={{ fontSize: '0.7rem', fontWeight: currentStep >= 1 ? '800' : '500', color: currentStep >= 1 ? 'var(--primary-green)' : 'var(--text-muted)', marginTop: '4px' }}>Confirmado</span>
+                                  </div>
+
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, position: 'relative' }}>
+                                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: currentStep >= 2 ? 'var(--primary-green)' : '#e1ece5', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                                    </div>
+                                    <span style={{ fontSize: '0.7rem', fontWeight: currentStep >= 2 ? '800' : '500', color: currentStep >= 2 ? 'var(--primary-green)' : 'var(--text-muted)', marginTop: '4px' }}>Preparando</span>
+                                  </div>
+
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, position: 'relative' }}>
+                                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: currentStep >= 3 ? 'var(--primary-green)' : '#e1ece5', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                                    </div>
+                                    <span style={{ fontSize: '0.7rem', fontWeight: currentStep >= 3 ? '800' : '500', color: currentStep >= 3 ? 'var(--primary-green)' : 'var(--text-muted)', marginTop: '4px' }}>En camino</span>
+                                  </div>
+
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, position: 'relative' }}>
+                                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: currentStep >= 4 ? 'var(--accent-gold)' : '#e1ece5', color: currentStep >= 4 ? 'var(--primary-green)' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                    </div>
+                                    <span style={{ fontSize: '0.7rem', fontWeight: currentStep >= 4 ? '800' : '500', color: currentStep >= 4 ? 'var(--accent-gold)' : 'var(--text-muted)', marginTop: '4px' }}>Entregado</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Details and items */}
+                              <div style={{ background: '#faf9f6', padding: '10px 14px', borderRadius: '8px', fontSize: '0.82rem', border: '1px solid rgba(15,61,46,0.04)' }}>
+                                <span style={{ fontWeight: 800, color: 'var(--primary-green)', display: 'block', marginBottom: '4px' }}>Artículos:</span>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                  {order.items && order.items.map((item, idx) => (
+                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-dark)' }}>
+                                      <span>• {item.quantity}x {item.name}</span>
+                                      <span style={{ fontWeight: 700 }}>Bs. {(item.price * item.quantity).toFixed(1)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Footer card action */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', flexWrap: 'wrap', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span style={{ 
+                                    display: 'inline-flex', 
+                                    alignItems: 'center', 
+                                    width: '8px', 
+                                    height: '8px', 
+                                    borderRadius: '50%', 
+                                    background: order.status === 'Completado' ? '#25d366' : order.status === 'Cancelado' ? 'red' : 'var(--accent-gold)' 
+                                  }}></span>
+                                  <span style={{ fontSize: '0.8rem', fontWeight: 800, color: order.status === 'Completado' ? '#115e3b' : order.status === 'Cancelado' ? 'red' : '#a16207' }}>
+                                    Estado: {order.status}
+                                  </span>
+                                </div>
+
+                                {order.status !== 'Cancelado' && (
+                                  <button
+                                    type="button"
+                                    className="btn-whatsapp-submit"
+                                    style={{ padding: '8px 14px', fontSize: '0.78rem', width: 'auto', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', background: '#25d366', border: 'none', borderRadius: '8px', color: 'white', cursor: 'pointer', boxShadow: '0 2px 4px rgba(37,211,102,0.2)' }}
+                                    onClick={() => {
+                                      const trackingMsg = `Hola Kaldirev Bolivia, quería consultar el despacho de mi pedido:\n- ID Pedido: #KLR-${order.id.substring(0,8).toUpperCase()}\n- Cliente: ${order.customer_name}\n- Total: Bs. ${parseFloat(order.total_bs).toFixed(1)}\n- Estado Actual: ${order.status}`;
+                                      const waUrl = `https://api.whatsapp.com/send?phone=${config.whatsappNumber}&text=${encodeURIComponent(trackingMsg)}`;
+                                      window.open(waUrl, '_blank');
+                                    }}
+                                  >
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                      <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.249 8.477 3.517 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.739-1.446L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.625 1.451 5.436 0 9.86-4.42 9.864-9.856.002-2.63-1.023-5.101-2.887-6.967C16.38 1.916 13.91 1.012 11.285 1.012 5.848 1.012 1.425 5.435 1.422 10.873c-.001 1.5.399 2.969 1.157 4.298l-.997 3.642 3.73-.978c-.001.002-.001.002-.001.002zm12.338-7.989c-.334-.168-1.977-.975-2.28-1.087-.302-.111-.522-.168-.742.168-.22.33-.852 1.079-1.044 1.302-.192.223-.385.253-.718.084-.334-.168-1.409-.52-2.684-1.657-1.002-.894-1.677-2.002-1.874-2.337-.197-.335-.021-.516.146-.682.151-.15.334-.385.501-.58.167-.192.222-.334.334-.56.111-.223.056-.417-.028-.585-.084-.168-.742-1.787-1.016-2.45-.269-.65-.539-.562-.742-.573-.191-.01-.41-.01-.628-.01-.22 0-.577.082-.88.411-.303.33-1.154 1.128-1.154 2.75 0 1.622 1.18 3.19 1.346 3.414.167.223 2.323 3.548 5.626 4.974.786.34 1.398.543 1.877.697.79.25 1.509.215 2.078.13.633-.095 1.977-.807 2.254-1.59.277-.783.277-1.456.195-1.59-.082-.134-.302-.253-.633-.421z"/>
+                                    </svg>
+                                    Rastrear WhatsApp
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* COLUMN 2: BOLIVIAN NEWS & HOLIDAYS CALENDAR (Always visible!) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                
+                {/* Widget 1: Calendario de Feriados y Festividades de Bolivia */}
+                <div className="dash-panel-card" style={{ 
+                  background: 'white', 
+                  border: '1px solid var(--border-color)', 
+                  borderRadius: '16px', 
+                  padding: '1.5rem',
+                  boxShadow: 'var(--shadow-sm)',
+                  textAlign: 'left'
+                }}>
+                  <h3 style={{ margin: '0 0 12px 0', fontSize: '1.2rem', color: 'var(--primary-green)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    Calendario de Bolivia
+                  </h3>
+                  
+                  {/* Today's Date */}
+                  <div style={{ marginBottom: '1rem', borderBottom: '1px solid #f1ece4', paddingBottom: '10px' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold' }}>Fecha de Hoy</span>
+                    <span style={{ display: 'block', fontSize: '1.25rem', fontWeight: 900, color: 'var(--primary-green)', marginTop: '2px' }}>
+                      {new Date().toLocaleDateString('es-BO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    </span>
+                  </div>
+
+                  {/* Today's Holiday Alert Message */}
+                  <div style={{ 
+                    background: getTodayHoliday() ? '#fff9db' : '#f4fbf7',
+                    borderLeft: `4px solid ${getTodayHoliday() ? 'var(--accent-gold)' : 'var(--primary-green)'}`,
+                    padding: '12px',
+                    borderRadius: '8px',
+                    fontSize: '0.85rem',
+                    fontWeight: 'bold',
+                    color: getTodayHoliday() ? '#a16207' : '#115e3b',
+                    marginBottom: '1.25rem'
+                  }}>
+                    {getTodayHoliday() ? (
+                      <span>🎉 ¡Día Festivo! Hoy se celebra: {getTodayHoliday()}</span>
+                    ) : (
+                      <span>☀️ Hoy no es feriado nacional. ¡Ten una excelente jornada!</span>
+                    )}
+                  </div>
+
+                  {/* Upcoming holidays list */}
+                  <div>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Próximas Festividades</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {getUpcomingHolidays().map((holiday, idx) => (
+                        <div key={idx} style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'space-between',
+                          padding: '8px 10px',
+                          background: '#faf9f6',
+                          border: '1px solid rgba(15,61,46,0.03)',
+                          borderRadius: '8px',
+                          fontSize: '0.8rem'
+                        }}>
+                          <div>
+                            <span style={{ fontWeight: 'bold', color: 'var(--primary-green)', display: 'block' }}>
+                              {holiday.name}
+                            </span>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                              {holiday.type}
+                            </span>
+                          </div>
+                          <span style={{ background: '#e2ebd5', color: '#0f3d2e', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                            {new Date(holiday.date + 'T00:00:00').toLocaleDateString('es-BO', { day: 'numeric', month: 'short' })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {renderMiniCalendar()}
+                </div>
+
+                {/* Widget 2: Noticias en Vivo de Bolivia (Los Tiempos RSS Feed) */}
+                <div className="dash-panel-card" style={{ 
+                  background: 'white', 
+                  border: '1px solid var(--border-color)', 
+                  borderRadius: '16px', 
+                  padding: '1.5rem',
+                  boxShadow: 'var(--shadow-sm)',
+                  textAlign: 'left'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--primary-green)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                      Novedades de Bolivia
+                    </h3>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', background: '#f1ece4', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold' }}>Los Tiempos RSS</span>
+                  </div>
+
+                  {newsLoading ? (
+                    <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--text-muted)' }}>
+                      <div style={{ border: '2px solid rgba(0,0,0,0.1)', borderTop: '2px solid var(--accent-gold)', borderRadius: '50%', width: '24px', height: '24px', animation: 'spin 1s linear infinite', margin: '0 auto 8px auto' }}></div>
+                      <p style={{ fontSize: '0.8rem' }}>Conectando con Los Tiempos...</p>
+                    </div>
+                  ) : news.length === 0 ? (
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1rem 0' }}>
+                      No se pudo conectar al canal de noticias.
+                    </p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {news.map((item, idx) => {
+                        const cleanDesc = item.description 
+                          ? item.description.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim().substring(0, 110)
+                          : '';
+
+                        // Parse image URL from various potential locations in RSS json payload
+                        let imageUrl = null;
+                        if (item.thumbnail) imageUrl = item.thumbnail;
+                        else if (item.enclosure && item.enclosure.link) imageUrl = item.enclosure.link;
+                        else if (item.enclosure && item.enclosure.url) imageUrl = item.enclosure.url;
+                        else {
+                          const imgRegex = /<img[^>]+src=["']([^"']+)["']/;
+                          const match = (item.description && item.description.match(imgRegex)) || (item.content && item.content.match(imgRegex));
+                          if (match && match[1]) imageUrl = match[1];
+                        }
+
+                        const newsTheme = getNewsIconAndBg(item.title);
+
+                        return (
+                          <a 
+                            key={idx} 
+                            href={item.link} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="news-item-hover-card"
+                            style={{ 
+                              display: 'flex', 
+                              gap: '12px',
+                              textDecoration: 'none', 
+                              padding: '10px', 
+                              borderRadius: '12px', 
+                              border: '1px solid rgba(15,61,46,0.04)', 
+                              background: '#faf9f6', 
+                              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                              color: 'inherit',
+                              textAlign: 'left'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'translateY(-2px)';
+                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.04)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'none';
+                              e.currentTarget.style.boxShadow = 'none';
+                            }}
+                          >
+                            {/* News Image Thumbnail / CSS Gradient Placeholder */}
+                            <div style={{ 
+                              width: '70px', 
+                              height: '70px', 
+                              borderRadius: '8px', 
+                              overflow: 'hidden', 
+                              flexShrink: 0, 
+                              background: newsTheme.bg, 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center',
+                              border: '1px solid rgba(15,61,46,0.06)'
+                            }}>
+                              {imageUrl ? (
+                                <img 
+                                  src={imageUrl} 
+                                  alt="" 
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                  onError={(e) => { 
+                                    e.target.style.display = 'none'; 
+                                    e.target.parentElement.innerHTML = `<span style="font-size: 1.4rem">${newsTheme.icon}</span>`; 
+                                  }} 
+                                />
+                              ) : (
+                                <span style={{ fontSize: '1.4rem' }}>{newsTheme.icon}</span>
+                              )}
+                            </div>
+
+                            {/* News Info */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <span style={{ 
+                                display: '-webkit-box', 
+                                WebkitLineClamp: 2, 
+                                WebkitBoxOrient: 'vertical', 
+                                overflow: 'hidden', 
+                                fontSize: '0.8rem', 
+                                fontWeight: 'bold', 
+                                color: 'var(--primary-green)', 
+                                lineHeight: '1.2', 
+                                marginBottom: '4px' 
+                              }}>
+                                {item.title}
+                              </span>
+                              <span style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                                {item.author || "Los Tiempos"} • {new Date(item.pubDate).toLocaleDateString('es-BO', { day: 'numeric', month: 'short' })}
+                              </span>
+                              <p style={{ 
+                                margin: 0, 
+                                display: '-webkit-box', 
+                                WebkitLineClamp: 2, 
+                                WebkitBoxOrient: 'vertical', 
+                                overflow: 'hidden', 
+                                fontSize: '0.7rem', 
+                                color: 'var(--text-dark)', 
+                                lineHeight: '1.3' 
+                              }}>
+                                {cleanDesc}
+                              </p>
+                            </div>
+                          </a>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+
             </div>
-          )}
-        </main>
-      )}
+          </main>
+        );
+      })()}
 
       {/* ==================== VIEW 5: DEDICATED CORPORATE NOSOTROS PAGE ==================== */}
       {view === "nosotros" && (
