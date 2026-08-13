@@ -713,12 +713,11 @@ function App() {
   // Google Sign-In helper
   const handleGoogleLogin = async () => {
     try {
-      const base = import.meta.env.BASE_URL || '/';
-      const cleanBase = base.startsWith('/') ? base : '/' + base;
+      const redirectUrl = window.location.href.split('#')[0].split('?')[0];
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + cleanBase
+          redirectTo: redirectUrl
         }
       });
       if (error) throw error;
@@ -1514,7 +1513,8 @@ function App() {
       // Save multiple images/videos
       if (resId && editingProduct.media_urls !== undefined) {
         // Clear existing product images
-        await supabase.from('product_images').delete().eq('product_id', resId);
+        const { error: deleteError } = await supabase.from('product_images').delete().eq('product_id', resId);
+        if (deleteError) throw deleteError;
         
         // Insert new ones
         const list = (editingProduct.media_urls || "")
@@ -1609,6 +1609,37 @@ function App() {
         .filter(url => url !== "");
       const filtered = current.filter((_, idx) => idx !== indexToRemove);
       return { ...prev, media_urls: filtered.join('\n') };
+    });
+  };
+
+  const makeProdCover = (indexToMakeCover) => {
+    setEditingProduct(prev => {
+      const allUrls = (prev.media_urls || "")
+        .split('\n')
+        .map(url => url.trim())
+        .filter(url => url !== "");
+      if (indexToMakeCover <= 0 || indexToMakeCover >= allUrls.length) return prev;
+      const item = allUrls[indexToMakeCover];
+      const remaining = allUrls.filter((_, idx) => idx !== indexToMakeCover);
+      const updated = [item, ...remaining];
+      return { ...prev, media_urls: updated.join('\n') };
+    });
+  };
+
+  const moveMediaInFilteredList = (filteredList, idxInFiltered, direction) => {
+    setEditingProduct(prev => {
+      const allUrls = (prev.media_urls || "")
+        .split('\n')
+        .map(url => url.trim())
+        .filter(url => url !== "");
+      const targetIdxInFiltered = idxInFiltered + direction;
+      if (targetIdxInFiltered < 0 || targetIdxInFiltered >= filteredList.length) return prev;
+      const indexA = filteredList[idxInFiltered].index;
+      const indexB = filteredList[targetIdxInFiltered].index;
+      const temp = allUrls[indexA];
+      allUrls[indexA] = allUrls[indexB];
+      allUrls[indexB] = temp;
+      return { ...prev, media_urls: allUrls.join('\n') };
     });
   };
 
@@ -3090,21 +3121,57 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                           prodImages.map(({ url, index }, idx) => {
                                             const isCover = index === 0; // First URL overall is cover
                                             return (
-                                              <div key={idx} style={{ position: 'relative', width: '90px', height: '90px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
-                                                <img src={resolveAssetUrl(url)} alt="Vista previa" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                                {isCover && (
-                                                  <span style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'var(--accent-gold)', color: 'var(--primary-green)', fontSize: '0.65rem', fontWeight: 900, textAlign: 'center', padding: '2px 0', textTransform: 'uppercase' }}>
-                                                    Portada
-                                                  </span>
-                                                )}
-                                                <button 
-                                                  type="button" 
-                                                  onClick={() => removeProdMedia(index)} 
-                                                  style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(239, 68, 68, 0.9)', color: 'white', border: 'none', borderRadius: '50%', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
-                                                  title="Eliminar"
-                                                >
-                                                  ×
-                                                </button>
+                                              <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                                                <div style={{ position: 'relative', width: '100px', height: '100px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+                                                  <img src={resolveAssetUrl(url)} alt="Vista previa" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                                  {isCover && (
+                                                    <span style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'var(--accent-gold)', color: 'var(--primary-green)', fontSize: '0.65rem', fontWeight: 900, textAlign: 'center', padding: '2px 0', textTransform: 'uppercase' }}>
+                                                      Portada
+                                                    </span>
+                                                  )}
+                                                  <button 
+                                                    type="button" 
+                                                    onClick={() => removeProdMedia(index)} 
+                                                    style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(239, 68, 68, 0.9)', color: 'white', border: 'none', borderRadius: '50%', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+                                                    title="Eliminar"
+                                                  >
+                                                    ×
+                                                  </button>
+                                                </div>
+                                                
+                                                {/* Controles de orden e imagen de portada */}
+                                                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                                  <button 
+                                                    type="button"
+                                                    onClick={() => moveMediaInFilteredList(prodImages, idx, -1)} 
+                                                    disabled={idx === 0} 
+                                                    style={{ border: '1px solid #ebdcc9', background: idx === 0 ? '#f0f0f0' : 'white', padding: '2px 6px', borderRadius: '4px', cursor: idx === 0 ? 'not-allowed' : 'pointer', fontSize: '0.7rem', color: idx === 0 ? '#aaa' : '#333' }}
+                                                    title="Mover Izquierda"
+                                                  >
+                                                    ◀
+                                                  </button>
+                                                  
+                                                  {!isCover && (
+                                                    <button 
+                                                      type="button"
+                                                      onClick={() => makeProdCover(index)} 
+                                                      style={{ border: '1px solid #ebdcc9', background: '#e2ebd5', color: '#0f3d2e', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 'bold' }}
+                                                      title="Hacer Portada (Principal)"
+                                                    >
+                                                      ⭐ Portada
+                                                    </button>
+                                                  )}
+                                                  
+                                                  <button 
+                                                    type="button"
+                                                    onClick={() => moveMediaInFilteredList(prodImages, idx, 1)} 
+                                                    disabled={idx === prodImages.length - 1} 
+                                                    style={{ border: '1px solid #ebdcc9', background: idx === prodImages.length - 1 ? '#f0f0f0' : 'white', padding: '2px 6px', borderRadius: '4px', cursor: idx === prodImages.length - 1 ? 'not-allowed' : 'pointer', fontSize: '0.7rem', color: idx === prodImages.length - 1 ? '#aaa' : '#333' }}
+                                                    title="Mover Derecha"
+                                                  >
+                                                    ▶
+                                                  </button>
+                                                </div>
                                               </div>
                                             );
                                           })
@@ -3171,16 +3238,40 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                           </div>
                                         ) : (
                                           prodVideos.map(({ url, index }, idx) => (
-                                            <div key={idx} style={{ position: 'relative', width: '90px', height: '90px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
-                                              <video src={resolveAssetUrl(url)} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                              <button 
-                                                type="button" 
-                                                onClick={() => removeProdMedia(index)} 
-                                                style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(239, 68, 68, 0.9)', color: 'white', border: 'none', borderRadius: '50%', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
-                                                title="Eliminar"
-                                              >
-                                                ×
-                                              </button>
+                                            <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                                              <div style={{ position: 'relative', width: '100px', height: '100px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+                                                <video src={resolveAssetUrl(url)} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                <button 
+                                                  type="button" 
+                                                  onClick={() => removeProdMedia(index)} 
+                                                  style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(239, 68, 68, 0.9)', color: 'white', border: 'none', borderRadius: '50%', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+                                                  title="Eliminar"
+                                                >
+                                                  ×
+                                                </button>
+                                              </div>
+                                              
+                                              {/* Controles de orden para videos */}
+                                              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                                <button 
+                                                  type="button"
+                                                  onClick={() => moveMediaInFilteredList(prodVideos, idx, -1)} 
+                                                  disabled={idx === 0} 
+                                                  style={{ border: '1px solid #ebdcc9', background: idx === 0 ? '#f0f0f0' : 'white', padding: '2px 6px', borderRadius: '4px', cursor: idx === 0 ? 'not-allowed' : 'pointer', fontSize: '0.7rem', color: idx === 0 ? '#aaa' : '#333' }}
+                                                  title="Mover Izquierda"
+                                                >
+                                                  ◀
+                                                </button>
+                                                <button 
+                                                  type="button"
+                                                  onClick={() => moveMediaInFilteredList(prodVideos, idx, 1)} 
+                                                  disabled={idx === prodVideos.length - 1} 
+                                                  style={{ border: '1px solid #ebdcc9', background: idx === prodVideos.length - 1 ? '#f0f0f0' : 'white', padding: '2px 6px', borderRadius: '4px', cursor: idx === prodVideos.length - 1 ? 'not-allowed' : 'pointer', fontSize: '0.7rem', color: idx === prodVideos.length - 1 ? '#aaa' : '#333' }}
+                                                  title="Mover Derecha"
+                                                >
+                                                  ▶
+                                                </button>
+                                              </div>
                                             </div>
                                           ))
                                         )}
@@ -4950,32 +5041,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             </div>
           )}
 
-          {/* Branch/City Stock Filter inside sidebar */}
-          <div className="sidebar-card branch-card">
-            <h4 className="sidebar-section-title">Tu Ciudad / Sucursal</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
-              <select 
-                className="form-select"
-                style={{ padding: '0.5rem', fontSize: '0.88rem', width: '100%', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'white' }}
-                value={selectedBranch?.id || ""}
-                onChange={(e) => {
-                  const bId = parseInt(e.target.value);
-                  const b = branches.find(branch => branch.id === bId);
-                  if (b) {
-                    setSelectedBranch(b);
-                    localStorage.setItem("user_selected_branch", JSON.stringify(b));
-                  }
-                }}
-              >
-                {branches.map(b => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
-              </select>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                📍 Costo de envío: <strong style={{ color: 'var(--primary-green)' }}>Bs. {selectedBranch?.shipping_cost_bs || 0}</strong>
-              </div>
-            </div>
-          </div>
+
 
           {/* Support help card in sidebar */}
           <div className="sidebar-card support-card" style={{ background: 'linear-gradient(135deg, #103d2e 0%, #082018 100%)', color: 'white', padding: '1.2rem', borderRadius: '12px' }}>
@@ -4993,6 +5059,28 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
               </svg>
               Contactar Asesor
             </a>
+          </div>
+
+          {/* Redes Sociales en Sidebar */}
+          <div className="sidebar-card social-sidebar-card" style={{ padding: '1.1rem', border: '1px solid rgba(15, 61, 46, 0.08)', borderRadius: '12px', background: 'white' }}>
+            <h5 style={{ margin: '0 0 10px 0', color: 'var(--primary-green)', fontWeight: 800, fontSize: '0.85rem' }}>Síguenos en Redes</h5>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <a href="https://www.facebook.com/share/1DNC7YMQ81/" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(15, 61, 46, 0.06)', color: 'var(--primary-green)', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--primary-green)'; e.currentTarget.style.color = 'white'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(15, 61, 46, 0.06)'; e.currentTarget.style.color = 'var(--primary-green)'; }} title="Facebook">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z"/>
+                </svg>
+              </a>
+              <a href="https://www.instagram.com/kaldirev?igsh=czF1enQ0d2VxcGh5" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(15, 61, 46, 0.06)', color: 'var(--primary-green)', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--primary-green)'; e.currentTarget.style.color = 'white'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(15, 61, 46, 0.06)'; e.currentTarget.style.color = 'var(--primary-green)'; }} title="Instagram">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
+                </svg>
+              </a>
+              <a href="https://www.tiktok.com/@kaldirev?_r=1&_t=ZS-98qrZwvHN6z" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(15, 61, 46, 0.06)', color: 'var(--primary-green)', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--primary-green)'; e.currentTarget.style.color = 'white'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(15, 61, 46, 0.06)'; e.currentTarget.style.color = 'var(--primary-green)'; }} title="TikTok">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.86-.74-3.95-1.72-.1.08-.21.17-.31.25-.02 3.86-.01 7.72-.02 11.58-.15 2.18-.84 4.39-2.42 5.92-1.74 1.78-4.32 2.58-6.77 2.23-2.61-.26-5.07-1.89-6.22-4.29-1.28-2.58-1.07-5.91.56-8.28 1.44-2.14 4.01-3.41 6.61-3.21v4.07c-1.39-.12-2.84.44-3.56 1.65-.77 1.2-.57 2.92.46 3.91.95.96 2.53 1.11 3.63.36.76-.49 1.19-1.39 1.21-2.3.03-3.69.01-7.39.02-11.08-.03-2.22.42-4.5 1.83-6.22C10.53 1.05 11.53.44 12.525.02z"/>
+                </svg>
+              </a>
+            </div>
           </div>
         </aside>
 
@@ -5987,23 +6075,36 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     }}
                   >
                     {/* ID and date */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                      <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                        📅 {new Date(order.created_at).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', borderBottom: '1px solid #f1ece4', paddingBottom: '10px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--primary-green)' }}>Pedido #{order.id.substring(0,8).toUpperCase()}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                          </svg>
+                          <span>{new Date(order.created_at).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                      </div>
                       <span 
                         className={`order-status-badge ${order.status}`} 
                         style={{
-                          fontSize: '0.75rem',
+                          fontSize: '0.72rem',
                           fontWeight: 800,
-                          padding: '4px 12px',
+                          padding: '4px 10px',
                           borderRadius: '20px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
                           background: order.status === 'Completado' ? '#e6f4ea' : order.status === 'Cancelado' ? '#fce8e6' : '#fff7e6',
                           color: order.status === 'Completado' ? '#137333' : order.status === 'Cancelado' ? '#c5221f' : '#b06000',
                           border: `1px solid ${order.status === 'Completado' ? '#c2e7c9' : order.status === 'Cancelado' ? '#fad2cf' : '#ffe7b3'}`
                         }}
                       >
-                        {order.status === 'Completado' ? '✅ Completado' : order.status === 'Cancelado' ? '❌ Cancelado' : '⏳ Pendiente'}
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: order.status === 'Completado' ? '#137333' : order.status === 'Cancelado' ? '#c5221f' : '#b06000' }}></span>
+                        {order.status}
                       </span>
                     </div>
 
@@ -6014,22 +6115,44 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                         <div style={{ position: 'absolute', top: '15px', left: '10%', width: `${(currentStep - 1) * 26.6}%`, height: '3px', background: 'var(--primary-green)', zIndex: 2, transition: 'width 0.3s' }}></div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, flex: 1 }}>
-                          <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: currentStep >= 1 ? 'var(--primary-green)' : '#e2e8f0', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}>✓</div>
+                          <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: currentStep >= 1 ? 'var(--primary-green)' : '#e2e8f0', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                          </div>
                           <span style={{ fontSize: '0.68rem', fontWeight: 'bold', color: currentStep >= 1 ? 'var(--primary-green)' : 'var(--text-muted)', marginTop: '4px' }}>Recibido</span>
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, flex: 1 }}>
-                          <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: currentStep >= 2 ? 'var(--primary-green)' : '#e2e8f0', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}>📦</div>
+                          <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: currentStep >= 2 ? 'var(--primary-green)' : '#e2e8f0', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                              <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                              <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                            </svg>
+                          </div>
                           <span style={{ fontSize: '0.68rem', fontWeight: 'bold', color: currentStep >= 2 ? 'var(--primary-green)' : 'var(--text-muted)', marginTop: '4px' }}>Preparando</span>
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, flex: 1 }}>
-                          <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: currentStep >= 3 ? 'var(--primary-green)' : '#e2e8f0', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}>🛵</div>
+                          <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: currentStep >= 3 ? 'var(--primary-green)' : '#e2e8f0', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="1" y="3" width="15" height="13"></rect>
+                              <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                              <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                              <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                            </svg>
+                          </div>
                           <span style={{ fontSize: '0.68rem', fontWeight: 'bold', color: currentStep >= 3 ? 'var(--primary-green)' : 'var(--text-muted)', marginTop: '4px' }}>En Camino</span>
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, flex: 1 }}>
-                          <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: currentStep >= 4 ? 'var(--primary-green)' : '#e2e8f0', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}>★</div>
+                          <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: currentStep >= 4 ? 'var(--primary-green)' : '#e2e8f0', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                            </svg>
+                          </div>
                           <span style={{ fontSize: '0.68rem', fontWeight: 'bold', color: currentStep >= 4 ? 'var(--primary-green)' : 'var(--text-muted)', marginTop: '4px' }}>Entregado</span>
                         </div>
                       </div>
@@ -6050,18 +6173,24 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     </div>
 
                     {/* Delivery address */}
-                    <div style={{ fontSize: '0.82rem', color: 'var(--text-dark)' }}>
-                      📍 <strong>Destino:</strong> {order.address} ({order.city})
-                      {order.gps_coordinates && (
-                        <a 
-                          href={order.gps_coordinates} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '8px', color: '#1a73e8', textDecoration: 'underline', fontWeight: 'bold' }}
-                        >
-                          Ver en Google Maps
-                        </a>
-                      )}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.82rem', color: 'var(--text-dark)' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: '2px' }}>
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                      </svg>
+                      <div>
+                        <strong>Destino:</strong> {order.address} ({order.city})
+                        {order.gps_coordinates && (
+                          <a 
+                            href={order.gps_coordinates} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '8px', color: '#1a73e8', textDecoration: 'underline', fontWeight: 'bold' }}
+                          >
+                            Ver en Google Maps
+                          </a>
+                        )}
+                      </div>
                     </div>
 
                     {/* WhatsApp check support */}
@@ -6099,7 +6228,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
       {/* ==================== VIEW 5: DEDICATED CORPORATE NOSOTROS PAGE ==================== */}
       {view === "nosotros" && (
         <main className="nosotros-page-wrapper animate-fade-in" style={{ padding: '2rem 1.5rem', maxWidth: '800px', margin: '0 auto', minHeight: '60vh' }}>
-          <h2 style={{ fontSize: '1.6rem', color: 'var(--primary-green)', marginBottom: '0.25rem' }}>Sobre Nosotros 📖</h2>
+          <h2 style={{ fontSize: '1.6rem', color: 'var(--primary-green)', marginBottom: '0.25rem' }}>Sobre Nosotros</h2>
           <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Identidad, misión y deslinde de responsabilidad corporativa.</p>
 
           <div style={{ display: 'flex', borderBottom: '1px solid #ebdcc9', background: 'white', borderRadius: '8px 8px 0 0', overflow: 'hidden' }}>
@@ -7016,6 +7145,25 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
               <span className="footer-tag">Social Commerce</span>
               <span className="footer-tag">Termosellado</span>
               <span className="footer-tag">Santa Cruz</span>
+            </div>
+
+            {/* Redes Sociales en Footer */}
+            <div style={{ display: 'flex', gap: '10px', marginTop: '1.25rem' }}>
+              <a href="https://www.facebook.com/share/1DNC7YMQ81/" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(235,220,201,0.15)', color: 'var(--accent-gold)', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-gold)'; e.currentTarget.style.color = 'var(--primary-green)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(235,220,201,0.15)'; e.currentTarget.style.color = 'var(--accent-gold)'; }} title="Facebook">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z"/>
+                </svg>
+              </a>
+              <a href="https://www.instagram.com/kaldirev?igsh=czF1enQ0d2VxcGh5" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(235,220,201,0.15)', color: 'var(--accent-gold)', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-gold)'; e.currentTarget.style.color = 'var(--primary-green)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(235,220,201,0.15)'; e.currentTarget.style.color = 'var(--accent-gold)'; }} title="Instagram">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
+                </svg>
+              </a>
+              <a href="https://www.tiktok.com/@kaldirev?_r=1&_t=ZS-98qrZwvHN6z" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(235,220,201,0.15)', color: 'var(--accent-gold)', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-gold)'; e.currentTarget.style.color = 'var(--primary-green)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(235,220,201,0.15)'; e.currentTarget.style.color = 'var(--accent-gold)'; }} title="TikTok">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.86-.74-3.95-1.72-.1.08-.21.17-.31.25-.02 3.86-.01 7.72-.02 11.58-.15 2.18-.84 4.39-2.42 5.92-1.74 1.78-4.32 2.58-6.77 2.23-2.61-.26-5.07-1.89-6.22-4.29-1.28-2.58-1.07-5.91.56-8.28 1.44-2.14 4.01-3.41 6.61-3.21v4.07c-1.39-.12-2.84.44-3.56 1.65-.77 1.2-.57 2.92.46 3.91.95.96 2.53 1.11 3.63.36.76-.49 1.19-1.39 1.21-2.3.03-3.69.01-7.39.02-11.08-.03-2.22.42-4.5 1.83-6.22C10.53 1.05 11.53.44 12.525.02z"/>
+                </svg>
+              </a>
             </div>
           </div>
           
