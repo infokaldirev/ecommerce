@@ -273,6 +273,8 @@ function App() {
   const [configSubTab, setConfigSubTab] = useState("products"); // "products" | "combos" | "settings"
   const [editingProduct, setEditingProduct] = useState(null);
   const [productFormStep, setProductFormStep] = useState(1);
+  const [newImageUrl, setNewImageUrl] = useState("");
+  const [newVideoUrl, setNewVideoUrl] = useState("");
   const [branches, setBranches] = useState([]);
   // Relational catalog states (comboStocks replaced by productStocks)
   const [selectedBranch, setSelectedBranch] = useState(null);
@@ -493,6 +495,11 @@ function App() {
 
   // Helper to get the main image of a combo dynamically (Added by Antigravity)
   const getComboImage = (comboId) => {
+    const comboObj = combos.find(c => String(c.id) === String(comboId));
+    if (comboObj && comboObj.image_url) {
+      return comboObj.image_url;
+    }
+
     const linked = comboProducts.filter(cp => String(cp.combo_id) === String(comboId));
     if (linked.length > 0) {
       const prod = products.find(p => String(p.id) === String(linked[0].product_id));
@@ -1258,7 +1265,7 @@ function App() {
       });
       const resJson = await res.json();
       if (resJson.secure_url) {
-        if (target === 'combo') {
+        if (target.startsWith('combo')) {
           setEditingCombo(prev => ({
             ...prev,
             image_url: resJson.secure_url
@@ -1268,7 +1275,7 @@ function App() {
           } else {
             alert('Archivo subido correctamente a Cloudinary.');
           }
-        } else if (target === 'product') {
+        } else if (target.startsWith('product')) {
           setEditingProduct(prev => {
             const currentUrls = prev.media_urls ? prev.media_urls.trim() : "";
             const newUrls = currentUrls ? `${currentUrls}\n${resJson.secure_url}` : resJson.secure_url;
@@ -1552,6 +1559,57 @@ function App() {
         alert("Error al guardar producto: " + err.message);
       }
     }
+  };
+
+  const addProdImage = (url) => {
+    if (!url) return;
+    const trimmed = url.trim();
+    setEditingProduct(prev => {
+      const current = prev.media_urls || "";
+      const list = current.split('\n').map(u => u.trim()).filter(Boolean);
+      if (list.includes(trimmed)) {
+        if (window.Swal) {
+          window.Swal.fire('Información', 'Esta imagen ya está agregada al producto.', 'info');
+        } else {
+          alert('Esta imagen ya está agregada al producto.');
+        }
+        return prev;
+      }
+      const updated = current ? `${current.trim()}\n${trimmed}` : trimmed;
+      return { ...prev, media_urls: updated };
+    });
+    setNewImageUrl("");
+  };
+
+  const addProdVideo = (url) => {
+    if (!url) return;
+    const trimmed = url.trim();
+    setEditingProduct(prev => {
+      const current = prev.media_urls || "";
+      const list = current.split('\n').map(u => u.trim()).filter(Boolean);
+      if (list.includes(trimmed)) {
+        if (window.Swal) {
+          window.Swal.fire('Información', 'Este video ya está agregado al producto.', 'info');
+        } else {
+          alert('Este video ya está agregado al producto.');
+        }
+        return prev;
+      }
+      const updated = current ? `${current.trim()}\n${trimmed}` : trimmed;
+      return { ...prev, media_urls: updated };
+    });
+    setNewVideoUrl("");
+  };
+
+  const removeProdMedia = (indexToRemove) => {
+    setEditingProduct(prev => {
+      const current = (prev.media_urls || "")
+        .split('\n')
+        .map(url => url.trim())
+        .filter(url => url !== "");
+      const filtered = current.filter((_, idx) => idx !== indexToRemove);
+      return { ...prev, media_urls: filtered.join('\n') };
+    });
   };
 
   // Delete Product from Supabase
@@ -2892,13 +2950,25 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           <div className="dash-panel-card" style={{ padding: '2rem' }}>
                             {/* Product Wizard steps */}
                             <div className="wizard-steps-container">
-                              <div className={`wizard-step ${productFormStep === 1 ? 'active' : ''}`}>
+                              <div 
+                                className={`wizard-step ${productFormStep === 1 ? 'active' : ''}`}
+                                onClick={() => setProductFormStep(1)}
+                                style={{ cursor: 'pointer' }}
+                              >
                                 1. Información Básica
                               </div>
-                              <div className={`wizard-step ${productFormStep === 2 ? 'active' : ''}`}>
+                              <div 
+                                className={`wizard-step ${productFormStep === 2 ? 'active' : ''}`}
+                                onClick={() => setProductFormStep(2)}
+                                style={{ cursor: 'pointer' }}
+                              >
                                 2. Precios e Imágenes
                               </div>
-                              <div className={`wizard-step ${productFormStep === 3 ? 'active' : ''}`}>
+                              <div 
+                                className={`wizard-step ${productFormStep === 3 ? 'active' : ''}`}
+                                onClick={() => setProductFormStep(3)}
+                                style={{ cursor: 'pointer' }}
+                              >
                                 3. Consumo y Detalles
                               </div>
                             </div>
@@ -2968,66 +3038,202 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                 </div>
                               )}
 
-                              {productFormStep === 2 && (
-                                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                                  <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                    <div className="form-group">
-                                      <label className="form-label" style={{ fontWeight: 800 }}>Precio Oferta (Bs.) *</label>
-                                      <input 
-                                        type="number" 
-                                        step="0.1" 
-                                        className="form-input" 
-                                        value={editingProduct.price_bs}
-                                        onChange={(e) => setEditingProduct({...editingProduct, price_bs: e.target.value})}
-                                        required
-                                      />
-                                    </div>
-                                    <div className="form-group">
-                                      <label className="form-label" style={{ fontWeight: 800 }}>Precio Regular (Bs.) *</label>
-                                      <input 
-                                        type="number" 
-                                        step="0.1" 
-                                        className="form-input" 
-                                        value={editingProduct.original_price_bs}
-                                        onChange={(e) => setEditingProduct({...editingProduct, original_price_bs: e.target.value})}
-                                        required
-                                      />
-                                    </div>
-                                  </div>
+                              {productFormStep === 2 && (() => {
+                                const allUrls = (editingProduct.media_urls || "")
+                                  .split('\n')
+                                  .map(url => url.trim())
+                                  .filter(url => url !== "");
+                                const mediaItems = allUrls.map((url, index) => ({ url, index, isVideo: isVideoUrl(url) }));
+                                const prodImages = mediaItems.filter(item => !item.isVideo);
+                                const prodVideos = mediaItems.filter(item => item.isVideo);
 
-                                  <div className="form-group">
-                                    <label className="form-label" style={{ fontWeight: 800 }}>URLs de Fotos/Videos (Uno por línea) *</label>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
-                                      Copia y pega los enlaces de Cloudinary u otros servidores. Admite fotos y videos. El primer enlace se usará como portada principal.
-                                    </span>
-                                    <textarea 
-                                      className="form-input" 
-                                      rows="4" 
-                                      placeholder="https://res.cloudinary.com/...\nhttps://..."
-                                      value={editingProduct.media_urls || ""}
-                                      onChange={(e) => setEditingProduct({...editingProduct, media_urls: e.target.value})}
-                                      required
-                                    ></textarea>
-                                    <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                      <label className="form-label" style={{ fontSize: '0.88rem', color: 'var(--primary-green)', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 800 }}>
-                                        📥 Subir imagen o video a Cloudinary:
-                                      </label>
-                                      <input 
-                                        type="file" 
-                                        accept="image/*,video/*"
-                                        onChange={(e) => handleCloudinaryUpload(e, 'product')}
-                                        disabled={uploadingImage}
-                                        style={{ fontSize: '0.88rem' }}
-                                      />
-                                      {uploadingImage && (
-                                        <span style={{ fontSize: '0.85rem', color: 'var(--offer-orange)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                          ⏳ Subiendo archivo... por favor espere...
-                                        </span>
-                                      )}
+                                return (
+                                  <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                    <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                      <div className="form-group">
+                                        <label className="form-label" style={{ fontWeight: 800 }}>Precio Oferta (Bs.) *</label>
+                                        <input 
+                                          type="number" 
+                                          step="0.1" 
+                                          className="form-input" 
+                                          value={editingProduct.price_bs}
+                                          onChange={(e) => setEditingProduct({...editingProduct, price_bs: e.target.value})}
+                                          required
+                                        />
+                                      </div>
+                                      <div className="form-group">
+                                        <label className="form-label" style={{ fontWeight: 800 }}>Precio Regular (Bs.) *</label>
+                                        <input 
+                                          type="number" 
+                                          step="0.1" 
+                                          className="form-input" 
+                                          value={editingProduct.original_price_bs}
+                                          onChange={(e) => setEditingProduct({...editingProduct, original_price_bs: e.target.value})}
+                                          required
+                                        />
+                                      </div>
+                                    </div>
+
+                                    {/* SECCIÓN DE IMÁGENES */}
+                                    <div style={{ padding: '1.25rem', border: '1px solid rgba(15, 61, 46, 0.08)', borderRadius: '12px', background: '#faf9f6' }}>
+                                      <h4 style={{ margin: '0 0 10px 0', color: 'var(--primary-green)', fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        📷 Imágenes del Producto
+                                      </h4>
+                                      
+                                      {/* Lista de Imágenes */}
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '1rem' }}>
+                                        {prodImages.length === 0 ? (
+                                          <div style={{ padding: '1.5rem', width: '100%', textAlign: 'center', border: '1.5px dashed rgba(15, 61, 46, 0.12)', borderRadius: '8px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                            Sin imágenes cargadas aún. Sube una foto o añade una URL.
+                                          </div>
+                                        ) : (
+                                          prodImages.map(({ url, index }, idx) => {
+                                            const isCover = index === 0; // First URL overall is cover
+                                            return (
+                                              <div key={idx} style={{ position: 'relative', width: '90px', height: '90px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+                                                <img src={resolveAssetUrl(url)} alt="Vista previa" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                                {isCover && (
+                                                  <span style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'var(--accent-gold)', color: 'var(--primary-green)', fontSize: '0.65rem', fontWeight: 900, textAlign: 'center', padding: '2px 0', textTransform: 'uppercase' }}>
+                                                    Portada
+                                                  </span>
+                                                )}
+                                                <button 
+                                                  type="button" 
+                                                  onClick={() => removeProdMedia(index)} 
+                                                  style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(239, 68, 68, 0.9)', color: 'white', border: 'none', borderRadius: '50%', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+                                                  title="Eliminar"
+                                                >
+                                                  ×
+                                                </button>
+                                              </div>
+                                            );
+                                          })
+                                        )}
+                                      </div>
+
+                                      {/* Carga y Adición */}
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                          <input 
+                                            type="text" 
+                                            placeholder="Pegar enlace de imagen (URL)..."
+                                            className="form-input"
+                                            style={{ flexGrow: 1, padding: '0.5rem 0.8rem', fontSize: '0.9rem' }}
+                                            value={newImageUrl}
+                                            onChange={(e) => setNewImageUrl(e.target.value)}
+                                          />
+                                          <button 
+                                            type="button" 
+                                            className="btn-admin-primary" 
+                                            style={{ padding: '0.5rem 1rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
+                                            onClick={() => addProdImage(newImageUrl)}
+                                          >
+                                            Agregar URL
+                                          </button>
+                                        </div>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
+                                          <input 
+                                            type="file" 
+                                            accept="image/*"
+                                            id="product-image-file-input"
+                                            onChange={(e) => handleCloudinaryUpload(e, 'product_image')}
+                                            disabled={uploadingImage}
+                                            style={{ display: 'none' }}
+                                          />
+                                          <label 
+                                            htmlFor="product-image-file-input" 
+                                            className="btn-admin-primary" 
+                                            style={{ padding: '0.5rem 1.2rem', fontSize: '0.88rem', background: '#0e4a36', display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', borderRadius: '8px', fontWeight: 'bold', color: 'white' }}
+                                          >
+                                            📥 Subir Foto a Cloudinary
+                                          </label>
+                                          {uploadingImage && (
+                                            <span style={{ fontSize: '0.85rem', color: 'var(--offer-orange)', fontWeight: 'bold' }}>
+                                              ⏳ Subiendo... por favor espere...
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* SECCIÓN DE VIDEOS */}
+                                    <div style={{ padding: '1.25rem', border: '1px solid rgba(15, 61, 46, 0.08)', borderRadius: '12px', background: '#faf9f6' }}>
+                                      <h4 style={{ margin: '0 0 10px 0', color: 'var(--primary-green)', fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        🎥 Videos del Producto
+                                      </h4>
+                                      
+                                      {/* Lista de Videos */}
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '1rem' }}>
+                                        {prodVideos.length === 0 ? (
+                                          <div style={{ padding: '1.5rem', width: '100%', textAlign: 'center', border: '1.5px dashed rgba(15, 61, 46, 0.12)', borderRadius: '8px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                            Sin videos cargados aún. Sube un video o añade una URL de video.
+                                          </div>
+                                        ) : (
+                                          prodVideos.map(({ url, index }, idx) => (
+                                            <div key={idx} style={{ position: 'relative', width: '90px', height: '90px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+                                              <video src={resolveAssetUrl(url)} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                              <button 
+                                                type="button" 
+                                                onClick={() => removeProdMedia(index)} 
+                                                style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(239, 68, 68, 0.9)', color: 'white', border: 'none', borderRadius: '50%', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+                                                title="Eliminar"
+                                              >
+                                                ×
+                                              </button>
+                                            </div>
+                                          ))
+                                        )}
+                                      </div>
+
+                                      {/* Carga y Adición */}
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                          <input 
+                                            type="text" 
+                                            placeholder="Pegar enlace de video (URL)..."
+                                            className="form-input"
+                                            style={{ flexGrow: 1, padding: '0.5rem 0.8rem', fontSize: '0.9rem' }}
+                                            value={newVideoUrl}
+                                            onChange={(e) => setNewVideoUrl(e.target.value)}
+                                          />
+                                          <button 
+                                            type="button" 
+                                            className="btn-admin-primary" 
+                                            style={{ padding: '0.5rem 1rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
+                                            onClick={() => addProdVideo(newVideoUrl)}
+                                          >
+                                            Agregar URL
+                                          </button>
+                                        </div>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
+                                          <input 
+                                            type="file" 
+                                            accept="video/*"
+                                            id="product-video-file-input"
+                                            onChange={(e) => handleCloudinaryUpload(e, 'product_video')}
+                                            disabled={uploadingImage}
+                                            style={{ display: 'none' }}
+                                          />
+                                          <label 
+                                            htmlFor="product-video-file-input" 
+                                            className="btn-admin-primary" 
+                                            style={{ padding: '0.5rem 1.2rem', fontSize: '0.88rem', background: '#0e4a36', display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', borderRadius: '8px', fontWeight: 'bold', color: 'white' }}
+                                          >
+                                            📥 Subir Video a Cloudinary
+                                          </label>
+                                          {uploadingImage && (
+                                            <span style={{ fontSize: '0.85rem', color: 'var(--offer-orange)', fontWeight: 'bold' }}>
+                                              ⏳ Subiendo... por favor espere...
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              )}
+                                );
+                              })()}
 
                               {productFormStep === 3 && (
                                 <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -3132,6 +3338,81 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                               </div>
                             </form>
                           </div>
+
+                          {/* Live Preview Panel */}
+                          <div className="live-preview-card-pane dash-panel-card" style={{ padding: '2rem', background: '#faf9f6', position: 'sticky', top: '20px', border: '1px solid rgba(15, 61, 46, 0.08)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            <h4 style={{ margin: 0, color: 'var(--accent-gold)', fontSize: '1rem', fontWeight: 800, textTransform: 'uppercase', borderBottom: '1px solid rgba(15, 61, 46, 0.08)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span>👁️ Vista Previa en Vivo</span>
+                              <span style={{ fontSize: '0.7rem', textTransform: 'none', color: 'var(--text-muted)', background: '#e2ebd5', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold' }}>Solo Laptop/PC</span>
+                            </h4>
+                            <div className="product-card" style={{ width: '100%', maxWidth: '320px', margin: '0 auto', background: 'white', cursor: 'default', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', borderRadius: '16px', overflow: 'hidden', pointerEvents: 'none' }}>
+                              <div className="product-image-container" style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fdfb', position: 'relative' }}>
+                                {(() => {
+                                  const allUrls = (editingProduct.media_urls || "")
+                                    .split('\n')
+                                    .map(url => url.trim())
+                                    .filter(url => url !== "");
+                                  const mainImg = allUrls[0];
+                                  if (mainImg) {
+                                    if (isVideoUrl(mainImg)) {
+                                      return <video src={resolveAssetUrl(mainImg)} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
+                                    } else {
+                                      return <img src={resolveAssetUrl(mainImg)} alt={editingProduct.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
+                                    }
+                                  } else {
+                                    return (
+                                      <div className="product-image-placeholder" style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+                                        <div className="doypack-illustration">
+                                          <div className="doypack-zipper"></div>
+                                          <div className="doypack-tag">
+                                            <span className="doypack-tag-logo">TIENS</span>
+                                            <div className="doypack-tag-dot"></div>
+                                          </div>
+                                        </div>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Sin imagen aún</span>
+                                      </div>
+                                    );
+                                  }
+                                })()}
+                                {editingProduct.badge && (
+                                  <span className="product-badge" style={{ position: 'absolute', top: '12px', left: '12px', background: 'var(--accent-gold)', color: 'var(--primary-green)', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '800' }}>
+                                    {editingProduct.badge}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="product-details" style={{ padding: '1.25rem' }}>
+                                <span className="product-category" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>
+                                  Tiens • {categoriesList.find(cat => String(cat.id) === String(editingProduct.category_id))?.name || 'Nutrición'}
+                                </span>
+                                <h3 className="product-name" style={{ fontSize: '1.2rem', fontWeight: 800, margin: '4px 0', color: 'var(--primary-green)' }}>
+                                  {editingProduct.name || "Nombre del Producto"}
+                                </h3>
+                                <span style={{ display: 'block', fontSize: '0.85rem', color: '#b89047', fontWeight: 700, marginBottom: '8px' }}>
+                                  {editingProduct.tagline || "Tagline / Frase llamativa"}
+                                </span>
+                                
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '8px', marginBottom: '8px' }}>
+                                  <span style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--primary-green)' }}>
+                                    Bs. {parseFloat(editingProduct.price_bs || 0).toFixed(1)}
+                                  </span>
+                                  <span style={{ fontSize: '0.9rem', textDecoration: 'line-through', color: 'var(--text-muted)' }}>
+                                    Bs. {parseFloat(editingProduct.original_price_bs || 0).toFixed(1)}
+                                  </span>
+                                </div>
+
+                                {editingProduct.dosage && (
+                                  <div style={{ marginTop: '8px', fontSize: '0.78rem', color: 'var(--primary-green)', background: 'rgba(15, 61, 46, 0.05)', padding: '6px 10px', borderRadius: '6px', fontWeight: 'bold' }}>
+                                    💡 Modo de Uso: {editingProduct.dosage}
+                                  </div>
+                                )}
+                                {editingProduct.package_detail && (
+                                  <div style={{ marginTop: '6px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                    📦 Envase: {editingProduct.package_detail}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ) : (
@@ -3223,7 +3504,8 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                               let mediaUrls = "";
                                               const { data: imgList } = await supabase.from('product_images').select('url').eq('product_id', prod.id).order('position', { ascending: true });
                                               if (imgList && imgList.length > 0) {
-                                                mediaUrls = imgList.map(i => i.url).join('\n');
+                                                const uniqueUrls = [...new Set(imgList.map(i => i.url.trim()).filter(Boolean))];
+                                                mediaUrls = uniqueUrls.join('\n');
                                               }
                                               
                                               setProductFormStep(1);
@@ -3283,13 +3565,25 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           <div className="dash-panel-card" style={{ padding: '2rem' }}>
                             {/* Wizard Steps Indicator */}
                             <div className="wizard-steps-container">
-                              <div className={`wizard-step ${formStep === 1 ? 'active' : ''}`}>
+                              <div 
+                                className={`wizard-step ${formStep === 1 ? 'active' : ''}`}
+                                onClick={() => setFormStep(1)}
+                                style={{ cursor: 'pointer' }}
+                              >
                                 1. Básico
                               </div>
-                              <div className={`wizard-step ${formStep === 2 ? 'active' : ''}`}>
+                              <div 
+                                className={`wizard-step ${formStep === 2 ? 'active' : ''}`}
+                                onClick={() => setFormStep(2)}
+                                style={{ cursor: 'pointer' }}
+                              >
                                 2. Precio & Inclusión
                               </div>
-                              <div className={`wizard-step ${formStep === 3 ? 'active' : ''}`}>
+                              <div 
+                                className={`wizard-step ${formStep === 3 ? 'active' : ''}`}
+                                onClick={() => setFormStep(3)}
+                                style={{ cursor: 'pointer' }}
+                              >
                                 3. Consumo & Destacar
                               </div>
                             </div>
@@ -3337,49 +3631,87 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                   </div>
 
                                   <div className="form-group">
-                                    <label className="form-label" style={{ fontWeight: 800 }}>Imagen o Video Oficial (URL de Cloudinary) *</label>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
-                                      Enlace directo o sube un archivo. Si lo dejas vacío, se autogenerará un mosaico.
+                                    <label className="form-label" style={{ fontWeight: 800 }}>Multimedia Oficial del Combo *</label>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
+                                      Sube una foto o un video promocional para este kit/combo.
                                     </span>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                        <input 
-                                          type="text" 
-                                          className="form-input"
-                                          placeholder="https://res.cloudinary.com/..."
-                                          value={editingCombo.image_url || ""}
-                                          onChange={(e) => setEditingCombo({...editingCombo, image_url: e.target.value})}
-                                          style={{ flexGrow: 1 }}
-                                        />
-                                        {editingCombo.image_url && (
-                                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            {isVideoUrl(editingCombo.image_url) ? (
-                                              <video src={editingCombo.image_url} muted style={{ height: '55px', width: '55px', objectFit: 'cover', borderRadius: '4px' }} />
-                                            ) : (
-                                              <img src={editingCombo.image_url} alt="Cargada" style={{ height: '55px', objectFit: 'contain' }} />
-                                            )}
+                                    
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                                      {/* ESPACIO PARA IMAGEN */}
+                                      <div style={{ padding: '1rem', border: '1px solid rgba(15, 61, 46, 0.08)', borderRadius: '10px', background: '#faf9f6', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <h5 style={{ margin: 0, fontWeight: 800, color: 'var(--primary-green)', fontSize: '0.9rem' }}>📷 Imagen (Foto)</h5>
+                                        {editingCombo.image_url && !isVideoUrl(editingCombo.image_url) ? (
+                                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', padding: '6px', borderRadius: '6px', border: '1px solid var(--border-color)', flexGrow: 1 }}>
+                                            <img src={resolveAssetUrl(editingCombo.image_url)} alt="Foto del combo" style={{ height: '50px', objectFit: 'contain' }} />
                                             <button type="button" className="btn-qty" style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold' }} onClick={() => setEditingCombo({...editingCombo, image_url: ''})}>Eliminar</button>
+                                          </div>
+                                        ) : (
+                                          <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '8px', justifyContent: 'center' }}>
+                                            <input 
+                                              type="text" 
+                                              placeholder="Pegar URL de Imagen..."
+                                              className="form-input"
+                                              style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem' }}
+                                              value={!isVideoUrl(editingCombo.image_url) ? (editingCombo.image_url || "") : ""}
+                                              onChange={(e) => setEditingCombo({...editingCombo, image_url: e.target.value})}
+                                            />
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                              <input 
+                                                type="file" 
+                                                accept="image/*"
+                                                id="combo-image-file-input"
+                                                onChange={(e) => handleCloudinaryUpload(e, 'combo_image')}
+                                                disabled={uploadingImage}
+                                                style={{ display: 'none' }}
+                                              />
+                                              <label htmlFor="combo-image-file-input" className="btn-admin-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', borderRadius: '6px', fontWeight: 'bold', color: 'white', background: '#0e4a36' }}>
+                                                📥 Subir Foto
+                                              </label>
+                                            </div>
                                           </div>
                                         )}
                                       </div>
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                        <label className="form-label" style={{ fontSize: '0.88rem', color: 'var(--primary-green)', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 800 }}>
-                                          📥 Subir imagen o video para este Combo:
-                                        </label>
-                                        <input 
-                                          type="file" 
-                                          accept="image/*,video/*"
-                                          onChange={(e) => handleCloudinaryUpload(e, 'combo')}
-                                          disabled={uploadingImage}
-                                          style={{ fontSize: '0.88rem' }}
-                                        />
-                                        {uploadingImage && (
-                                          <span style={{ fontSize: '0.85rem', color: 'var(--offer-orange)', fontWeight: 'bold' }}>
-                                            ⏳ Subiendo archivo... por favor espere...
-                                          </span>
+
+                                      {/* ESPACIO PARA VIDEO */}
+                                      <div style={{ padding: '1rem', border: '1px solid rgba(15, 61, 46, 0.08)', borderRadius: '10px', background: '#faf9f6', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <h5 style={{ margin: 0, fontWeight: 800, color: 'var(--primary-green)', fontSize: '0.9rem' }}>🎥 Video Promocional</h5>
+                                        {editingCombo.image_url && isVideoUrl(editingCombo.image_url) ? (
+                                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', padding: '6px', borderRadius: '6px', border: '1px solid var(--border-color)', flexGrow: 1 }}>
+                                            <video src={resolveAssetUrl(editingCombo.image_url)} muted autoPlay loop style={{ height: '50px', width: '50px', objectFit: 'cover', borderRadius: '4px' }} />
+                                            <button type="button" className="btn-qty" style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold' }} onClick={() => setEditingCombo({...editingCombo, image_url: ''})}>Eliminar</button>
+                                          </div>
+                                        ) : (
+                                          <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '8px', justifyContent: 'center' }}>
+                                            <input 
+                                              type="text" 
+                                              placeholder="Pegar URL de Video..."
+                                              className="form-input"
+                                              style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem' }}
+                                              value={isVideoUrl(editingCombo.image_url) ? (editingCombo.image_url || "") : ""}
+                                              onChange={(e) => setEditingCombo({...editingCombo, image_url: e.target.value})}
+                                            />
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                              <input 
+                                                type="file" 
+                                                accept="video/*"
+                                                id="combo-video-file-input"
+                                                onChange={(e) => handleCloudinaryUpload(e, 'combo_video')}
+                                                disabled={uploadingImage}
+                                                style={{ display: 'none' }}
+                                              />
+                                              <label htmlFor="combo-video-file-input" className="btn-admin-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', borderRadius: '6px', fontWeight: 'bold', color: 'white', background: '#0e4a36' }}>
+                                                📥 Subir Video
+                                              </label>
+                                            </div>
+                                          </div>
                                         )}
                                       </div>
                                     </div>
+                                    {uploadingImage && (
+                                      <span style={{ fontSize: '0.85rem', color: 'var(--offer-orange)', fontWeight: 'bold', display: 'block', marginTop: '4px' }}>
+                                        ⏳ Subiendo archivo... por favor espere...
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                               )}
@@ -3532,6 +3864,72 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                 )}
                               </div>
                             </form>
+                          </div>
+
+                          {/* Live Preview Panel for Combo */}
+                          <div className="live-preview-card-pane dash-panel-card" style={{ padding: '2rem', background: '#faf9f6', position: 'sticky', top: '20px', border: '1px solid rgba(15, 61, 46, 0.08)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            <h4 style={{ margin: 0, color: 'var(--accent-gold)', fontSize: '1rem', fontWeight: 800, textTransform: 'uppercase', borderBottom: '1px solid rgba(15, 61, 46, 0.08)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span>👁️ Vista Previa en Vivo</span>
+                              <span style={{ fontSize: '0.7rem', textTransform: 'none', color: 'var(--text-muted)', background: '#e2ebd5', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold' }}>Solo Laptop/PC</span>
+                            </h4>
+                            <div className="product-card" style={{ width: '100%', maxWidth: '320px', margin: '0 auto', background: 'white', cursor: 'default', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', borderRadius: '16px', overflow: 'hidden', pointerEvents: 'none' }}>
+                              <div className="product-image-container" style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fdfb', position: 'relative' }}>
+                                {editingCombo.image_url ? (
+                                  isVideoUrl(editingCombo.image_url) ? (
+                                    <video src={resolveAssetUrl(editingCombo.image_url)} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                  ) : (
+                                    <img src={resolveAssetUrl(editingCombo.image_url)} alt={editingCombo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                  )
+                                ) : (
+                                  <div className="product-image-placeholder" style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+                                    <div className="doypack-illustration">
+                                      <div className="doypack-zipper"></div>
+                                      <div className="doypack-tag" style={{ background: 'var(--accent-gold)' }}>
+                                        <span className="doypack-tag-logo" style={{ color: 'var(--primary-green)' }}>PACK</span>
+                                        <div className="doypack-tag-dot"></div>
+                                      </div>
+                                    </div>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Mosaico autogenerado</span>
+                                  </div>
+                                )}
+                                {editingCombo.badge && (
+                                  <span className="product-badge" style={{ position: 'absolute', top: '12px', left: '12px', background: 'var(--accent-gold)', color: 'var(--primary-green)', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '800' }}>
+                                    {editingCombo.badge}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="product-details" style={{ padding: '1.25rem' }}>
+                                <span className="product-category" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>
+                                  Combo • {editingCombo.category || "General"}
+                                </span>
+                                <h3 className="product-name" style={{ fontSize: '1.2rem', fontWeight: 800, margin: '4px 0', color: 'var(--primary-green)' }}>
+                                  {editingCombo.name || "Nombre del Combo"}
+                                </h3>
+                                <span style={{ display: 'block', fontSize: '0.85rem', color: '#b89047', fontWeight: 700, marginBottom: '8px' }}>
+                                  {editingCombo.tagline || "Tagline / Frase llamativa"}
+                                </span>
+                                
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '8px', marginBottom: '8px' }}>
+                                  <span style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--primary-green)' }}>
+                                    Bs. {parseFloat(editingCombo.price_bs || 0).toFixed(1)}
+                                  </span>
+                                  <span style={{ fontSize: '0.9rem', textDecoration: 'line-through', color: 'var(--text-muted)' }}>
+                                    Bs. {parseFloat(editingCombo.original_price_bs || 0).toFixed(1)}
+                                  </span>
+                                </div>
+
+                                {editingCombo.includes && (
+                                  <div style={{ marginTop: '8px', fontSize: '0.78rem', color: 'var(--text-dark)', background: 'rgba(15, 61, 46, 0.05)', padding: '6px 10px', borderRadius: '6px' }}>
+                                    <strong>Incluye:</strong> {editingCombo.includes}
+                                  </div>
+                                )}
+                                {editingCombo.package_detail && (
+                                  <div style={{ marginTop: '6px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                    <strong>Presentación:</strong> {editingCombo.package_detail}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -4356,7 +4754,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
     <>
       {/* HEADER SECTION */}
       <header>
-        <div className="logo-container" onClick={() => { setActiveCategory("Todos"); setSearchTerm(""); closeComboDetails(); }}>
+        <div className="logo-container" onClick={() => { setActiveCategory("Todos"); setSearchTerm(""); closeComboDetails(); setView("catalog"); }}>
           <div className="logo-mark">
             <span className="logo-title" style={{ fontSize: '1.8rem', color: 'white' }}>K</span>
           </div>
@@ -4366,7 +4764,25 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
           </div>
         </div>
 
-
+        {/* Header Search Bar (Desktop only) */}
+        <div className="header-search-desktop">
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '380px' }}>
+            <div style={{ position: 'absolute', left: '12px', display: 'flex', alignItems: 'center', color: '#666', pointerEvents: 'none' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </div>
+            <input 
+              type="text" 
+              className="search-input" 
+              placeholder="Buscar kit o combo (ej. Energía, Calcio)..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ width: '100%', padding: '0.6rem 1rem 0.6rem 2.4rem', fontSize: '0.92rem', border: '1px solid var(--border-color)', borderRadius: '8px' }}
+            />
+          </div>
+        </div>
 
         {/* AUTHENTICATION / ACCESS CONTROLS */}
         <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -4442,8 +4858,147 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
         </div>
       )}
 
-      {/* CORE PAGES ROUTING */}
-      {view === "catalog" && (
+      {/* DESKTOP INTEGRATED CONTAINER GRID */}
+      <div className="store-layout-grid">
+        {/* DESKTOP SIDEBAR PANEL */}
+        <aside className="store-desktop-sidebar">
+          {/* Navigation Links Card */}
+          <div className="sidebar-card">
+            <h4 className="sidebar-section-title">Navegación</h4>
+            <div className="sidebar-nav-links">
+              <button 
+                type="button" 
+                className={`sidebar-nav-item ${view === 'catalog' ? 'active' : ''}`}
+                onClick={() => { setActiveCategory("Todos"); setSearchTerm(""); closeComboDetails(); setView("catalog"); }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', verticalAlign: 'middle' }}>
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                <span>Tienda</span>
+              </button>
+
+              <button 
+                type="button" 
+                className={`sidebar-nav-item ${view === 'pedidos' ? 'active' : ''}`}
+                onClick={() => {
+                  if (user) {
+                    setView("pedidos");
+                    fetchUserOrders(user.id);
+                  } else {
+                    setView("perfil");
+                    setAuthError("Inicia sesión para ver tu historial de pedidos.");
+                  }
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', verticalAlign: 'middle' }}>
+                  <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+                  <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+                </svg>
+                <span>Mis Pedidos</span>
+              </button>
+
+              <button 
+                type="button" 
+                className={`sidebar-nav-item ${view === 'nosotros' ? 'active' : ''}`}
+                onClick={() => setView("nosotros")}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', verticalAlign: 'middle' }}>
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                </svg>
+                <span>Nosotros</span>
+              </button>
+
+              <button 
+                type="button" 
+                className={`sidebar-nav-item ${view === 'perfil' ? 'active' : ''}`}
+                onClick={() => { setView("perfil"); setAuthError(""); }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', verticalAlign: 'middle' }}>
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span>Perfil</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Category Filter panel inside sidebar (Desktop only) */}
+          {view === "catalog" && (
+            <div className="sidebar-card filter-card">
+              <h4 className="sidebar-section-title">Categorías</h4>
+              <div className="sidebar-categories-list">
+                {categories.map(cat => (
+                  <button
+                    key={cat}
+                    type="button"
+                    className={`sidebar-category-btn ${activeCategory === cat ? 'active' : ''}`}
+                    onClick={() => {
+                      setActiveCategory(cat);
+                      const el = document.getElementById('catalog-title');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                  >
+                    <span>{cat === "Todos" ? "Todos los Combos" : cat}</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Branch/City Stock Filter inside sidebar */}
+          <div className="sidebar-card branch-card">
+            <h4 className="sidebar-section-title">Tu Ciudad / Sucursal</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+              <select 
+                className="form-select"
+                style={{ padding: '0.5rem', fontSize: '0.88rem', width: '100%', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'white' }}
+                value={selectedBranch?.id || ""}
+                onChange={(e) => {
+                  const bId = parseInt(e.target.value);
+                  const b = branches.find(branch => branch.id === bId);
+                  if (b) {
+                    setSelectedBranch(b);
+                    localStorage.setItem("user_selected_branch", JSON.stringify(b));
+                  }
+                }}
+              >
+                {branches.map(b => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                📍 Costo de envío: <strong style={{ color: 'var(--primary-green)' }}>Bs. {selectedBranch?.shipping_cost_bs || 0}</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Support help card in sidebar */}
+          <div className="sidebar-card support-card" style={{ background: 'linear-gradient(135deg, #103d2e 0%, #082018 100%)', color: 'white', padding: '1.2rem', borderRadius: '12px' }}>
+            <h5 style={{ margin: 0, color: 'var(--accent-gold)', fontWeight: 800, fontSize: '0.9rem' }}>¿Necesitas Ayuda?</h5>
+            <p style={{ margin: '6px 0 12px', fontSize: '0.75rem', opacity: 0.9, lineHeight: '1.4' }}>Chatea en vivo con nuestros asesores de salud por WhatsApp.</p>
+            <a 
+              href={`https://wa.me/${config.whatsappNumber || '59163488086'}?text=Hola,%20tengo%20una%20consulta%20sobre%20los%20suplementos.`}
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="sidebar-support-btn"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: 'var(--accent-gold)', color: 'var(--primary-green)', padding: '8px', borderRadius: '8px', textDecoration: 'none', fontSize: '0.8rem', fontWeight: 'bold', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.504-5.714-1.466L0 24zm6.59-2.735c1.634.97 3.25 1.487 4.827 1.489 5.5.004 9.978-4.474 9.982-9.98.002-2.668-1.03-5.176-2.905-7.054C16.678 3.84 14.183 2.809 11.517 2.809c-5.503 0-9.98 4.478-9.985 9.984-.002 1.704.453 3.37 1.32 4.823L1.835 21.36l3.963-1.04.148.087-.299.16z"></path>
+              </svg>
+              Contactar Asesor
+            </a>
+          </div>
+        </aside>
+
+        {/* MAIN STORE VIEWS CONTAINER */}
+        <div className="store-views-container">
+          {view === "catalog" && (
         /* ==================== VIEW 1: PRODUCT CATALOG ==================== */
         <main>
           {/* HERO BANNER SECTION */}
@@ -5157,11 +5712,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             // Build media list dynamically (Added by Antigravity)
             const mediaList = [];
             if (selectedCombo.image_url) {
-              const urls = selectedCombo.image_url.split(',');
+              const urls = [...new Set(selectedCombo.image_url.split(',').map(u => u.trim()).filter(Boolean))];
               urls.forEach(url => {
-                if (url.trim()) {
-                  mediaList.push({ type: isVideoUrl(url.trim()) ? 'video' : 'image', url: url.trim() });
-                }
+                mediaList.push({ type: isVideoUrl(url) ? 'video' : 'image', url });
               });
             }
             
@@ -5222,7 +5775,12 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                   <div>
                     <h4 className="details-box-title">Beneficios Clave</h4>
                     <ul className="details-bullets-list" style={{ paddingLeft: 0, listStyle: 'none' }}>
-                      {selectedCombo.bullets.map((bullet, idx) => (
+                      {(Array.isArray(selectedCombo.bullets) 
+                        ? selectedCombo.bullets 
+                        : typeof selectedCombo.bullets === 'string' 
+                          ? selectedCombo.bullets.split('\n').filter(b => b.trim() !== '')
+                          : []
+                      ).map((bullet, idx) => (
                         <li className="details-bullet-item" key={idx}>
                           <svg className="svg-icon details-bullet-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="20 6 9 17 4 12"></polyline>
@@ -5853,6 +6411,8 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
           )}
         </main>
       )}
+      </div>
+      </div>
 
       {/* SHOPPING CART DRAWER */}
       <div className={`cart-drawer-overlay ${isCartOpen ? 'open' : ''}`} onClick={() => setIsCartOpen(false)}>

@@ -77,7 +77,13 @@ create table public.combos (
   description text not null,
   badge text,
   tagline text,
-  pinned boolean default false
+  pinned boolean default false,
+  image_url text,
+  category text,
+  includes text,
+  bullets text[],
+  dosage text,
+  package_detail text
 );
 
 -- 6. Create Combo Products Table (Many-to-Many Join Table)
@@ -269,18 +275,18 @@ on conflict (id) do update set product_id = excluded.product_id, url = excluded.
 select setval('product_images_id_seq', (select max(id) from product_images));
 
 -- 5. Seed Combos / Product Bundles (Curated offers with high conversions)
-insert into public.combos (id, name, slug, price_bs, original_price_bs, description, badge, tagline, pinned) values
+insert into public.combos (id, name, slug, price_bs, original_price_bs, description, badge, tagline, pinned, image_url, category, includes, bullets, dosage, package_detail) values
   (1, 'Kit Energía Diaria', 'kit-energia-diaria', 55, 75, 
    'El pack ideal para comenzar tus mañanas con enfoque total. Incluye 2 sobres de café gourmet Cordycafe y 3 sobres del digestivo Té Tianshi.', 
-   'Más Vendido', 'Energía y enfoque natural al instante', true),
+   'Más Vendido', 'Energía y enfoque natural al instante', true, 'products/kit_energia_diaria.jpg', 'Energía', '2 sobres de Cordycafe + 3 sobres de Té Tianshi', array['Brinda energía de larga duración sin nerviosismo', 'Fortalece la digestión y el sistema inmune'], 'Tomar 1 taza en la mañana', 'Bolsa Kraft sellada conteniendo 5 sobres'),
 
   (2, 'Kit Bienestar & Huesos', 'kit-bienestar-huesos', 85, 110, 
    'Combina el poder de absorción del Calcio Nutritivo de Tiens con la vitalidad y calor del hongo Cordycafe. Incluye 1 sobre de Calcio y 2 sobres de Cordycafe.', 
-   'Recomendado', 'Huesos fuertes y vitalidad física diaria', true),
+   'Recomendado', 'Huesos fuertes y vitalidad física diaria', true, 'products/kit_bienestar_huesos.jpg', 'Bienestar', '1 sobre de Calcio + 2 sobres de Cordycafe', array['Mejora la densidad ósea y absorción de calcio', 'Aumenta el rendimiento y la inmunidad'], 'Tomar en la mañana o tarde', 'Bolsa Kraft sellada conteniendo 3 sobres'),
 
   (3, 'Kit Antojo Saludable', 'kit-antojo-saludable', 50, 65, 
    'Una forma exquisita de cuidar tus ojos del cansancio de pantallas. Bolsa kraft sellada herméticamente conteniendo 10 tabletas masticables de Luteína.', 
-   'Exclusivo', 'Protección visual con delicioso sabor natural', false)
+   'Exclusivo', 'Protección visual con delicioso sabor natural', false, 'products/kit_antojo_saludable.jpg', 'Saludable', '10 tabletas de Luteína Masticable', array['Protege los ojos del cansancio de pantallas', 'Aporte de antioxidantes y arándanos'], 'Masticar 1 o 2 tabletas al día', 'Bolsa Kraft con 10 tabletas masticables')
 on conflict (id) do update set
   name = excluded.name,
   slug = excluded.slug,
@@ -289,7 +295,13 @@ on conflict (id) do update set
   description = excluded.description,
   badge = excluded.badge,
   tagline = excluded.tagline,
-  pinned = excluded.pinned;
+  pinned = excluded.pinned,
+  image_url = excluded.image_url,
+  category = excluded.category,
+  includes = excluded.includes,
+  bullets = excluded.bullets,
+  dosage = excluded.dosage,
+  package_detail = excluded.package_detail;
 
 select setval('combos_id_seq', (select max(id) from combos));
 

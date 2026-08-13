@@ -798,16 +798,38 @@ header {
 
 @media (min-width: 1024px) {
   .admin-combo-editor-layout {
-    grid-template-columns: 3fr 2fr;
+    grid-template-columns: 1.3fr 0.7fr;
     align-items: start;
+    gap: 1.5rem;
   }
   
   .live-preview-card-pane {
     position: sticky;
-    top: 0;
-    border-left: 1px solid rgba(15, 61, 46, 0.06);
-    padding-left: 2rem;
+    top: 20px;
+    padding: 1.5rem !important;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+    background: #faf9f6 !important;
   }
+}
+
+/* Micro-animations and styles for visual media manager */
+.media-preview-container {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.media-preview-container:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(15, 61, 46, 0.08) !important;
+}
+
+.media-preview-container button {
+  transition: all 0.2s ease;
+}
+
+.media-preview-container button:hover {
+  transform: scale(1.15) !important;
+  background-color: #b91c1c !important;
 }
 
 .live-preview-card-pane h4 {
@@ -2525,106 +2547,224 @@ footer {
   }
 }
 
+/* ==========================================
+   MODERN CLIENT GRID LAYOUT (DESKTOP OVERRIDES)
+   ========================================== */
+@media (max-width: 1023px) {
+  .store-desktop-sidebar {
+    display: none !important;
+  }
+  .header-search-desktop {
+    display: none !important;
+  }
+}
+
 @media (min-width: 1024px) {
   #root {
     display: block !important;
     position: relative !important;
   }
 
-  header {
-    width: 100% !important;
-    box-sizing: border-box !important;
-    padding: 1rem 2rem !important;
-  }
-
-  .pwa-bottom-navbar {
-    position: fixed !important;
-    top: 95px !important;
-    left: calc(max(20px, (100vw - 1200px) / 2)) !important;
-    bottom: auto !important;
-    right: auto !important;
-    width: 220px !important;
-    height: auto !important;
-    max-height: calc(100vh - 120px) !important;
-    flex-direction: column !important;
-    justify-content: flex-start !important;
-    gap: 12px !important;
-    background: #ffffff !important;
-    border: 1px solid rgba(212, 175, 55, 0.15) !important; /* Elegant gold border */
-    border-radius: 16px !important;
-    box-shadow: 0 10px 30px rgba(15, 61, 46, 0.04) !important;
-    padding: 20px 10px !important;
-    transform: none !important;
-    z-index: 100 !important;
-  }
-
-  .pwa-bottom-navbar button {
-    flex-direction: row !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 12px !important;
-    width: 100% !important;
-    height: 48px !important;
-    padding: 0 15px !important;
-    flex-grow: 0 !important;
-    border-radius: 10px !important;
-    color: #666 !important;
-    border-left: 4px solid transparent !important;
-    transition: all 0.25s ease !important;
-    background: none !important;
-  }
-
-  .pwa-bottom-navbar button svg {
-    width: 20px !important;
-    height: 20px !important;
-  }
-
-  .pwa-bottom-navbar button span {
-    font-size: 0.9rem !important;
-    font-weight: 700 !important;
-  }
-
-  .pwa-bottom-navbar button:hover {
-    background-color: #f7f5ed !important;
-    color: var(--primary-green) !important;
-    border-left-color: rgba(212, 175, 55, 0.4) !important;
-  }
-
-  .pwa-bottom-navbar button.active-tab {
-    background-color: #FAF6F0 !important; /* Option 2 background */
-    color: var(--primary-green) !important;
-    border-left: 4px solid var(--accent-gold) !important;
-    border-radius: 0 10px 10px 0 !important;
-    padding-left: 11px !important;
-  }
-
-  .pwa-bottom-navbar button:hover svg {
-    transform: translateX(3px) !important;
-  }
-
-  /* Shift main app layout to the right on desktop, keeping it centered alongside sidebar */
+  /* Reset margins for content blocks inside the grid */
   main, 
   .orders-page-wrapper, 
   .nosotros-page-wrapper, 
   .perfil-page-wrapper {
-    margin-left: calc(max(20px, (100vw - 1200px) / 2) + 250px) !important;
-    max-width: calc(100vw - max(20px, (100vw - 1200px) / 2) - 290px) !important;
+    margin-left: 0 !important;
+    max-width: 100% !important;
     width: 100% !important;
+    padding: 0 !important;
     box-sizing: border-box !important;
+  }
+
+  /* Grid Layout */
+  .store-layout-grid {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+    align-items: start;
+    box-sizing: border-box;
+  }
+
+  /* Hide mobile bottom navbar on desktop */
+  .pwa-bottom-navbar {
+    display: none !important;
+  }
+
+  /* Hide main flow search bar and filter chips on desktop (since they are in sidebar/header) */
+  .search-container {
+    display: none !important;
+  }
+  .filter-container {
+    display: none !important;
+  }
+
+  /* Premium Sticky Header */
+  header {
+    width: 100% !important;
+    max-width: 1200px !important;
+    margin: 0 auto !important;
+    padding: 1.25rem 1.5rem !important;
+    background: white !important;
+    border-bottom: 1px solid rgba(15, 61, 46, 0.05) !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1000 !important;
+    border-radius: 0 0 16px 16px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02) !important;
+    box-sizing: border-box !important;
+  }
+
+  .header-search-desktop {
+    display: block;
+  }
+
+  /* Desktop Sticky Sidebar */
+  .store-desktop-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    position: sticky;
+    top: 105px;
+    height: auto;
+    max-height: calc(100vh - 130px);
+    overflow-y: auto;
+    padding-right: 5px;
+  }
+
+  /* Scrollbar styles for sidebar */
+  .store-desktop-sidebar::-webkit-scrollbar {
+    width: 5px;
+  }
+  .store-desktop-sidebar::-webkit-scrollbar-thumb {
+    background: rgba(15, 61, 46, 0.1);
+    border-radius: 4px;
+  }
+
+  /* Sidebar Card Base styling */
+  .sidebar-card {
+    background: white;
+    border: 1px solid rgba(15, 61, 46, 0.06);
+    border-radius: 16px;
+    padding: 1.25rem;
+    box-shadow: 0 4px 20px rgba(15, 61, 46, 0.02);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-sizing: border-box;
+  }
+
+  .sidebar-section-title {
+    margin: 0 0 4px 0;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--accent-gold);
+    font-weight: 800;
+  }
+
+  .sidebar-nav-links {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .sidebar-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: transparent;
+    border: none;
+    border-radius: 10px;
+    color: #555;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.25s ease;
+    border-left: 3px solid transparent;
+  }
+
+  .sidebar-nav-item:hover {
+    background: rgba(15, 61, 46, 0.03);
+    color: var(--primary-green);
+    transform: translateX(3px);
+  }
+
+  .sidebar-nav-item.active {
+    background: var(--primary-light) !important;
+    color: var(--primary-green) !important;
+    border-left: 3px solid var(--accent-gold) !important;
+    font-weight: 850;
+  }
+
+  .sidebar-nav-item svg {
+    color: #888;
+    transition: color 0.25s;
+  }
+
+  .sidebar-nav-item.active svg {
+    color: var(--primary-green);
+  }
+
+  /* Sidebar Categories panel */
+  .sidebar-categories-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .sidebar-category-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.65rem 0.8rem;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s;
+  }
+
+  .sidebar-category-btn:hover {
+    background: rgba(15, 61, 46, 0.02);
+    color: var(--primary-green);
+  }
+
+  .sidebar-category-btn.active {
+    color: var(--primary-green) !important;
+    font-weight: 800;
+    background: rgba(15, 61, 46, 0.04) !important;
+  }
+
+  .sidebar-category-btn svg {
+    opacity: 0;
+    transition: all 0.2s;
+    color: var(--primary-green);
+    transform: translateX(-5px);
+  }
+
+  .sidebar-category-btn:hover svg,
+  .sidebar-category-btn.active svg {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
 @media (min-width: 1240px) {
   header {
-    padding: 1rem calc((100vw - 1200px) / 2) !important;
-  }
-  
-  main, 
-  .orders-page-wrapper, 
-  .nosotros-page-wrapper, 
-  .perfil-page-wrapper {
-    margin-left: calc((100vw - 1200px) / 2 + 250px) !important;
-    max-width: 950px !important;
+    max-width: 1200px !important;
+    padding: 1.25rem 1.5rem !important;
   }
 }
 

@@ -49,5 +49,5 @@ const copyImagesPlugin = () => ({
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), copyImagesPlugin()],
-  base: '/ecommerce/',
+  base: './',
 })
