@@ -275,6 +275,8 @@ function App() {
   const [productFormStep, setProductFormStep] = useState(1);
   const [newImageUrl, setNewImageUrl] = useState("");
   const [newVideoUrl, setNewVideoUrl] = useState("");
+  const [newComboImageUrl, setNewComboImageUrl] = useState("");
+  const [newComboVideoUrl, setNewComboVideoUrl] = useState("");
   const [branches, setBranches] = useState([]);
   // Relational catalog states (comboStocks replaced by productStocks)
   const [selectedBranch, setSelectedBranch] = useState(null);
@@ -476,6 +478,16 @@ function App() {
       .reduce((acc, curr) => acc + curr.stock, 0);
   };
 
+  // Curated marketing background colors for PNGs (Added by Antigravity)
+  const MARKETING_COLORS = [
+    { name: "Sin fondo (Blanco/Transparente)", value: "" },
+    { name: "Amarillo Amazon", value: "#fff9db" },
+    { name: "Lila Eléctrico", value: "#f3e8ff" },
+    { name: "Celeste Vitalidad", value: "#e0f2fe" },
+    { name: "Verde Tiens (Suave)", value: "#e2ebd5" },
+    { name: "Naranja Oferta (Suave)", value: "#ffeedd" }
+  ];
+
   // Helper to get the main image of a product
   const getProductImage = (productId) => {
     const img = productImages.find(i => String(i.product_id) === String(productId) && !i.is_video);
@@ -497,7 +509,8 @@ function App() {
   const getComboImage = (comboId) => {
     const comboObj = combos.find(c => String(c.id) === String(comboId));
     if (comboObj && comboObj.image_url) {
-      return comboObj.image_url;
+      const urls = comboObj.image_url.split(',').map(u => u.trim()).filter(Boolean);
+      if (urls.length > 0) return urls[0];
     }
 
     const linked = comboProducts.filter(cp => String(cp.combo_id) === String(comboId));
@@ -1071,6 +1084,38 @@ function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [isAdminUnlocked, view]);
 
+  // Handle auto-opening product/combo from hash routing (e.g. #product-12 or #combo-5) for shared links (Added by Antigravity)
+  useEffect(() => {
+    if (products.length === 0 && combos.length === 0) return;
+    
+    const checkHashRoute = () => {
+      const hash = window.location.hash;
+      if (hash.startsWith('#product-')) {
+        const prodId = hash.replace('#product-', '');
+        if (view === 'details' && selectedCombo && String(selectedCombo.id) === String(prodId) && selectedCombo.type === 'product') {
+          return;
+        }
+        const found = products.find(p => String(p.id) === String(prodId));
+        if (found) {
+          openComboDetails(found, 'product');
+        }
+      } else if (hash.startsWith('#combo-')) {
+        const comboId = hash.replace('#combo-', '');
+        if (view === 'details' && selectedCombo && String(selectedCombo.id) === String(comboId) && selectedCombo.type === 'combo') {
+          return;
+        }
+        const found = combos.find(c => String(c.id) === String(comboId));
+        if (found) {
+          openComboDetails(found, 'combo');
+        }
+      }
+    };
+
+    checkHashRoute();
+    window.addEventListener('hashchange', checkHashRoute);
+    return () => window.removeEventListener('hashchange', checkHashRoute);
+  }, [products, combos, view, selectedCombo]);
+
   // Tick countdown timer down every second (24 hours reset)
   useEffect(() => {
     const timerInterval = setInterval(() => {
@@ -1265,14 +1310,18 @@ function App() {
       const resJson = await res.json();
       if (resJson.secure_url) {
         if (target.startsWith('combo')) {
-          setEditingCombo(prev => ({
-            ...prev,
-            image_url: resJson.secure_url
-          }));
+          setEditingCombo(prev => {
+            const currentUrls = prev.image_url ? prev.image_url.trim() : "";
+            const newUrls = currentUrls ? `${currentUrls},${resJson.secure_url}` : resJson.secure_url;
+            return {
+              ...prev,
+              image_url: newUrls
+            };
+          });
           if (window.Swal) {
-            window.Swal.fire('Subido', 'Archivo subido correctamente a Cloudinary.', 'success');
+            window.Swal.fire('Subido', 'Archivo subido correctamente a Cloudinary y agregado al combo.', 'success');
           } else {
-            alert('Archivo subido correctamente a Cloudinary.');
+            alert('Archivo subido correctamente a Cloudinary y agregado al combo.');
           }
         } else if (target.startsWith('product')) {
           setEditingProduct(prev => {
@@ -1342,6 +1391,7 @@ function App() {
         price_bs: parseFloat(editingCombo.price_bs),
         original_price_bs: parseFloat(editingCombo.original_price_bs),
         includes: editingCombo.includes,
+        description: editingCombo.description || "",
         bullets: typeof editingCombo.bullets === 'string' 
           ? editingCombo.bullets.split('\n').filter(b => b.trim() !== '')
           : editingCombo.bullets,
@@ -1350,7 +1400,8 @@ function App() {
         badge: editingCombo.badge || null,
         tagline: editingCombo.tagline || null,
         image_url: editingCombo.image_url || null,
-        pinned: !!editingCombo.pinned
+        pinned: !!editingCombo.pinned,
+        bg_color: editingCombo.bg_color || null
       };
 
       if (editingCombo.id) {
@@ -1489,7 +1540,8 @@ function App() {
         package_detail: editingProduct.package_detail || "",
         badge: editingProduct.badge || null,
         tagline: editingProduct.tagline || null,
-        pinned: !!editingProduct.pinned
+        pinned: !!editingProduct.pinned,
+        bg_color: editingProduct.bg_color || null
       };
 
       let resId = editingProduct.id;
@@ -1640,6 +1692,89 @@ function App() {
       allUrls[indexA] = allUrls[indexB];
       allUrls[indexB] = temp;
       return { ...prev, media_urls: allUrls.join('\n') };
+    });
+  };
+
+  // Helper functions for combos media editor (Added by Antigravity)
+  const addComboImage = (url) => {
+    if (!url) return;
+    const trimmed = url.trim();
+    setEditingCombo(prev => {
+      const current = prev.image_url || "";
+      const list = current.split(',').map(u => u.trim()).filter(Boolean);
+      if (list.includes(trimmed)) {
+        if (window.Swal) {
+          window.Swal.fire('Información', 'Esta imagen ya está agregada al combo.', 'info');
+        } else {
+          alert('Esta imagen ya está agregada al combo.');
+        }
+        return prev;
+      }
+      const updated = current ? `${current.trim()},${trimmed}` : trimmed;
+      return { ...prev, image_url: updated };
+    });
+    setNewComboImageUrl("");
+  };
+
+  const addComboVideo = (url) => {
+    if (!url) return;
+    const trimmed = url.trim();
+    setEditingCombo(prev => {
+      const current = prev.image_url || "";
+      const list = current.split(',').map(u => u.trim()).filter(Boolean);
+      if (list.includes(trimmed)) {
+        if (window.Swal) {
+          window.Swal.fire('Información', 'Este video ya está agregado al combo.', 'info');
+        } else {
+          alert('Este video ya está agregado al combo.');
+        }
+        return prev;
+      }
+      const updated = current ? `${current.trim()},${trimmed}` : trimmed;
+      return { ...prev, image_url: updated };
+    });
+    setNewComboVideoUrl("");
+  };
+
+  const removeComboMedia = (indexToRemove) => {
+    setEditingCombo(prev => {
+      const current = (prev.image_url || "")
+        .split(',')
+        .map(url => url.trim())
+        .filter(url => url !== "");
+      const filtered = current.filter((_, idx) => idx !== indexToRemove);
+      return { ...prev, image_url: filtered.join(',') };
+    });
+  };
+
+  const makeComboCover = (indexToMakeCover) => {
+    setEditingCombo(prev => {
+      const allUrls = (prev.image_url || "")
+        .split(',')
+        .map(url => url.trim())
+        .filter(url => url !== "");
+      if (indexToMakeCover < 0 || indexToMakeCover >= allUrls.length) return prev;
+      const target = allUrls[indexToMakeCover];
+      const remaining = allUrls.filter((_, idx) => idx !== indexToMakeCover);
+      const updated = [target, ...remaining];
+      return { ...prev, image_url: updated.join(',') };
+    });
+  };
+
+  const moveComboMediaInFilteredList = (filteredList, idxInFiltered, direction) => {
+    setEditingCombo(prev => {
+      const allUrls = (prev.image_url || "")
+        .split(',')
+        .map(url => url.trim())
+        .filter(url => url !== "");
+      const targetIdxInFiltered = idxInFiltered + direction;
+      if (targetIdxInFiltered < 0 || targetIdxInFiltered >= filteredList.length) return prev;
+      const indexA = filteredList[idxInFiltered].index;
+      const indexB = filteredList[targetIdxInFiltered].index;
+      const temp = allUrls[indexA];
+      allUrls[indexA] = allUrls[indexB];
+      allUrls[indexB] = temp;
+      return { ...prev, image_url: allUrls.join(',') };
     });
   };
 
@@ -2257,7 +2392,11 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
 
   // Share combo link copy function
   const handleShareCombo = (combo) => {
-    const shareText = `*${combo.name}* en Kaldirev Bolivia: ${combo.tagline}. Precio: Bs. ${parseFloat(combo.price_bs).toFixed(1)}. Incluye: ${combo.includes}. Consulta en: ${window.location.origin}`;
+    const itemType = combo.type || 'combo';
+    const cleanOrigin = window.location.href.split('#')[0].split('?')[0];
+    const shareLink = `${cleanOrigin}#${itemType}-${combo.id}`;
+    const shareText = `*${combo.name}* en Kaldirev Bolivia: ${combo.tagline}. Precio: Bs. ${parseFloat(combo.price_bs).toFixed(1)}. Detalle aquí: ${shareLink}`;
+    
     navigator.clipboard.writeText(shareText).then(() => {
       setShareSuccess(true);
       setTimeout(() => setShareSuccess(false), 1800);
@@ -2280,21 +2419,24 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
         detailsObj.image_url = item.image_url || '';
       }
     } else {
-      const comboImgList = [];
-      if (item.image_url) {
-        comboImgList.push(item.image_url);
+      let comboImageUrl = item.image_url || '';
+      
+      // Only fallback to linked products' images if the combo has no images of its own
+      if (!comboImageUrl) {
+        const comboImgList = [];
+        const linked = comboProducts.filter(cp => String(cp.combo_id) === String(item.id));
+        for (const cp of linked) {
+          const prodImgs = productImages.filter(img => String(img.product_id) === String(cp.product_id)).sort((a,b) => a.position - b.position);
+          prodImgs.forEach(img => {
+            if (!comboImgList.includes(img.url)) {
+              comboImgList.push(img.url);
+            }
+          });
+        }
+        comboImageUrl = comboImgList.join(',');
       }
       
-      const linked = comboProducts.filter(cp => String(cp.combo_id) === String(item.id));
-      for (const cp of linked) {
-        const prodImgs = productImages.filter(img => String(img.product_id) === String(cp.product_id)).sort((a,b) => a.position - b.position);
-        prodImgs.forEach(img => {
-          if (!comboImgList.includes(img.url)) {
-            comboImgList.push(img.url);
-          }
-        });
-      }
-      detailsObj.image_url = comboImgList.join(',');
+      detailsObj.image_url = comboImageUrl;
       
       // Add helper values for render compatibility
       detailsObj.bullets = detailsObj.bullets || [
@@ -2310,14 +2452,18 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
     setSelectedCombo(detailsObj);
     setActiveImageIndex(0);
     setView("details");
+    // Update hash to support sharing and back-button behavior
+    const targetHash = `#${type}-${item.id}`;
+    if (window.location.hash !== targetHash) {
+      window.location.hash = targetHash;
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const closeComboDetails = () => {
     setView("catalog");
     setSelectedCombo(null);
-    setActiveImageIndex(0);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.location.hash = "#catalog";
   };
 
   // Categories and filtering
@@ -3105,6 +3251,24 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                       </div>
                                     </div>
 
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        🎨 Color de Fondo del Producto (Recomendado para PNGs transparentes)
+                                      </label>
+                                      <select 
+                                        className="form-input" 
+                                        value={editingProduct.bg_color || ""}
+                                        onChange={(e) => setEditingProduct({...editingProduct, bg_color: e.target.value})}
+                                        style={{ fontWeight: 'bold' }}
+                                      >
+                                        {MARKETING_COLORS.map(c => (
+                                          <option key={c.value} value={c.value} style={{ background: c.value || 'white', color: '#333', fontWeight: 'bold' }}>
+                                            {c.name} {c.value ? `(${c.value})` : ""}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+
                                     {/* SECCIÓN DE IMÁGENES */}
                                     <div style={{ padding: '1.25rem', border: '1px solid rgba(15, 61, 46, 0.08)', borderRadius: '12px', background: '#faf9f6' }}>
                                       <h4 style={{ margin: '0 0 10px 0', color: 'var(--primary-green)', fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -3437,7 +3601,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                               <span style={{ fontSize: '0.7rem', textTransform: 'none', color: 'var(--text-muted)', background: '#e2ebd5', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold' }}>Solo Laptop/PC</span>
                             </h4>
                             <div className="product-card" style={{ width: '100%', maxWidth: '320px', margin: '0 auto', background: 'white', cursor: 'default', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', borderRadius: '16px', overflow: 'hidden', pointerEvents: 'none' }}>
-                              <div className="product-image-container" style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fdfb', position: 'relative' }}>
+                              <div className="product-image-container" style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: editingProduct.bg_color || '#f8fdfb', position: 'relative' }}>
                                 {(() => {
                                   const allUrls = (editingProduct.media_urls || "")
                                     .split('\n')
@@ -3532,7 +3696,8 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                 dosage: "",
                                 package_detail: "",
                                 badge: "",
-                                pinned: false
+                                pinned: false,
+                                bg_color: ""
                               });
                             }}
                           >
@@ -3722,143 +3887,324 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                   </div>
 
                                   <div className="form-group">
-                                    <label className="form-label" style={{ fontWeight: 800 }}>Multimedia Oficial del Combo *</label>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-                                      Sube una foto o un video promocional para este kit/combo.
-                                    </span>
-                                    
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-                                      {/* ESPACIO PARA IMAGEN */}
-                                      <div style={{ padding: '1rem', border: '1px solid rgba(15, 61, 46, 0.08)', borderRadius: '10px', background: '#faf9f6', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        <h5 style={{ margin: 0, fontWeight: 800, color: 'var(--primary-green)', fontSize: '0.9rem' }}>📷 Imagen (Foto)</h5>
-                                        {editingCombo.image_url && !isVideoUrl(editingCombo.image_url) ? (
-                                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', padding: '6px', borderRadius: '6px', border: '1px solid var(--border-color)', flexGrow: 1 }}>
-                                            <img src={resolveAssetUrl(editingCombo.image_url)} alt="Foto del combo" style={{ height: '50px', objectFit: 'contain' }} />
-                                            <button type="button" className="btn-qty" style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold' }} onClick={() => setEditingCombo({...editingCombo, image_url: ''})}>Eliminar</button>
+                                    <label className="form-label" style={{ fontWeight: 800 }}>Descripción Larga del Combo *</label>
+                                    <textarea 
+                                      className="form-input" 
+                                      rows="3"
+                                      required
+                                      placeholder="Ej. Pack completo diseñado para combatir el cansancio y mejorar tu vitalidad..."
+                                      value={editingCombo.description || ""}
+                                      onChange={(e) => setEditingCombo({...editingCombo, description: e.target.value})}
+                                    ></textarea>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* STEP 2: PRICING, INCLUSIONS & MULTIMEDIA */}
+                              {formStep === 2 && (() => {
+                                const allUrls = (editingCombo.image_url || "")
+                                  .split(',')
+                                  .map(url => url.trim())
+                                  .filter(url => url !== "");
+                                const mediaItems = allUrls.map((url, index) => ({ url, index, isVideo: isVideoUrl(url) }));
+                                const comboImages = mediaItems.filter(item => !item.isVideo);
+                                const comboVideos = mediaItems.filter(item => item.isVideo);
+
+                                return (
+                                  <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                    <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                      <div className="form-group">
+                                        <label className="form-label" style={{ fontWeight: 800 }}>Precio Oferta del Pack (Bs.) *</label>
+                                        <input 
+                                          type="number" 
+                                          step="0.1"
+                                          required
+                                          className="form-input"
+                                          placeholder="Ej. 188.5"
+                                          value={editingCombo.price_bs}
+                                          onChange={(e) => setEditingCombo({...editingCombo, price_bs: e.target.value})}
+                                        />
+                                      </div>
+                                      <div className="form-group">
+                                        <label className="form-label" style={{ fontWeight: 800 }}>Precio Regular Sumado (Bs.) *</label>
+                                        <input 
+                                          type="number" 
+                                          step="0.1"
+                                          required
+                                          className="form-input"
+                                          placeholder="Ej. 220"
+                                          value={editingCombo.original_price_bs}
+                                          onChange={(e) => setEditingCombo({...editingCombo, original_price_bs: e.target.value})}
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        🎨 Color de Fondo del Combo (Recomendado para PNGs transparentes)
+                                      </label>
+                                      <select 
+                                        className="form-input" 
+                                        value={editingCombo.bg_color || ""}
+                                        onChange={(e) => setEditingCombo({...editingCombo, bg_color: e.target.value})}
+                                        style={{ fontWeight: 'bold' }}
+                                      >
+                                        {MARKETING_COLORS.map(c => (
+                                          <option key={c.value} value={c.value} style={{ background: c.value || 'white', color: '#333', fontWeight: 'bold' }}>
+                                            {c.name} {c.value ? `(${c.value})` : ""}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+
+                                    <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                      <div className="form-group">
+                                        <label className="form-label" style={{ fontWeight: 800 }}>Lista de Productos Incluidos (ej: 1x Cordycafe, 1x Calcio) *</label>
+                                        <input 
+                                          type="text" 
+                                          required
+                                          className="form-input"
+                                          placeholder="Ej. 1x Cordycafe Tiens, 1x Calcio Nutritivo"
+                                          value={editingCombo.includes}
+                                          onChange={(e) => setEditingCombo({...editingCombo, includes: e.target.value})}
+                                        />
+                                      </div>
+                                      <div className="form-group">
+                                        <label className="form-label" style={{ fontWeight: 800 }}>Presentación del Combo (Envase)</label>
+                                        <input 
+                                          type="text" 
+                                          className="form-input"
+                                          placeholder="Ej. Caja original de cartón + Doypack kraft"
+                                          value={editingCombo.package_detail}
+                                          onChange={(e) => setEditingCombo({...editingCombo, package_detail: e.target.value})}
+                                        />
+                                      </div>
+                                    </div>
+
+                                    {/* SECCIÓN DE IMÁGENES */}
+                                    <div style={{ padding: '1.25rem', border: '1px solid rgba(15, 61, 46, 0.08)', borderRadius: '12px', background: '#faf9f6' }}>
+                                      <h4 style={{ margin: '0 0 10px 0', color: 'var(--primary-green)', fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        📷 Imágenes del Combo / Kit
+                                      </h4>
+                                      
+                                      {/* Lista de Imágenes */}
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '1rem' }}>
+                                        {comboImages.length === 0 ? (
+                                          <div style={{ padding: '1.5rem', width: '100%', textAlign: 'center', border: '1.5px dashed rgba(15, 61, 46, 0.12)', borderRadius: '8px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                            Sin imágenes cargadas aún. Sube una foto o añade una URL.
                                           </div>
                                         ) : (
-                                          <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '8px', justifyContent: 'center' }}>
-                                            <input 
-                                              type="text" 
-                                              placeholder="Pegar URL de Imagen..."
-                                              className="form-input"
-                                              style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem' }}
-                                              value={!isVideoUrl(editingCombo.image_url) ? (editingCombo.image_url || "") : ""}
-                                              onChange={(e) => setEditingCombo({...editingCombo, image_url: e.target.value})}
-                                            />
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                              <input 
-                                                type="file" 
-                                                accept="image/*"
-                                                id="combo-image-file-input"
-                                                onChange={(e) => handleCloudinaryUpload(e, 'combo_image')}
-                                                disabled={uploadingImage}
-                                                style={{ display: 'none' }}
-                                              />
-                                              <label htmlFor="combo-image-file-input" className="btn-admin-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', borderRadius: '6px', fontWeight: 'bold', color: 'white', background: '#0e4a36' }}>
-                                                📥 Subir Foto
-                                              </label>
-                                            </div>
-                                          </div>
+                                          comboImages.map(({ url, index }, idx) => {
+                                            const isCover = index === 0;
+                                            return (
+                                              <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                                                <div style={{ position: 'relative', width: '100px', height: '100px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+                                                  <img src={resolveAssetUrl(url)} alt="Vista previa" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                                  {isCover && (
+                                                    <span style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'var(--accent-gold)', color: 'var(--primary-green)', fontSize: '0.65rem', fontWeight: 900, textAlign: 'center', padding: '2px 0', textTransform: 'uppercase' }}>
+                                                      Portada
+                                                    </span>
+                                                  )}
+                                                  <button 
+                                                    type="button" 
+                                                    onClick={() => removeComboMedia(index)} 
+                                                    style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(239, 68, 68, 0.9)', color: 'white', border: 'none', borderRadius: '50%', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+                                                    title="Eliminar"
+                                                  >
+                                                    ×
+                                                  </button>
+                                                </div>
+                                                
+                                                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                                  <button 
+                                                    type="button"
+                                                    onClick={() => moveComboMediaInFilteredList(comboImages, idx, -1)} 
+                                                    disabled={idx === 0} 
+                                                    style={{ border: '1px solid #ebdcc9', background: idx === 0 ? '#f0f0f0' : 'white', padding: '2px 6px', borderRadius: '4px', cursor: idx === 0 ? 'not-allowed' : 'pointer', fontSize: '0.7rem', color: idx === 0 ? '#aaa' : '#333' }}
+                                                    title="Mover Izquierda"
+                                                  >
+                                                    ◀
+                                                  </button>
+                                                  
+                                                  {!isCover && (
+                                                    <button 
+                                                      type="button"
+                                                      onClick={() => makeComboCover(index)} 
+                                                      style={{ border: '1px solid #ebdcc9', background: '#e2ebd5', color: '#0f3d2e', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 'bold' }}
+                                                      title="Hacer Portada (Principal)"
+                                                    >
+                                                      ⭐ Portada
+                                                    </button>
+                                                  )}
+                                                  
+                                                  <button 
+                                                    type="button"
+                                                    onClick={() => moveComboMediaInFilteredList(comboImages, idx, 1)} 
+                                                    disabled={idx === comboImages.length - 1} 
+                                                    style={{ border: '1px solid #ebdcc9', background: idx === comboImages.length - 1 ? '#f0f0f0' : 'white', padding: '2px 6px', borderRadius: '4px', cursor: idx === comboImages.length - 1 ? 'not-allowed' : 'pointer', fontSize: '0.7rem', color: idx === comboImages.length - 1 ? '#aaa' : '#333' }}
+                                                    title="Mover Derecha"
+                                                  >
+                                                    ▶
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            );
+                                          })
                                         )}
                                       </div>
 
-                                      {/* ESPACIO PARA VIDEO */}
-                                      <div style={{ padding: '1rem', border: '1px solid rgba(15, 61, 46, 0.08)', borderRadius: '10px', background: '#faf9f6', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        <h5 style={{ margin: 0, fontWeight: 800, color: 'var(--primary-green)', fontSize: '0.9rem' }}>🎥 Video Promocional</h5>
-                                        {editingCombo.image_url && isVideoUrl(editingCombo.image_url) ? (
-                                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', padding: '6px', borderRadius: '6px', border: '1px solid var(--border-color)', flexGrow: 1 }}>
-                                            <video src={resolveAssetUrl(editingCombo.image_url)} muted autoPlay loop style={{ height: '50px', width: '50px', objectFit: 'cover', borderRadius: '4px' }} />
-                                            <button type="button" className="btn-qty" style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold' }} onClick={() => setEditingCombo({...editingCombo, image_url: ''})}>Eliminar</button>
-                                          </div>
-                                        ) : (
-                                          <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '8px', justifyContent: 'center' }}>
-                                            <input 
-                                              type="text" 
-                                              placeholder="Pegar URL de Video..."
-                                              className="form-input"
-                                              style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem' }}
-                                              value={isVideoUrl(editingCombo.image_url) ? (editingCombo.image_url || "") : ""}
-                                              onChange={(e) => setEditingCombo({...editingCombo, image_url: e.target.value})}
-                                            />
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                              <input 
-                                                type="file" 
-                                                accept="video/*"
-                                                id="combo-video-file-input"
-                                                onChange={(e) => handleCloudinaryUpload(e, 'combo_video')}
-                                                disabled={uploadingImage}
-                                                style={{ display: 'none' }}
-                                              />
-                                              <label htmlFor="combo-video-file-input" className="btn-admin-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', borderRadius: '6px', fontWeight: 'bold', color: 'white', background: '#0e4a36' }}>
-                                                📥 Subir Video
-                                              </label>
-                                            </div>
-                                          </div>
-                                        )}
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                          <input 
+                                            type="text" 
+                                            placeholder="Pegar enlace de imagen (URL)..."
+                                            className="form-input"
+                                            style={{ flexGrow: 1, padding: '0.5rem 0.8rem', fontSize: '0.9rem' }}
+                                            value={newComboImageUrl}
+                                            onChange={(e) => setNewComboImageUrl(e.target.value)}
+                                          />
+                                          <button 
+                                            type="button" 
+                                            className="btn-admin-primary" 
+                                            style={{ padding: '0.5rem 1rem', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
+                                            onClick={() => addComboImage(newComboImageUrl)}
+                                          >
+                                            Agregar URL
+                                          </button>
+                                        </div>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                          <input 
+                                            type="file" 
+                                            accept="image/*"
+                                            id="combo-image-file-input"
+                                            onChange={(e) => handleCloudinaryUpload(e, 'combo_image')}
+                                            disabled={uploadingImage}
+                                            style={{ display: 'none' }}
+                                          />
+                                          <label htmlFor="combo-image-file-input" className="btn-admin-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', borderRadius: '6px', fontWeight: 'bold', color: 'white', background: '#0e4a36' }}>
+                                            📥 Subir Foto
+                                          </label>
+                                        </div>
                                       </div>
                                     </div>
+
+                                    {/* SECCIÓN DE VIDEOS */}
+                                    <div style={{ padding: '1.25rem', border: '1px solid rgba(15, 61, 46, 0.08)', borderRadius: '12px', background: '#faf9f6', marginTop: '1rem' }}>
+                                      <h4 style={{ margin: '0 0 10px 0', color: 'var(--primary-green)', fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        🎥 Videos Promocionales del Combo / Kit
+                                      </h4>
+                                      
+                                      {/* Lista de Videos */}
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '1rem' }}>
+                                        {comboVideos.length === 0 ? (
+                                          <div style={{ padding: '1.5rem', width: '100%', textAlign: 'center', border: '1.5px dashed rgba(15, 61, 46, 0.12)', borderRadius: '8px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                            Sin videos promocionales. Sube un video o añade una URL.
+                                          </div>
+                                        ) : (
+                                          comboVideos.map(({ url, index }, idx) => {
+                                            const isCover = index === 0;
+                                            return (
+                                              <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                                                <div style={{ position: 'relative', width: '100px', height: '100px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+                                                  <video src={resolveAssetUrl(url)} muted autoPlay loop style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                  {isCover && (
+                                                    <span style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'var(--accent-gold)', color: 'var(--primary-green)', fontSize: '0.65rem', fontWeight: 900, textAlign: 'center', padding: '2px 0', textTransform: 'uppercase' }}>
+                                                      Portada
+                                                    </span>
+                                                  )}
+                                                  <button 
+                                                    type="button" 
+                                                    onClick={() => removeComboMedia(index)} 
+                                                    style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(239, 68, 68, 0.9)', color: 'white', border: 'none', borderRadius: '50%', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+                                                    title="Eliminar"
+                                                  >
+                                                    ×
+                                                  </button>
+                                                </div>
+
+                                                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                                  <button 
+                                                    type="button"
+                                                    onClick={() => moveComboMediaInFilteredList(comboVideos, idx, -1)} 
+                                                    disabled={idx === 0} 
+                                                    style={{ border: '1px solid #ebdcc9', background: idx === 0 ? '#f0f0f0' : 'white', padding: '2px 6px', borderRadius: '4px', cursor: idx === 0 ? 'not-allowed' : 'pointer', fontSize: '0.7rem', color: idx === 0 ? '#aaa' : '#333' }}
+                                                    title="Mover Izquierda"
+                                                  >
+                                                    ◀
+                                                  </button>
+                                                  
+                                                  {!isCover && (
+                                                    <button 
+                                                      type="button"
+                                                      onClick={() => makeComboCover(index)} 
+                                                      style={{ border: '1px solid #ebdcc9', background: '#e2ebd5', color: '#0f3d2e', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 'bold' }}
+                                                      title="Hacer Portada (Principal)"
+                                                    >
+                                                      ⭐ Portada
+                                                    </button>
+                                                  )}
+                                                  
+                                                  <button 
+                                                    type="button"
+                                                    onClick={() => moveComboMediaInFilteredList(comboVideos, idx, 1)} 
+                                                    disabled={idx === comboVideos.length - 1} 
+                                                    style={{ border: '1px solid #ebdcc9', background: idx === comboVideos.length - 1 ? '#f0f0f0' : 'white', padding: '2px 6px', borderRadius: '4px', cursor: idx === comboVideos.length - 1 ? 'not-allowed' : 'pointer', fontSize: '0.7rem', color: idx === comboVideos.length - 1 ? '#aaa' : '#333' }}
+                                                    title="Mover Derecha"
+                                                  >
+                                                    ▶
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            );
+                                          })
+                                        )}
+                                      </div>
+
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                          <input 
+                                            type="text" 
+                                            placeholder="Pegar enlace de video (URL)..."
+                                            className="form-input"
+                                            style={{ flexGrow: 1, padding: '0.5rem 0.8rem', fontSize: '0.9rem' }}
+                                            value={newComboVideoUrl}
+                                            onChange={(e) => setNewComboVideoUrl(e.target.value)}
+                                          />
+                                          <button 
+                                            type="button" 
+                                            className="btn-primary" 
+                                            style={{ padding: '0.5rem 1rem', fontSize: '0.88rem', whiteSpace: 'nowrap', border: '1px solid var(--border-color)', borderRadius: '6px' }}
+                                            onClick={() => addComboVideo(newComboVideoUrl)}
+                                          >
+                                            Agregar URL
+                                          </button>
+                                        </div>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                          <input 
+                                            type="file" 
+                                            accept="video/*"
+                                            id="combo-video-file-input"
+                                            onChange={(e) => handleCloudinaryUpload(e, 'combo_video')}
+                                            disabled={uploadingImage}
+                                            style={{ display: 'none' }}
+                                          />
+                                          <label htmlFor="combo-video-file-input" className="btn-admin-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', borderRadius: '6px', fontWeight: 'bold', color: 'white', background: '#0e4a36' }}>
+                                            📥 Subir Video
+                                          </label>
+                                        </div>
+                                      </div>
+                                    </div>
+
                                     {uploadingImage && (
                                       <span style={{ fontSize: '0.85rem', color: 'var(--offer-orange)', fontWeight: 'bold', display: 'block', marginTop: '4px' }}>
                                         ⏳ Subiendo archivo... por favor espere...
                                       </span>
                                     )}
                                   </div>
-                                </div>
-                              )}
-
-                              {/* STEP 2: PRICING AND INCLUSIONS */}
-                              {formStep === 2 && (
-                                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                                  <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                    <div className="form-group">
-                                      <label className="form-label" style={{ fontWeight: 800 }}>Precio Oferta del Pack (Bs.) *</label>
-                                      <input 
-                                        type="number" 
-                                        required
-                                        className="form-input"
-                                        placeholder="Ej. 188.5"
-                                        value={editingCombo.price_bs}
-                                        onChange={(e) => setEditingCombo({...editingCombo, price_bs: e.target.value})}
-                                      />
-                                    </div>
-                                    <div className="form-group">
-                                      <label className="form-label" style={{ fontWeight: 800 }}>Precio Regular Sumado (Bs.) *</label>
-                                      <input 
-                                        type="number" 
-                                        required
-                                        className="form-input"
-                                        placeholder="Ej. 220"
-                                        value={editingCombo.original_price_bs}
-                                        onChange={(e) => setEditingCombo({...editingCombo, original_price_bs: e.target.value})}
-                                      />
-                                    </div>
-                                  </div>
-
-                                  <div className="form-group">
-                                    <label className="form-label" style={{ fontWeight: 800 }}>Lista de Productos Incluidos (ej: 1x Cordycafe, 1x Calcio) *</label>
-                                    <input 
-                                      type="text" 
-                                      required
-                                      className="form-input"
-                                      placeholder="Ej. 1x Cordycafe Tiens, 1x Calcio Nutritivo"
-                                      value={editingCombo.includes}
-                                      onChange={(e) => setEditingCombo({...editingCombo, includes: e.target.value})}
-                                    />
-                                  </div>
-
-                                  <div className="form-group">
-                                    <label className="form-label" style={{ fontWeight: 800 }}>Presentación del Combo (Envase)</label>
-                                    <input 
-                                      type="text" 
-                                      className="form-input"
-                                      placeholder="Ej. Caja original de cartón + Doypack kraft"
-                                      value={editingCombo.package_detail}
-                                      onChange={(e) => setEditingCombo({...editingCombo, package_detail: e.target.value})}
-                                    />
-                                  </div>
-                                </div>
-                              )}
+                                );
+                              })()}
 
                               {/* STEP 3: CONSUMPTION AND PINNED BADGES */}
                               {formStep === 3 && (
@@ -3964,25 +4310,34 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                               <span style={{ fontSize: '0.7rem', textTransform: 'none', color: 'var(--text-muted)', background: '#e2ebd5', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold' }}>Solo Laptop/PC</span>
                             </h4>
                             <div className="product-card" style={{ width: '100%', maxWidth: '320px', margin: '0 auto', background: 'white', cursor: 'default', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', borderRadius: '16px', overflow: 'hidden', pointerEvents: 'none' }}>
-                              <div className="product-image-container" style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fdfb', position: 'relative' }}>
-                                {editingCombo.image_url ? (
-                                  isVideoUrl(editingCombo.image_url) ? (
-                                    <video src={resolveAssetUrl(editingCombo.image_url)} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                  ) : (
-                                    <img src={resolveAssetUrl(editingCombo.image_url)} alt={editingCombo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                  )
-                                ) : (
-                                  <div className="product-image-placeholder" style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
-                                    <div className="doypack-illustration">
-                                      <div className="doypack-zipper"></div>
-                                      <div className="doypack-tag" style={{ background: 'var(--accent-gold)' }}>
-                                        <span className="doypack-tag-logo" style={{ color: 'var(--primary-green)' }}>PACK</span>
-                                        <div className="doypack-tag-dot"></div>
+                              <div className="product-image-container" style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: editingCombo.bg_color || '#f8fdfb', position: 'relative' }}>
+                                {(() => {
+                                  const urls = (editingCombo.image_url || "")
+                                    .split(',')
+                                    .map(url => url.trim())
+                                    .filter(Boolean);
+                                  const mainImg = urls[0];
+                                  if (mainImg) {
+                                    if (isVideoUrl(mainImg)) {
+                                      return <video src={resolveAssetUrl(mainImg)} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
+                                    } else {
+                                      return <img src={resolveAssetUrl(mainImg)} alt={editingCombo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
+                                    }
+                                  } else {
+                                    return (
+                                      <div className="product-image-placeholder" style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+                                        <div className="doypack-illustration">
+                                          <div className="doypack-zipper"></div>
+                                          <div className="doypack-tag" style={{ background: 'var(--accent-gold)' }}>
+                                            <span className="doypack-tag-logo" style={{ color: 'var(--primary-green)' }}>PACK</span>
+                                            <div className="doypack-tag-dot"></div>
+                                          </div>
+                                        </div>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Mosaico autogenerado</span>
                                       </div>
-                                    </div>
-                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Mosaico autogenerado</span>
-                                  </div>
-                                )}
+                                    );
+                                  }
+                                })()}
                                 {editingCombo.badge && (
                                   <span className="product-badge" style={{ position: 'absolute', top: '12px', left: '12px', background: 'var(--accent-gold)', color: 'var(--primary-green)', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '800' }}>
                                     {editingCombo.badge}
@@ -4046,6 +4401,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                 bullets: "",
                                 dosage: "",
                                 package_detail: "Bolsa doypack kraft original sellada con sello de seguridad Kaldirev.",
+                                description: "",
                                 badge: "",
                                 tagline: "",
                                 image_url: "",
@@ -5301,7 +5657,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           onClick={() => openComboDetails(combo, 'combo')}
                           style={{ cursor: 'pointer' }}
                         >
-                          <div className="product-image-container">
+                          <div className="product-image-container" style={combo.bg_color ? { backgroundColor: combo.bg_color } : {}}>
                             {getComboImage(combo.id) ? (
                               isVideoUrl(getComboImage(combo.id)) ? (
                                 <video src={resolveAssetUrl(getComboImage(combo.id))} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -5432,7 +5788,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           onClick={() => openComboDetails(product, 'product')}
                           style={{ cursor: 'pointer' }}
                         >
-                          <div className="product-image-container">
+                          <div className="product-image-container" style={product.bg_color ? { backgroundColor: product.bg_color } : {}}>
                             {(() => {
                               const mainImg = getProductImage(product.id);
                               if (mainImg) {
@@ -5582,7 +5938,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           onClick={() => openComboDetails(combo, 'combo')}
                           style={{ cursor: 'pointer' }}
                         >
-                          <div className="product-image-container">
+                          <div className="product-image-container" style={combo.bg_color ? { backgroundColor: combo.bg_color } : {}}>
                             {getComboImage(combo.id) ? (
                               isVideoUrl(getComboImage(combo.id)) ? (
                                 <video src={resolveAssetUrl(getComboImage(combo.id))} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -5826,7 +6182,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                       );
                     } else if (media.type === 'image') {
                       return (
-                        <div key={index} className="details-main-media-box" style={{ overflow: 'hidden', borderRadius: '12px', background: '#faf9f6', border: '1px solid var(--border-color)', aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div key={index} className="details-main-media-box" style={{ overflow: 'hidden', borderRadius: '12px', background: selectedCombo.bg_color || '#faf9f6', border: '1px solid var(--border-color)', aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <img src={resolveAssetUrl(media.url)} alt={selectedCombo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                         </div>
                       );
