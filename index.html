@@ -4,8 +4,32 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="google-site-verification" content="t0dwx4zKOiLFFAvODg5SWv6xRwBW5_fw9cseQ_pFGRA" />
     <title>Kaldirev | Suplementos Tiens en Empaques Ecológicos</title>
-    <meta name="description" content="Kaldirev ofrece los mejores combos y packs de suplementos de salud y belleza de la marca Tiens. Envíos ecológicos en bolsa de papel kraft y doypacks." />
+    <meta name="description" content="Kaldirev ofrece los mejores combos y packs de suplementos de salud y belleza de la marca Tiens. Envíos ecológicos en Bolivia." />
+    <meta name="keywords" content="Tiens, Tiens Bolivia, Kaldirev, Cordycafe, Calcio Tiens, Suplementos Bolivia, Santa Cruz, Comprar Tiens, Nutrición" />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Kaldirev | Suplementos Tiens en Empaques Ecológicos" />
+    <meta property="og:description" content="Kaldirev ofrece los mejores combos y packs de suplementos de salud y belleza de la marca Tiens. Envíos ecológicos en Bolivia." />
+    <meta property="og:image" content="/logo.svg" />
+    
+    <!-- PWA Settings -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#0f3d2e" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('Service Worker registrado con éxito:', reg.scope))
+            .catch(err => console.log('Fallo al registrar Service Worker:', err));
+        });
+      }
+    </script>
+
     <!-- Google Fonts: Outfit & Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

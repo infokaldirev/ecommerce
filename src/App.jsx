@@ -29,7 +29,13 @@ const DEFAULT_PRODUCTS = [
     package_detail: "Caja conteniendo 12 sobres de 15g cada uno.",
     badge: "Popular",
     tagline: "Tu café con energía natural y salud",
-    pinned: true
+    pinned: true,
+    atp_benefit: "Aumenta los niveles de ATP (trifosfato de adenosina), la principal fuente de energía celular, mejorando la resistencia física y mental mientras reduce la fatiga y el estrés.",
+    preparation_mode: "Tomar un sobre al día, preferiblemente por la mañana. Mezclar el contenido en una taza con 150 ml de agua caliente y revolver hasta disolver.",
+    allergen_info: "Este producto contiene derivados de crustáceos y leche desnatada. No apto para personas con alergias a mariscos o intolerancia a los lácteos.",
+    precautions: "No se recomienda su consumo en personas con alergia o intolerancia a los lácteos. Evitar en niños, mujeres embarazadas o personas sensibles a la cafeína. Se recomienda consumir suficiente agua durante el día.",
+    cost_price_bs: 123.25,
+    is_active: true
   },
   {
     id: 2,
@@ -272,17 +278,19 @@ function App() {
   const [formStep, setFormStep] = useState(1);
   const [configSubTab, setConfigSubTab] = useState("products"); // "products" | "combos" | "settings"
   const [editingProduct, setEditingProduct] = useState(null);
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [isGuestEntered, setIsGuestEntered] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  });
   const [productFormStep, setProductFormStep] = useState(1);
   const [newImageUrl, setNewImageUrl] = useState("");
   const [newVideoUrl, setNewVideoUrl] = useState("");
   const [newComboImageUrl, setNewComboImageUrl] = useState("");
   const [newComboVideoUrl, setNewComboVideoUrl] = useState("");
-  
-  // News and Holidays States (Added by Antigravity)
-  const [news, setNews] = useState([]);
-  const [newsLoading, setNewsLoading] = useState(false);
-  const [bolivianHolidays, setBolivianHolidays] = useState([]);
-  const [todayHoliday, setTodayHoliday] = useState(null);
+
 
   const [branches, setBranches] = useState([]);
   // Relational catalog states (comboStocks replaced by productStocks)
@@ -815,6 +823,7 @@ function App() {
       if (error) throw error;
       setUser(null);
       setProfile(null);
+      setIsGuestEntered(false);
     } catch (err) {
       console.error("Error signing out:", err);
     }
@@ -1020,96 +1029,7 @@ function App() {
     }
   };
 
-  // Bolivian traditional & Christian holidays dictionary (Added by Antigravity)
-  // Bolivian traditional, religious, departmental & civic holidays dictionary (Added by Antigravity)
-  const BOLIVIAN_HOLIDAYS_DICT = [
-    { date: "01-01", name: "Año Nuevo (Feriado Nacional)", type: "Feriado Nacional" },
-    { date: "01-22", name: "Día del Estado Plurinacional (Feriado Nacional)", type: "Feriado Nacional" },
-    { date: "01-24", name: "Feria de la Alasita (Fiesta tradicional de la abundancia - La Paz)", type: "Festividad Tradicional" },
-    { date: "02-02", name: "Virgen de la Candelaria (Patrona de Copacabana)", type: "Festividad Religiosa" },
-    { date: "02-10", name: "Grito Libertario de Oruro (Feriado Departamental)", type: "Feriado Departamental" },
-    { date: "03-19", name: "Día del Padre Boliviano y Día del Carpintero (San José)", type: "Conmemoración Nacional" },
-    { date: "04-12", name: "Día del Niño Boliviano (Fomento a la infancia)", type: "Conmemoración Nacional" },
-    { date: "04-15", name: "Grito Libertario de Tarija (Feriado Departamental)", type: "Feriado Departamental" },
-    { date: "05-01", name: "Día del Trabajo (Feriado Nacional)", type: "Feriado Nacional" },
-    { date: "05-25", name: "Grito Libertario de Chuquisaca / Primer Grito de América (Feriado Departamental)", type: "Feriado Departamental" },
-    { date: "05-27", name: "Día de la Madre Boliviana (Homenaje a las Heroínas de la Coronilla)", type: "Conmemoración Nacional" },
-    { date: "06-14", name: "Día del Excombatiente de la Guerra del Chaco (Homenaje nacional)", type: "Conmemoración Nacional" },
-    { date: "06-21", name: "Año Nuevo Andino Amazónico y del Chaco (Willkakuti - Feriado Nacional)", type: "Feriado Nacional" },
-    { date: "06-23", name: "Noche de San Juan (Tradiciones invernales)", type: "Festividad Tradicional" },
-    { date: "06-29", name: "San Pedro y San Pablo (Festividad Religiosa)", type: "Festividad Religiosa" },
-    { date: "07-16", name: "Grito Libertario de La Paz y Fiesta de la Virgen del Carmen (Feriado Departamental)", type: "Feriado Departamental" },
-    { date: "08-02", name: "Día de la Revolución Agraria, Productiva y Comunitaria", type: "Conmemoración Nacional" },
-    { date: "08-05", name: "Fiesta de la Virgen de Copacabana", type: "Festividad Religiosa" },
-    { date: "08-06", name: "Día de la Independencia de Bolivia (¡Feliz Día de la Patria! 🇧🇴)", type: "Feriado Nacional" },
-    { date: "08-15", name: "Virgen de Urkupiña (Quillacollo, Cochabamba - Fiesta de la Integración)", type: "Festividad Religiosa" },
-    { date: "08-24", name: "Fiesta de San Bartolomé / Chutillos (Potosí)", type: "Festividad Tradicional" },
-    { date: "09-14", name: "Grito Libertario de Cochabamba (Feriado Departamental)", type: "Feriado Departamental" },
-    { date: "09-21", name: "Día del Amor, del Estudiante, del Médico y de la Primavera", type: "Conmemoración Nacional" },
-    { date: "09-24", name: "Grito Libertario de Santa Cruz (Feriado Departamental)", type: "Feriado Departamental" },
-    { date: "09-24", name: "Efeméride de Pando / Combate de Bahía (Feriado Departamental)", type: "Feriado Departamental" },
-    { date: "10-11", name: "Día de la Mujer Boliviana (Homenaje a Adela Zamudio)", type: "Conmemoración Nacional" },
-    { date: "11-01", name: "Todos Santos (Preparación de mesas tradicionales)", type: "Festividad Tradicional" },
-    { date: "11-02", name: "Día de los Difuntos / Todos Santos (Feriado Nacional)", type: "Feriado Nacional" },
-    { date: "11-10", name: "Grito Libertario de Potosí (Feriado Departamental)", type: "Feriado Departamental" },
-    { date: "11-18", name: "Creación del Departamento del Beni (Feriado Departamental)", type: "Feriado Departamental" },
-    { date: "12-24", name: "Nochebuena", type: "Festividad Religiosa" },
-    { date: "12-25", name: "Navidad (Feriado Nacional - Nacimiento de Jesús)", type: "Feriado Nacional" }
-  ];
 
-  const fetchBolivianHolidays = async () => {
-    try {
-      const year = new Date().getFullYear();
-      const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/BO`);
-      if (res.ok) {
-        const data = await res.json();
-        setBolivianHolidays(data);
-        
-        const todayStr = new Date().toISOString().split('T')[0];
-        const match = data.find(h => h.date === todayStr);
-        if (match) {
-          setTodayHoliday({ name: match.localName || match.name, type: "official" });
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching holidays from Nager.Date:", err);
-    }
-  };
-
-  const fetchNews = async () => {
-    setNewsLoading(true);
-    const FALLBACK_NEWS = [
-      { title: "Kaldirev Bolivia expande su red de distribución nacional de suplementos", author: "Prensa Kaldirev", pubDate: new Date().toISOString(), link: "#", description: "Hemos habilitado envíos express garantizados a Cochabamba, La Paz y Santa Cruz con empaquetado hermético termosellado." },
-      { title: "El consumo de Zinc y Calcio incrementa un 45% en el eje troncal", author: "Salud & Bienestar Bolivia", pubDate: new Date().toISOString(), link: "#", description: "Especialistas recomiendan complementar la dieta andina con micronutrientes orgánicos para fortalecer el sistema inmune." },
-      { title: "Ferias de nutrición natural se consolidan en Santa Cruz y Cochabamba", author: "Los Tiempos (Sección Salud)", pubDate: new Date().toISOString(), link: "#", description: "Emprendedores bolivianos promueven alternativas de nutrición y suplementación orgánica en ferias locales autorizadas." }
-    ];
-
-    try {
-      const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=https://www.lostiempos.com/rss/ultimas`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.items && data.items.length > 0) {
-          setNews(data.items.slice(0, 5));
-        } else {
-          setNews(FALLBACK_NEWS);
-        }
-      } else {
-        setNews(FALLBACK_NEWS);
-      }
-    } catch (err) {
-      console.error("Error fetching news from Los Tiempos RSS:", err);
-      setNews(FALLBACK_NEWS);
-    } finally {
-      setNewsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (view === "pedidos") {
-      fetchBolivianHolidays();
-      fetchNews();
-    }
-  }, [view]);
 
   // Fetch personal orders from Supabase (User view)
   const fetchUserOrders = async (userId) => {
@@ -1639,7 +1559,13 @@ function App() {
         badge: editingProduct.badge || null,
         tagline: editingProduct.tagline || null,
         pinned: !!editingProduct.pinned,
-        bg_color: editingProduct.bg_color || null
+        bg_color: editingProduct.bg_color || null,
+        allergen_info: editingProduct.allergen_info || null,
+        precautions: editingProduct.precautions || null,
+        preparation_mode: editingProduct.preparation_mode || null,
+        atp_benefit: editingProduct.atp_benefit || null,
+        cost_price_bs: parseFloat(editingProduct.cost_price_bs) || 0,
+        is_active: editingProduct.is_active !== undefined ? !!editingProduct.is_active : true
       };
 
       let resId = editingProduct.id;
@@ -1928,6 +1854,141 @@ function App() {
         });
       } else {
         alert("Error al eliminar producto: " + err.message);
+      }
+    }
+  };
+
+  // Save or edit category in Supabase
+  const handleSaveCategory = async (e) => {
+    e.preventDefault();
+    if (typeof window.Swal === 'undefined') {
+      if (!window.confirm("¿Está seguro de que desea guardar esta categoría?")) return;
+      executeSaveCategory();
+      return;
+    }
+
+    window.Swal.fire({
+      title: '¿Guardar Categoría?',
+      text: '¿Está seguro de que desea guardar los cambios de esta categoría?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#0f3d2e',
+      cancelButtonColor: '#888',
+      confirmButtonText: 'Sí, guardar',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        executeSaveCategory();
+      }
+    });
+  };
+
+  const executeSaveCategory = async () => {
+    try {
+      const payload = {
+        name: editingCategory.name,
+        slug: editingCategory.slug || editingCategory.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+        description: editingCategory.description || ""
+      };
+
+      if (editingCategory.id) {
+        const { error } = await supabase
+          .from('categories')
+          .update(payload)
+          .eq('id', editingCategory.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('categories')
+          .insert([payload]);
+        if (error) throw error;
+      }
+
+      setEditingCategory(null);
+      fetchStoreData();
+      
+      if (window.Swal) {
+        window.Swal.fire({
+          title: '¡Guardado!',
+          text: 'La categoría se ha registrado correctamente en Supabase.',
+          icon: 'success',
+          confirmButtonColor: '#0f3d2e'
+        });
+      } else {
+        alert("Categoría guardada correctamente.");
+      }
+    } catch (err) {
+      if (window.Swal) {
+        window.Swal.fire({
+          title: 'Error',
+          text: 'Fallo al guardar categoría: ' + err.message,
+          icon: 'error',
+          confirmButtonColor: '#0f3d2e'
+        });
+      } else {
+        alert("Error al guardar categoría: " + err.message);
+      }
+    }
+  };
+
+  // Delete Category from Supabase
+  const handleDeleteCategory = async (id) => {
+    const productsInCat = products.filter(p => String(p.category_id) === String(id));
+    let warnText = 'Esta acción borrará la categoría permanentemente.';
+    if (productsInCat.length > 0) {
+      warnText += ` Hay ${productsInCat.length} producto(s) en esta categoría que quedará(n) sin categoría asignada (categoría: N/A).`;
+    }
+
+    if (typeof window.Swal === 'undefined') {
+      if (!window.confirm("¿Está seguro de que desea eliminar esta categoría? " + warnText)) return;
+      executeDeleteCategory(id);
+      return;
+    }
+
+    window.Swal.fire({
+      title: '¿Eliminar Categoría?',
+      text: warnText,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#888',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        executeDeleteCategory(id);
+      }
+    });
+  };
+
+  const executeDeleteCategory = async (id) => {
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      fetchStoreData();
+      if (window.Swal) {
+        window.Swal.fire({
+          title: '¡Eliminada!',
+          text: 'La categoría ha sido eliminada de la base de datos.',
+          icon: 'success',
+          confirmButtonColor: '#0f3d2e'
+        });
+      } else {
+        alert("Categoría eliminada.");
+      }
+    } catch (err) {
+      if (window.Swal) {
+        window.Swal.fire({
+          title: 'Error',
+          text: 'Error al eliminar categoría: ' + err.message,
+          icon: 'error',
+          confirmButtonColor: '#0f3d2e'
+        });
+      } else {
+        alert("Error al eliminar categoría: " + err.message);
       }
     }
   };
@@ -3190,6 +3251,13 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     </button>
                     <button
                       type="button"
+                      className={`admin-subtab-btn ${configSubTab === 'categories' ? 'active' : ''}`}
+                      onClick={() => setConfigSubTab('categories')}
+                    >
+                      📂 Categorías
+                    </button>
+                    <button
+                      type="button"
                       className={`admin-subtab-btn ${configSubTab === 'settings' ? 'active' : ''}`}
                       onClick={() => setConfigSubTab('settings')}
                     >
@@ -3324,7 +3392,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
 
                                 return (
                                   <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                                    <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                                       <div className="form-group">
                                         <label className="form-label" style={{ fontWeight: 800 }}>Precio Oferta (Bs.) *</label>
                                         <input 
@@ -3345,6 +3413,17 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                           value={editingProduct.original_price_bs}
                                           onChange={(e) => setEditingProduct({...editingProduct, original_price_bs: e.target.value})}
                                           required
+                                        />
+                                      </div>
+                                      <div className="form-group">
+                                        <label className="form-label" style={{ fontWeight: 800 }}>Precio Costo (Bs.)</label>
+                                        <input 
+                                          type="number" 
+                                          step="0.1" 
+                                          className="form-input" 
+                                          value={editingProduct.cost_price_bs || ""}
+                                          onChange={(e) => setEditingProduct({...editingProduct, cost_price_bs: e.target.value})}
+                                          placeholder="ej. 123.2"
                                         />
                                       </div>
                                     </div>
@@ -3592,7 +3671,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                 <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                                   <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                     <div className="form-group">
-                                      <label className="form-label" style={{ fontWeight: 800 }}>Dosis / Modo de Uso</label>
+                                      <label className="form-label" style={{ fontWeight: 800 }}>Dosis Sugerida</label>
                                       <input 
                                         type="text" 
                                         className="form-input" 
@@ -3602,18 +3681,64 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                       />
                                     </div>
                                     <div className="form-group">
-                                      <label className="form-label" style={{ fontWeight: 800 }}>Detalle de Empaque</label>
+                                      <label className="form-label" style={{ fontWeight: 800 }}>Modo de Preparación Especial</label>
                                       <input 
                                         type="text" 
                                         className="form-input" 
-                                        placeholder="ej. Caja con 30 sobres de 10g"
-                                        value={editingProduct.package_detail || ""}
-                                        onChange={(e) => setEditingProduct({...editingProduct, package_detail: e.target.value})}
+                                        placeholder="ej. Disolver 1 sobre en 150ml de agua caliente"
+                                        value={editingProduct.preparation_mode || ""}
+                                        onChange={(e) => setEditingProduct({...editingProduct, preparation_mode: e.target.value})}
                                       />
                                     </div>
                                   </div>
 
-                                  <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'center' }}>
+                                  <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontWeight: 800 }}>Detalle de Empaque / Contenido Neto</label>
+                                      <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        placeholder="ej. Caja con 12 sobres de 15g"
+                                        value={editingProduct.package_detail || ""}
+                                        onChange={(e) => setEditingProduct({...editingProduct, package_detail: e.target.value})}
+                                      />
+                                    </div>
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontWeight: 800 }}>Beneficio ATP / Energía Celular</label>
+                                      <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        placeholder="ej. Aumenta niveles de ATP para mayor rendimiento"
+                                        value={editingProduct.atp_benefit || ""}
+                                        onChange={(e) => setEditingProduct({...editingProduct, atp_benefit: e.target.value})}
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontWeight: 800 }}>Información de Alérgenos</label>
+                                      <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        placeholder="ej. Contiene derivados de crustáceos y leche"
+                                        value={editingProduct.allergen_info || ""}
+                                        onChange={(e) => setEditingProduct({...editingProduct, allergen_info: e.target.value})}
+                                      />
+                                    </div>
+                                    <div className="form-group">
+                                      <label className="form-label" style={{ fontWeight: 800 }}>Precauciones / Contraindicaciones</label>
+                                      <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        placeholder="ej. Evitar en niños y embarazadas"
+                                        value={editingProduct.precautions || ""}
+                                        onChange={(e) => setEditingProduct({...editingProduct, precautions: e.target.value})}
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="form-row-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', alignItems: 'center' }}>
                                     <div className="form-group">
                                       <label className="form-label" style={{ fontWeight: 800 }}>Etiqueta Destacada (ej. Más Vendido, Popular)</label>
                                       <input 
@@ -3631,7 +3756,17 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                         onChange={(e) => setEditingProduct({...editingProduct, pinned: e.target.checked})}
                                         style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                                       />
-                                      <label htmlFor="prodPinned" style={{ fontWeight: 800, cursor: 'pointer' }}>Destacar en Inicio (Pinear)</label>
+                                      <label htmlFor="prodPinned" style={{ fontWeight: 800, cursor: 'pointer' }}>Destacar en Inicio</label>
+                                    </div>
+                                    <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '1.5rem' }}>
+                                      <input 
+                                        type="checkbox" 
+                                        id="prodActive"
+                                        checked={editingProduct.is_active !== false}
+                                        onChange={(e) => setEditingProduct({...editingProduct, is_active: e.target.checked})}
+                                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                      />
+                                      <label htmlFor="prodActive" style={{ fontWeight: 800, cursor: 'pointer' }}>Producto Activo / Visible</label>
                                     </div>
                                   </div>
 
@@ -3727,11 +3862,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                     );
                                   }
                                 })()}
-                                {editingProduct.badge && (
-                                  <span className="product-badge" style={{ position: 'absolute', top: '12px', left: '12px', background: 'var(--accent-gold)', color: 'var(--primary-green)', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '800' }}>
-                                    {editingProduct.badge}
-                                  </span>
-                                )}
+
                               </div>
                               <div className="product-details" style={{ padding: '1.25rem' }}>
                                 <span className="product-category" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>
@@ -4436,11 +4567,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                     );
                                   }
                                 })()}
-                                {editingCombo.badge && (
-                                  <span className="product-badge" style={{ position: 'absolute', top: '12px', left: '12px', background: 'var(--accent-gold)', color: 'var(--primary-green)', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '800' }}>
-                                    {editingCombo.badge}
-                                  </span>
-                                )}
+
                               </div>
                               <div className="product-details" style={{ padding: '1.25rem' }}>
                                 <span className="product-category" style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>
@@ -4735,6 +4862,185 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                             Guardar Ajuste de Oferta
                           </button>
                         </form>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {configSubTab === "categories" && (
+                  <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div>
+                      <span className="admin-dash-subtitle" style={{ display: 'block' }}>Configuración de Estructura</span>
+                      <h2 style={{ fontSize: '1.6rem', color: 'var(--primary-green)', margin: 0, fontWeight: 900 }}>Gestión de Categorías y Relaciones</h2>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.9fr', gap: '1.5rem' }} className="admin-settings-layout">
+                      {/* Formulario de Agregar / Editar Categoría */}
+                      <div className="dash-panel-card" style={{ padding: '1.5rem', height: 'fit-content' }}>
+                        <h3 style={{ fontSize: '1.25rem', color: 'var(--primary-green)', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', fontWeight: 800 }}>
+                          {editingCategory && editingCategory.id ? '✏️ Editar Categoría' : '✨ Crear Nueva Categoría'}
+                        </h3>
+                        <form onSubmit={handleSaveCategory} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 800 }}>Nombre de la Categoría *</label>
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              required 
+                              placeholder="ej. Nutrición Deportiva"
+                              value={editingCategory ? editingCategory.name : ""}
+                              onChange={(e) => {
+                                const name = e.target.value;
+                                const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                                if (editingCategory) {
+                                  setEditingCategory({ ...editingCategory, name, slug });
+                                } else {
+                                  setEditingCategory({ name, slug, description: "" });
+                                }
+                              }}
+                            />
+                          </div>
+
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 800 }}>Slug (URL Amigable) *</label>
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              required 
+                              placeholder="ej. nutricion-deportiva"
+                              value={editingCategory ? editingCategory.slug : ""}
+                              onChange={(e) => {
+                                const slug = e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, '');
+                                if (editingCategory) {
+                                  setEditingCategory({ ...editingCategory, slug });
+                                } else {
+                                  setEditingCategory({ name: "", slug, description: "" });
+                                }
+                              }}
+                            />
+                          </div>
+
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 800 }}>Descripción</label>
+                            <textarea 
+                              className="form-input" 
+                              rows="3" 
+                              placeholder="Descripción breve de los productos en esta categoría..."
+                              value={editingCategory ? editingCategory.description : ""}
+                              onChange={(e) => {
+                                const description = e.target.value;
+                                if (editingCategory) {
+                                  setEditingCategory({ ...editingCategory, description });
+                                } else {
+                                  setEditingCategory({ name: "", slug: "", description });
+                                }
+                              }}
+                            ></textarea>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                            <button 
+                              type="submit" 
+                              className="btn-add-cart" 
+                              style={{ flex: 1, background: 'var(--primary-green)', color: 'white', border: 'none', padding: '0.6rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                            >
+                              Guardar
+                            </button>
+                            {editingCategory && (
+                              <button 
+                                type="button" 
+                                className="btn-details-back" 
+                                style={{ flex: 1, padding: '0.6rem' }}
+                                onClick={() => setEditingCategory(null)}
+                              >
+                                Cancelar
+                              </button>
+                            )}
+                          </div>
+                        </form>
+                      </div>
+
+                      {/* Lista de Categorías y sus Productos */}
+                      <div className="dash-panel-card" style={{ padding: '1.5rem' }}>
+                        <h3 style={{ fontSize: '1.25rem', color: 'var(--primary-green)', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', fontWeight: 800 }}>
+                          📋 Categorías Registradas
+                        </h3>
+                        
+                        <div className="admin-price-table-container">
+                          <table className="admin-price-table">
+                            <thead>
+                              <tr>
+                                <th>ID</th>
+                                <th>Nombre / Slug</th>
+                                <th>Descripción</th>
+                                <th>Productos</th>
+                                <th style={{ textAlign: 'right' }}>Acciones</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {categoriesList.map(cat => {
+                                const catProducts = products.filter(p => String(p.category_id) === String(cat.id));
+                                return (
+                                  <tr key={cat.id} style={{ verticalAlign: 'top' }}>
+                                    <td style={{ fontWeight: 'bold', color: 'var(--accent-gold)' }}>#{cat.id}</td>
+                                    <td>
+                                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <span style={{ fontWeight: 800, color: 'var(--primary-green)' }}>{cat.name}</span>
+                                        <code style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{cat.slug}</code>
+                                      </div>
+                                    </td>
+                                    <td style={{ fontSize: '0.8rem', maxWidth: '180px', whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                                      {cat.description || <span style={{ color: '#aaa', fontStyle: 'italic' }}>Sin descripción</span>}
+                                    </td>
+                                    <td>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        <span className="badge-highlight" style={{ fontSize: '0.72rem', display: 'inline-block', width: 'fit-content' }}>
+                                          📦 {catProducts.length} producto{catProducts.length !== 1 ? 's' : ''}
+                                        </span>
+                                        {catProducts.length > 0 && (
+                                          <div style={{ maxHeight: '70px', overflowY: 'auto', border: '1px solid #ebdcc9', borderRadius: '4px', padding: '4px 6px', background: '#faf9f6', fontSize: '0.7rem' }}>
+                                            <ul style={{ margin: 0, paddingLeft: '12px', listStyleType: 'circle' }}>
+                                              {catProducts.map(p => (
+                                                <li key={p.id} style={{ color: 'var(--primary-green)', fontWeight: 600 }}>
+                                                  {p.name} <span style={{ fontSize: '0.6rem', color: 'var(--accent-gold)' }}>({p.sku || 'N/A'})</span>
+                                                </li>
+                                              ))}
+                                            </ul>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td style={{ textAlign: 'right' }}>
+                                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                        <button 
+                                          type="button" 
+                                          className="btn-admin-edit"
+                                          onClick={() => {
+                                            setEditingCategory({
+                                              id: cat.id,
+                                              name: cat.name,
+                                              slug: cat.slug,
+                                              description: cat.description || ""
+                                            });
+                                          }}
+                                        >
+                                          Editar
+                                        </button>
+                                        <button 
+                                          type="button" 
+                                          className="btn-admin-delete"
+                                          onClick={() => handleDeleteCategory(cat.id)}
+                                        >
+                                          Borrar
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -5295,17 +5601,19 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
     );
   }
 
+
+
   return (
     <>
       {/* HEADER SECTION */}
       <header>
         <div className="logo-container" onClick={() => { setActiveCategory("Todos"); setSearchTerm(""); closeComboDetails(); setView("catalog"); }}>
-          <div className="logo-mark">
-            <span className="logo-title" style={{ fontSize: '1.8rem', color: 'white' }}>K</span>
+          <div className="logo-mark" style={{ width: '48px', height: '48px', borderRadius: '12px' }}>
+            <span className="logo-title" style={{ fontSize: '2.1rem', color: 'white', fontWeight: 900 }}>K</span>
           </div>
           <div className="logo-text">
-            <span className="logo-title">Kaldirev</span>
-            <span className="logo-subtitle">Bienestar & Energía</span>
+            <span className="logo-title" style={{ fontSize: '1.45rem', fontWeight: 900 }}>Kaldirev</span>
+            <span className="logo-subtitle" style={{ fontSize: '0.72rem', letterSpacing: '0.5px' }}>Bienestar & Energía</span>
           </div>
         </div>
 
@@ -6347,12 +6655,94 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     </div>
                   </div>
 
-                  <div>
-                    <h4 className="details-box-title">Dosis sugerida</h4>
-                    <div className="details-box dosage-box" style={{ padding: '1rem' }}>
-                      <p style={{ fontSize: '0.95rem' }}>{selectedCombo.dosage}</p>
+                  {/* ATP / Energía Celular */}
+                  {selectedCombo.atp_benefit && (
+                    <div className="atp-benefit-card" style={{
+                      background: '#f4fbf7',
+                      border: '1px solid #bbf7d0',
+                      borderRadius: '12px',
+                      padding: '1.25rem',
+                      display: 'flex',
+                      gap: '12px',
+                      alignItems: 'flex-start',
+                      marginTop: '0.25rem'
+                    }}>
+                      <div style={{
+                        background: '#e2ebd5',
+                        color: 'var(--primary-green)',
+                        padding: '8px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                        </svg>
+                      </div>
+                      <div>
+                        <h5 style={{ margin: '0 0 4px 0', fontSize: '0.95rem', color: 'var(--primary-green)', fontWeight: '800' }}>Energía y Resistencia Celular (ATP)</h5>
+                        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-dark)', lineHeight: '1.4' }}>{selectedCombo.atp_benefit}</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {/* Modo de Uso / Dosis sugerida */}
+                  {(selectedCombo.preparation_mode || selectedCombo.dosage) && (
+                    <div>
+                      <h4 className="details-box-title">Modo de Uso y Preparación</h4>
+                      <div className="details-box dosage-box" style={{ padding: '1rem', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                        <div style={{ color: 'var(--primary-green)', marginTop: '2px', flexShrink: 0 }}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                          </svg>
+                        </div>
+                        <p style={{ fontSize: '0.9rem', margin: 0, lineHeight: '1.4', color: 'var(--text-dark)' }}>
+                          {selectedCombo.preparation_mode || selectedCombo.dosage}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Advertencias de Salud e Ingesta */}
+                  {(selectedCombo.allergen_info || selectedCombo.precautions) && (
+                    <div className="health-warnings-card" style={{
+                      background: '#fff9db',
+                      border: '1px solid #ebdcc9',
+                      borderRadius: '12px',
+                      padding: '1.25rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px',
+                      marginTop: '0.25rem'
+                    }}>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <div style={{ color: '#b89047', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                          </svg>
+                        </div>
+                        <h5 style={{ margin: 0, fontSize: '0.92rem', color: '#8a6d3b', fontWeight: '800' }}>Información de Alérgenos y Precauciones</h5>
+                      </div>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.82rem', color: '#7a5f30', lineHeight: '1.4' }}>
+                        {selectedCombo.allergen_info && (
+                          <div>
+                            <strong>Alérgenos:</strong> {selectedCombo.allergen_info}
+                          </div>
+                        )}
+                        {selectedCombo.precautions && (
+                          <div>
+                            <strong>Precauciones:</strong> {selectedCombo.precautions}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Amazon Technical Specs Table */}
                   <div>
@@ -6463,153 +6853,8 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
 
       {/* ==================== VIEW 4: DEDICATED ORDERS & PROFILE DASHBOARD PAGE ==================== */}
       {view === "pedidos" && (() => {
-        const getTodayHoliday = () => {
-          if (todayHoliday) return todayHoliday.name;
-          const today = new Date();
-          const mm = String(today.getMonth() + 1).padStart(2, '0');
-          const dd = String(today.getDate()).padStart(2, '0');
-          const searchKey = `${mm}-${dd}`;
-          const local = BOLIVIAN_HOLIDAYS_DICT.find(h => h.date === searchKey);
-          return local ? local.name : null;
-        };
-
-        const getUpcomingHolidays = () => {
-          const today = new Date();
-          const todayStr = today.toISOString().split('T')[0];
-          
-          const combined = [...bolivianHolidays.map(h => ({ date: h.date, name: h.localName || h.name, type: "Feriado Oficial" }))];
-          
-          const year = today.getFullYear();
-          BOLIVIAN_HOLIDAYS_DICT.forEach(lh => {
-            const fullDate = `${year}-${lh.date}`;
-            if (!combined.some(c => c.date === fullDate)) {
-              combined.push({ date: fullDate, name: lh.name, type: lh.type === 'official' ? 'Feriado Oficial' : 'Festividad Tradicional' });
-            }
-          });
-
-          combined.sort((a, b) => new Date(a.date) - new Date(b.date));
-          const future = combined.filter(h => h.date >= todayStr);
-          return future.slice(0, 3);
-        };
-        const getNewsIconAndBg = (title) => {
-          const t = title.toLowerCase();
-          if (t.includes('frontera') || t.includes('nevada') || t.includes('clima') || t.includes('frío') || t.includes('pasos') || t.includes('vía') || t.includes('nevadas')) {
-            return { icon: '🏔️', bg: 'linear-gradient(135deg, #56ccf2, #2f80ed)' };
-          }
-          if (t.includes('gobierno') || t.includes('ministro') || t.includes('ley') || t.includes('política') || t.includes('fiscal') || t.includes('presidente') || t.includes('vicepresidente') || t.includes('denuncia') || t.includes('deberes') || t.includes('plurinacional')) {
-            return { icon: '⚖️', bg: 'linear-gradient(135deg, #0f3d2e, #2d5a27)' };
-          }
-          if (t.includes('balacera') || t.includes('mafias') || t.includes('policía') || t.includes('seguridad') || t.includes('crimen') || t.includes('cárcel') || t.includes('muerte') || t.includes('combate') || t.includes('disparar')) {
-            return { icon: '🚨', bg: 'linear-gradient(135deg, #f857a6, #ff5858)' };
-          }
-          if (t.includes('salud') || t.includes('médico') || t.includes('suplemento') || t.includes('bienestar') || t.includes('covid') || t.includes('nutrición') || t.includes('alimentación')) {
-            return { icon: '❤️', bg: 'linear-gradient(135deg, #11998e, #38ef7d)' };
-          }
-          if (t.includes('dólar') || t.includes('economía') || t.includes('precio') || t.includes('inflación') || t.includes('comercio') || t.includes('combustible') || t.includes('inversión')) {
-            return { icon: '💵', bg: 'linear-gradient(135deg, #f2994a, #f2c94c)' };
-          }
-          if (t.includes('deporte') || t.includes('fútbol') || t.includes('partido') || t.includes('campeón')) {
-            return { icon: '⚽', bg: 'linear-gradient(135deg, #1f4037, #99f2c8)' };
-          }
-          return { icon: '📰', bg: 'linear-gradient(135deg, #0f3d2e, #2a5c48)' };
-        };
-
-        const renderMiniCalendar = () => {
-          const today = new Date();
-          const currentYear = today.getFullYear();
-          const currentMonth = today.getMonth(); // 0-indexed
-          
-          const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay(); // 0 is Sunday
-          const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
-          
-          const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-          const dayNames = ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sá"];
-          
-          const cells = [];
-          for (let i = 0; i < firstDayIndex; i++) {
-            cells.push(<div key={`empty-${i}`} style={{ width: '100%', height: '30px' }}></div>);
-          }
-          
-          for (let day = 1; day <= totalDays; day++) {
-            const dateStr = `${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const fullDateStr = `${currentYear}-${dateStr}`;
-            
-            const isToday = day === today.getDate();
-            
-            const isOfficialHoliday = bolivianHolidays.some(h => h.date === fullDateStr);
-            const localHoliday = BOLIVIAN_HOLIDAYS_DICT.find(h => h.date === dateStr);
-            const isHoliday = isOfficialHoliday || !!localHoliday;
-            
-            const holidayName = isOfficialHoliday 
-              ? bolivianHolidays.find(h => h.date === fullDateStr).localName 
-              : localHoliday ? localHoliday.name : null;
-
-            let cellStyle = {
-              width: '100%',
-              height: '30px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '50%',
-              fontSize: '0.78rem',
-              cursor: isHoliday ? 'pointer' : 'default',
-              position: 'relative',
-              transition: 'all 0.2s ease',
-              fontWeight: isToday || isHoliday ? 'bold' : 'normal'
-            };
-            
-            if (isToday) {
-              cellStyle.background = 'var(--primary-green)';
-              cellStyle.color = 'white';
-            } else if (isHoliday) {
-              cellStyle.background = '#fff9db';
-              cellStyle.color = '#a16207';
-              cellStyle.border = '1px solid var(--accent-gold)';
-            }
-
-            cells.push(
-              <div 
-                key={day} 
-                style={cellStyle}
-                title={holidayName || undefined}
-                onMouseEnter={(e) => {
-                  if (isHoliday) {
-                    e.currentTarget.style.transform = 'scale(1.1)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (isHoliday) {
-                    e.currentTarget.style.transform = 'none';
-                  }
-                }}
-              >
-                {day}
-                {isHoliday && !isToday && (
-                  <span style={{ position: 'absolute', bottom: '2px', width: '4px', height: '4px', borderRadius: '50%', background: 'var(--accent-gold)' }}></span>
-                )}
-              </div>
-            );
-          }
-          
-          return (
-            <div style={{ background: '#faf9f6', padding: '12px', borderRadius: '12px', border: '1px solid rgba(15,61,46,0.04)', marginTop: '1.25rem' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--primary-green)', display: 'block', textAlign: 'center', marginBottom: '8px' }}>
-                📅 {monthNames[currentMonth]} {currentYear}
-              </span>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', marginBottom: '4px' }}>
-                {dayNames.map(name => (
-                  <span key={name} style={{ fontSize: '0.7rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>{name}</span>
-                ))}
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
-                {cells}
-              </div>
-            </div>
-          );
-        };
-
         return (
-          <main className="orders-page-wrapper animate-fade-in" style={{ padding: '2rem 1.5rem', maxWidth: '1200px', margin: '0 auto', minHeight: '60vh' }}>
+          <main className="orders-page-wrapper animate-fade-in" style={{ padding: '2rem 1.5rem', maxWidth: '800px', margin: '0 auto', minHeight: '60vh' }}>
             
             {/* Header Profile Card - Only if logged in */}
             {user ? (
@@ -6670,7 +6915,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     ¡Hola { (profile?.full_name || user?.user_metadata?.full_name || "Sebastián").split(" ")[0] }!
                   </span>
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-dark)' }}>
-                    Bienvenido a tu panel de control de compras y noticias en Bolivia.
+                    Bienvenido a tu panel de control de compras en Bolivia.
                   </span>
                 </div>
               </div>
@@ -6689,7 +6934,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                   Bienvenido a Kaldirev Bolivia 🇧🇴
                 </h3>
                 <p style={{ margin: '4px 0 0 0', fontSize: '0.88rem', color: 'var(--text-muted)' }}>
-                  Tu portal integral de salud, feriados de Bolivia, noticias nacionales de Los Tiempos y control de tus compras.
+                  Tu portal integral para el control de tus compras en Bolivia.
                 </p>
               </div>
             )}
@@ -6882,223 +7127,6 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 )}
               </div>
 
-              {/* COLUMN 2: BOLIVIAN NEWS & HOLIDAYS CALENDAR (Always visible!) */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                
-                {/* Widget 1: Calendario de Feriados y Festividades de Bolivia */}
-                <div className="dash-panel-card" style={{ 
-                  background: 'white', 
-                  border: '1px solid var(--border-color)', 
-                  borderRadius: '16px', 
-                  padding: '1.5rem',
-                  boxShadow: 'var(--shadow-sm)',
-                  textAlign: 'left'
-                }}>
-                  <h3 style={{ margin: '0 0 12px 0', fontSize: '1.2rem', color: 'var(--primary-green)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                    Calendario de Bolivia
-                  </h3>
-                  
-                  {/* Today's Date */}
-                  <div style={{ marginBottom: '1rem', borderBottom: '1px solid #f1ece4', paddingBottom: '10px' }}>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold' }}>Fecha de Hoy</span>
-                    <span style={{ display: 'block', fontSize: '1.25rem', fontWeight: 900, color: 'var(--primary-green)', marginTop: '2px' }}>
-                      {new Date().toLocaleDateString('es-BO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                    </span>
-                  </div>
-
-                  {/* Today's Holiday Alert Message */}
-                  <div style={{ 
-                    background: getTodayHoliday() ? '#fff9db' : '#f4fbf7',
-                    borderLeft: `4px solid ${getTodayHoliday() ? 'var(--accent-gold)' : 'var(--primary-green)'}`,
-                    padding: '12px',
-                    borderRadius: '8px',
-                    fontSize: '0.85rem',
-                    fontWeight: 'bold',
-                    color: getTodayHoliday() ? '#a16207' : '#115e3b',
-                    marginBottom: '1.25rem'
-                  }}>
-                    {getTodayHoliday() ? (
-                      <span>🎉 ¡Día Festivo! Hoy se celebra: {getTodayHoliday()}</span>
-                    ) : (
-                      <span>☀️ Hoy no es feriado nacional. ¡Ten una excelente jornada!</span>
-                    )}
-                  </div>
-
-                  {/* Upcoming holidays list */}
-                  <div>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Próximas Festividades</span>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {getUpcomingHolidays().map((holiday, idx) => (
-                        <div key={idx} style={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'space-between',
-                          padding: '8px 10px',
-                          background: '#faf9f6',
-                          border: '1px solid rgba(15,61,46,0.03)',
-                          borderRadius: '8px',
-                          fontSize: '0.8rem'
-                        }}>
-                          <div>
-                            <span style={{ fontWeight: 'bold', color: 'var(--primary-green)', display: 'block' }}>
-                              {holiday.name}
-                            </span>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                              {holiday.type}
-                            </span>
-                          </div>
-                          <span style={{ background: '#e2ebd5', color: '#0f3d2e', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
-                            {new Date(holiday.date + 'T00:00:00').toLocaleDateString('es-BO', { day: 'numeric', month: 'short' })}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  {renderMiniCalendar()}
-                </div>
-
-                {/* Widget 2: Noticias en Vivo de Bolivia (Los Tiempos RSS Feed) */}
-                <div className="dash-panel-card" style={{ 
-                  background: 'white', 
-                  border: '1px solid var(--border-color)', 
-                  borderRadius: '16px', 
-                  padding: '1.5rem',
-                  boxShadow: 'var(--shadow-sm)',
-                  textAlign: 'left'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--primary-green)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-                      Novedades de Bolivia
-                    </h3>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', background: '#f1ece4', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold' }}>Los Tiempos RSS</span>
-                  </div>
-
-                  {newsLoading ? (
-                    <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--text-muted)' }}>
-                      <div style={{ border: '2px solid rgba(0,0,0,0.1)', borderTop: '2px solid var(--accent-gold)', borderRadius: '50%', width: '24px', height: '24px', animation: 'spin 1s linear infinite', margin: '0 auto 8px auto' }}></div>
-                      <p style={{ fontSize: '0.8rem' }}>Conectando con Los Tiempos...</p>
-                    </div>
-                  ) : news.length === 0 ? (
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1rem 0' }}>
-                      No se pudo conectar al canal de noticias.
-                    </p>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      {news.map((item, idx) => {
-                        const cleanDesc = item.description 
-                          ? item.description.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim().substring(0, 110)
-                          : '';
-
-                        // Parse image URL from various potential locations in RSS json payload
-                        let imageUrl = null;
-                        if (item.thumbnail) imageUrl = item.thumbnail;
-                        else if (item.enclosure && item.enclosure.link) imageUrl = item.enclosure.link;
-                        else if (item.enclosure && item.enclosure.url) imageUrl = item.enclosure.url;
-                        else {
-                          const imgRegex = /<img[^>]+src=["']([^"']+)["']/;
-                          const match = (item.description && item.description.match(imgRegex)) || (item.content && item.content.match(imgRegex));
-                          if (match && match[1]) imageUrl = match[1];
-                        }
-
-                        const newsTheme = getNewsIconAndBg(item.title);
-
-                        return (
-                          <a 
-                            key={idx} 
-                            href={item.link} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="news-item-hover-card"
-                            style={{ 
-                              display: 'flex', 
-                              gap: '12px',
-                              textDecoration: 'none', 
-                              padding: '10px', 
-                              borderRadius: '12px', 
-                              border: '1px solid rgba(15,61,46,0.04)', 
-                              background: '#faf9f6', 
-                              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                              color: 'inherit',
-                              textAlign: 'left'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = 'translateY(-2px)';
-                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.04)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.transform = 'none';
-                              e.currentTarget.style.boxShadow = 'none';
-                            }}
-                          >
-                            {/* News Image Thumbnail / CSS Gradient Placeholder */}
-                            <div style={{ 
-                              width: '70px', 
-                              height: '70px', 
-                              borderRadius: '8px', 
-                              overflow: 'hidden', 
-                              flexShrink: 0, 
-                              background: newsTheme.bg, 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'center',
-                              border: '1px solid rgba(15,61,46,0.06)'
-                            }}>
-                              {imageUrl ? (
-                                <img 
-                                  src={imageUrl} 
-                                  alt="" 
-                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                                  onError={(e) => { 
-                                    e.target.style.display = 'none'; 
-                                    e.target.parentElement.innerHTML = `<span style="font-size: 1.4rem">${newsTheme.icon}</span>`; 
-                                  }} 
-                                />
-                              ) : (
-                                <span style={{ fontSize: '1.4rem' }}>{newsTheme.icon}</span>
-                              )}
-                            </div>
-
-                            {/* News Info */}
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <span style={{ 
-                                display: '-webkit-box', 
-                                WebkitLineClamp: 2, 
-                                WebkitBoxOrient: 'vertical', 
-                                overflow: 'hidden', 
-                                fontSize: '0.8rem', 
-                                fontWeight: 'bold', 
-                                color: 'var(--primary-green)', 
-                                lineHeight: '1.2', 
-                                marginBottom: '4px' 
-                              }}>
-                                {item.title}
-                              </span>
-                              <span style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                                {item.author || "Los Tiempos"} • {new Date(item.pubDate).toLocaleDateString('es-BO', { day: 'numeric', month: 'short' })}
-                              </span>
-                              <p style={{ 
-                                margin: 0, 
-                                display: '-webkit-box', 
-                                WebkitLineClamp: 2, 
-                                WebkitBoxOrient: 'vertical', 
-                                overflow: 'hidden', 
-                                fontSize: '0.7rem', 
-                                color: 'var(--text-dark)', 
-                                lineHeight: '1.3' 
-                              }}>
-                                {cleanDesc}
-                              </p>
-                            </div>
-                          </a>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-              </div>
 
             </div>
           </main>
