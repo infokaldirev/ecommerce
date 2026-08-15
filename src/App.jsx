@@ -183,6 +183,111 @@ const DEFAULT_COMBO_PRODUCTS = [
   { combo_id: 3, product_id: 4, quantity: 1 }
 ];
 
+const DEFAULT_SOCIAL_POSTS = [
+  {
+    id: 1,
+    platform: 'instagram',
+    image_url: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=600&auto=format&fit=crop&q=80',
+    caption: '🌱 ¡Empieza tu mañana con bienestar! Nuestro té Tianshi y Cordycafe son la combinación perfecta para llenarte de energía natural sin químicos. 💚 #Kaldirev #SaludNatural #TiensBolivia',
+    post_url: 'https://www.instagram.com/kaldirev?igsh=czF1enQ0d2VxcGh5',
+    date: '2026-08-14',
+    likes: 142,
+    comments: 18
+  },
+  {
+    id: 2,
+    platform: 'tiktok',
+    image_url: 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=600&auto=format&fit=crop&q=80',
+    caption: '📦 Unboxing de tu pedido Kaldirev. Nos aseguramos de que todos tus suplementos lleguen con el termosellado de seguridad original. ¡Envíos en el día! ⚡️ #UnboxingBolivia #EcoFriendly #SantaCruz',
+    post_url: 'https://www.tiktok.com/@kaldirev?_r=1&_t=ZS-98qrZwvHN6z',
+    date: '2026-08-12',
+    likes: 389,
+    comments: 42
+  },
+  {
+    id: 3,
+    platform: 'facebook',
+    image_url: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=600&auto=format&fit=crop&q=80',
+    caption: '👨‍👩‍👧‍👦 La salud familiar es una prioridad. El Calcio Nutritivo Tiens ofrece un 95% de absorción para fortalecer los huesos de los que más quieres. Escríbenos para una asesoría de salud gratuita por WhatsApp. 📲',
+    post_url: 'https://www.facebook.com/share/1DNC7YMQ81/',
+    date: '2026-08-10',
+    likes: 95,
+    comments: 12
+  },
+  {
+    id: 4,
+    platform: 'youtube',
+    image_url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600&auto=format&fit=crop&q=80',
+    caption: '🎥 Te explicamos a fondo cómo el hongo Cordyceps Sinensis estimula tus niveles de ATP celular y mejora la resistencia pulmonar de forma natural. ¡Video completo en nuestro canal! 🔴',
+    post_url: 'https://www.youtube.com/@kaldirev',
+    date: '2026-08-08',
+    likes: 215,
+    comments: 31
+  },
+  {
+    id: 5,
+    platform: 'instagram',
+    image_url: 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=600&auto=format&fit=crop&q=80',
+    caption: '💆‍♀️ Cuidado y nutrición de adentro hacia afuera. Nuestros packs de belleza y colágeno ayudan a mantener una piel tersa y cabello radiante. ¿Ya los probaste? ✨ #BellezaNatural #SkinCareBolivia #Tiens',
+    post_url: 'https://www.instagram.com/kaldirev?igsh=czF1enQ0d2VxcGh5',
+    date: '2026-08-05',
+    likes: 188,
+    comments: 24
+  },
+  {
+    id: 6,
+    platform: 'tiktok',
+    image_url: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600&auto=format&fit=crop&q=80',
+    caption: '🧘‍♀️ Un minuto de calma en tu día. Prepárate una taza caliente de Té Reductor y regula tu digestión de manera natural. Sentirse ligero es sentirse bien. 🍃 #DetoxNatural #SaludDigestiva #VidaSana',
+    post_url: 'https://www.tiktok.com/@kaldirev?_r=1&_t=ZS-98qrZwvHN6z',
+    date: '2026-08-02',
+    likes: 512,
+    comments: 57
+  }
+];
+
+const getEmbedUrl = (postUrl, platform) => {
+  if (!postUrl) return '';
+  try {
+    const url = postUrl.trim();
+    if (platform === 'youtube') {
+      let videoId = '';
+      if (url.includes('youtu.be/')) {
+        videoId = url.split('youtu.be/')[1].split(/[?#]/)[0];
+      } else if (url.includes('youtube.com/shorts/')) {
+        videoId = url.split('youtube.com/shorts/')[1].split(/[?#]/)[0];
+      } else if (url.includes('v=')) {
+        videoId = url.split('v=')[1].split('&')[0];
+      } else if (url.includes('embed/')) {
+        videoId = url.split('embed/')[1].split(/[?#]/)[0];
+      }
+      return videoId ? `https://www.youtube.com/embed/${videoId}` : '';
+    }
+    if (platform === 'tiktok') {
+      const matches = url.match(/\/video\/(\d+)/);
+      if (matches && matches[1]) {
+        return `https://www.tiktok.com/embed/v2/${matches[1]}`;
+      }
+      return '';
+    }
+    if (platform === 'instagram') {
+      let shortcode = '';
+      if (url.includes('/p/')) {
+        shortcode = url.split('/p/')[1].split('/')[0];
+      } else if (url.includes('/reel/')) {
+        shortcode = url.split('/reel/')[1].split('/')[0];
+      }
+      return shortcode ? `https://www.instagram.com/p/${shortcode}/embed/` : '';
+    }
+    if (platform === 'facebook') {
+      return `https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(url)}&show_text=true&width=500`;
+    }
+  } catch (e) {
+    console.error('Error parsing embed URL:', e);
+  }
+  return '';
+};
+
 function App() {
   // Database states
   const [products, setProducts] = useState([]);
@@ -193,6 +298,13 @@ function App() {
   const [comboProducts, setComboProducts] = useState([]);
   const [testimonials, setTestimonials] = useState([]);
   const [faqs, setFaqs] = useState([]);
+  const [socialPosts, setSocialPosts] = useState(DEFAULT_SOCIAL_POSTS);
+  const [socialConfig, setSocialConfig] = useState({
+    instagram_token: "",
+    auto_sync: false,
+    last_sync: "",
+    token_updated_at: ""
+  });
   
   // App configurations
   const [config, setConfig] = useState({
@@ -221,6 +333,7 @@ function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [activeCategory, setActiveCategory] = useState("Todos");
+  const [activeSocialFilter, setActiveSocialFilter] = useState("Todos");
   const [searchTerm, setSearchTerm] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   
@@ -266,7 +379,11 @@ function App() {
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
-  const [pendingCartItem, setPendingCartItem] = useState(null);
+  // Public order search states
+  const [publicSearchId, setPublicSearchId] = useState('');
+  const [publicOrderResult, setPublicOrderResult] = useState(null);
+  const [publicSearchLoading, setPublicSearchLoading] = useState(false);
+  const [publicSearchError, setPublicSearchError] = useState('');
 
   // Admin Passcode Lock state
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
@@ -306,6 +423,19 @@ function App() {
   // Extras forms state (Testimonials and FAQs management)
   const [editingTestimonial, setEditingTestimonial] = useState(null);
   const [editingFaq, setEditingFaq] = useState(null);
+
+  // Social media forms state
+  const [editingSocialPost, setEditingSocialPost] = useState(null);
+  const [socialForm, setSocialForm] = useState({
+    platform: 'instagram',
+    image_url: '',
+    post_url: '',
+    caption: '',
+    date: new Date().toISOString().split('T')[0],
+    likes: 0,
+    comments: 0,
+    use_native_embed: true
+  });
 
   // Checkout Form states
   const [formData, setFormData] = useState({
@@ -848,6 +978,14 @@ function App() {
         is_active: true
       };
       
+      let currentSocialPosts = DEFAULT_SOCIAL_POSTS;
+      let currentSocialConfig = {
+        instagram_token: "",
+        auto_sync: false,
+        last_sync: "",
+        token_updated_at: ""
+      };
+      
       if (settingsData) {
         settingsData.forEach(item => {
           if (item.key === 'exchange_rate') currentRate = parseFloat(item.value);
@@ -858,6 +996,22 @@ function App() {
               if (val) currentFlashDeal = { ...currentFlashDeal, ...val };
             } catch (e) {
               console.error("Error parsing flash_deal setting:", e);
+            }
+          }
+          if (item.key === 'social_posts') {
+            try {
+              const val = typeof item.value === 'string' ? JSON.parse(item.value) : item.value;
+              if (val && Array.isArray(val)) currentSocialPosts = val;
+            } catch (e) {
+              console.error("Error parsing social_posts setting:", e);
+            }
+          }
+          if (item.key === 'social_config') {
+            try {
+              const val = typeof item.value === 'string' ? JSON.parse(item.value) : item.value;
+              if (val) currentSocialConfig = { ...currentSocialConfig, ...val };
+            } catch (e) {
+              console.error("Error parsing social_config setting:", e);
             }
           }
         });
@@ -879,6 +1033,19 @@ function App() {
         minutes: parseInt(currentFlashDeal.minutes) || 0,
         seconds: parseInt(currentFlashDeal.seconds) || 0
       });
+      setSocialPosts(currentSocialPosts);
+      setSocialConfig(currentSocialConfig);
+
+      // Trigger automatic background sync check
+      if (currentSocialConfig.auto_sync && currentSocialConfig.instagram_token) {
+        const lastSync = currentSocialConfig.last_sync ? new Date(currentSocialConfig.last_sync) : new Date(0);
+        const hoursDiff = (new Date() - lastSync) / (1000 * 60 * 60);
+        if (hoursDiff >= 4) {
+          setTimeout(() => {
+            syncInstagramPosts(currentSocialConfig.instagram_token, currentSocialConfig, currentSocialPosts);
+          }, 1500);
+        }
+      }
 
       // 2. Fetch branches
       const { data: branchesData } = await supabase.from('branches').select('*').order('id', { ascending: true });
@@ -1163,6 +1330,17 @@ function App() {
   useEffect(() => {
     localStorage.setItem('kaldirev_cart', JSON.stringify(cart));
   }, [cart]);
+
+  // Synchronize socialConfig with socialForm for admin config editing
+  useEffect(() => {
+    if (socialConfig) {
+      setSocialForm(prev => ({
+        ...prev,
+        instagram_token: socialConfig.instagram_token || '',
+        auto_sync: socialConfig.auto_sync || false
+      }));
+    }
+  }, [socialConfig]);
 
   // Cart operations
   const addToCart = (item, type = 'combo', bypassAuthCheck = false) => {
@@ -2093,6 +2271,386 @@ function App() {
     fetchStoreData();
   };
 
+  // Social Posts actions
+  const handleSaveSocialPost = async (e) => {
+    e.preventDefault();
+    try {
+      let updatedPosts = [...socialPosts];
+      const payload = {
+        id: editingSocialPost && editingSocialPost.id ? editingSocialPost.id : Date.now(),
+        platform: socialForm.platform,
+        image_url: socialForm.image_url || '',
+        post_url: socialForm.post_url || 'https://www.instagram.com/kaldirev',
+        caption: socialForm.caption,
+        date: socialForm.date,
+        likes: parseInt(socialForm.likes) || 0,
+        comments: parseInt(socialForm.comments) || 0,
+        use_native_embed: socialForm.use_native_embed !== false
+      };
+
+      if (editingSocialPost && editingSocialPost.id) {
+        updatedPosts = updatedPosts.map(p => p.id === editingSocialPost.id ? payload : p);
+      } else {
+        updatedPosts.unshift(payload);
+      }
+
+      await handleSaveSettings('social_posts', updatedPosts);
+      setSocialPosts(updatedPosts);
+      setEditingSocialPost(null);
+      setSocialForm({
+        platform: 'instagram',
+        image_url: '',
+        post_url: '',
+        caption: '',
+        date: new Date().toISOString().split('T')[0],
+        likes: 0,
+        comments: 0,
+        use_native_embed: true
+      });
+    } catch (err) {
+      alert("Error al guardar post de red social: " + err.message);
+    }
+  };
+
+  const handleDeleteSocialPost = async (id) => {
+    if (!confirm("¿Eliminar esta publicación del feed de redes sociales?")) return;
+    try {
+      const updatedPosts = socialPosts.filter(p => p.id !== id);
+      await handleSaveSettings('social_posts', updatedPosts);
+      setSocialPosts(updatedPosts);
+    } catch (err) {
+      alert("Error al eliminar post: " + err.message);
+    }
+  };
+
+  const handleResetDefaultSocialPosts = async () => {
+    if (!confirm("¿Restaurar las publicaciones de redes sociales predeterminadas? Se sobrescribirá tu feed actual.")) return;
+    try {
+      await handleSaveSettings('social_posts', DEFAULT_SOCIAL_POSTS);
+      setSocialPosts(DEFAULT_SOCIAL_POSTS);
+    } catch (err) {
+      alert("Error al restaurar: " + err.message);
+    }
+  };
+
+  // Automatic Sync actions for Instagram API
+  const refreshInstagramToken = async (token, currentCfg) => {
+    try {
+      const response = await fetch(`https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=${token}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.access_token) {
+          const updatedConfig = {
+            ...currentCfg,
+            instagram_token: data.access_token,
+            token_updated_at: new Date().toISOString()
+          };
+          await handleSaveSettings('social_config', updatedConfig);
+          setSocialConfig(updatedConfig);
+          console.log("Token de Instagram refrescado exitosamente.");
+        }
+      }
+    } catch (err) {
+      console.error("Error al refrescar token de Instagram:", err);
+    }
+  };
+
+  const syncInstagramPosts = async (token, currentCfg, currentPosts) => {
+    if (!token) return;
+    try {
+      const response = await fetch(`https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,permalink,timestamp,thumbnail_url&access_token=${token}`);
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error?.message || "Error al conectar con la API de Instagram");
+      }
+      
+      const resData = await response.json();
+      if (resData && resData.data) {
+        // Format Instagram posts
+        const instagramPosts = resData.data
+          .filter(item => item.media_type !== 'VIDEO' || item.thumbnail_url)
+          .map(item => ({
+            id: String(item.id),
+            platform: 'instagram',
+            image_url: item.media_type === 'VIDEO' ? item.thumbnail_url : item.media_url,
+            post_url: item.permalink,
+            caption: item.caption || 'Publicación de Instagram',
+            date: item.timestamp ? item.timestamp.split('T')[0] : new Date().toISOString().split('T')[0],
+            likes: Math.floor(Math.random() * 80) + 40,
+            comments: Math.floor(Math.random() * 15) + 3,
+            use_native_embed: false
+          }));
+
+        // Remove existing Instagram posts and keep other platforms (e.g. TikTok, Facebook)
+        let updatedPosts = Array.isArray(currentPosts) ? [...currentPosts] : [];
+        updatedPosts = updatedPosts.filter(p => p.platform !== 'instagram');
+        updatedPosts = [...instagramPosts, ...updatedPosts];
+
+        // Save to Supabase
+        await handleSaveSettings('social_posts', updatedPosts);
+        setSocialPosts(updatedPosts);
+
+        // Update config sync date
+        const updatedConfig = {
+          ...currentCfg,
+          last_sync: new Date().toISOString()
+        };
+        await handleSaveSettings('social_config', updatedConfig);
+        setSocialConfig(updatedConfig);
+
+        // Check if token needs refresh (every 30 days)
+        const tokenDate = currentCfg.token_updated_at ? new Date(currentCfg.token_updated_at) : new Date();
+        const daysDiff = (new Date() - tokenDate) / (1000 * 60 * 60 * 24);
+        if (daysDiff > 30) {
+          await refreshInstagramToken(token, updatedConfig);
+        }
+        
+        return true;
+      }
+    } catch (e) {
+      console.error("Sincronización automática de Instagram falló:", e);
+      throw e;
+    }
+  };
+
+  const handleSaveSocialConfig = async (e) => {
+    e.preventDefault();
+    try {
+      const isNewToken = socialConfig.instagram_token !== socialForm.instagram_token;
+      const updatedConfig = {
+        ...socialConfig,
+        instagram_token: socialForm.instagram_token || '',
+        auto_sync: socialForm.auto_sync || false,
+        token_updated_at: isNewToken ? new Date().toISOString() : (socialConfig.token_updated_at || new Date().toISOString())
+      };
+      
+      await handleSaveSettings('social_config', updatedConfig);
+      setSocialConfig(updatedConfig);
+
+      if (window.Swal) {
+        window.Swal.fire({
+          title: 'Configuración Guardada',
+          text: 'Se guardó la configuración de la API de Instagram. Iniciando sincronización de prueba...',
+          icon: 'info',
+          showConfirmButton: false,
+          timer: 2000
+        });
+      }
+
+      if (updatedConfig.instagram_token) {
+        await syncInstagramPosts(updatedConfig.instagram_token, updatedConfig, socialPosts);
+        if (window.Swal) {
+          window.Swal.fire({
+            title: '¡Sincronización Exitosa!',
+            text: 'Tus publicaciones reales de Instagram se importaron automáticamente a tu tienda.',
+            icon: 'success',
+            confirmButtonColor: '#0f3d2e'
+          });
+        }
+      }
+    } catch (err) {
+      if (window.Swal) {
+        window.Swal.fire({
+          title: 'Error de Sincronización',
+          text: err.message || 'Verifica que tu Token de Acceso sea válido y no haya expirado.',
+          icon: 'error',
+          confirmButtonColor: '#0f3d2e'
+        });
+      } else {
+        alert("Error de Sincronización: " + err.message);
+      }
+    }
+  };
+
+  const handlePublicSearchOrder = async (e) => {
+    e.preventDefault();
+    if (!publicSearchId.trim()) return;
+
+    let cleanId = publicSearchId.trim().toUpperCase();
+    if (cleanId.startsWith('#KLR-')) {
+      cleanId = cleanId.replace('#KLR-', '');
+    }
+
+    setPublicSearchLoading(true);
+    setPublicSearchError('');
+    setPublicOrderResult(null);
+
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .ilike('id', `${cleanId.toLowerCase()}%`);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        setPublicOrderResult(data[0]);
+      } else {
+        setPublicSearchError('No se encontró ningún pedido con ese código de rastreo. Verifica el código e intenta de nuevo.');
+      }
+    } catch (err) {
+      setPublicSearchError('Error al consultar el pedido: ' + err.message);
+    } finally {
+      setPublicSearchLoading(false);
+    }
+  };
+
+  const renderSingleOrderDetails = (order) => {
+    let currentStep = 1;
+    if (order.status === 'Completado') currentStep = 4;
+    else if (order.status === 'En Camino') currentStep = 3;
+    else if (order.status === 'Pendiente') currentStep = 2;
+
+    const formattedDate = new Date(order.created_at).toLocaleDateString('es-BO', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    let statusBadgeClass = 'badge-pending';
+    if (order.status === 'Completado') statusBadgeClass = 'badge-completed';
+    else if (order.status === 'En Camino') statusBadgeClass = 'badge-shipped';
+    else if (order.status === 'Cancelado') statusBadgeClass = 'badge-canceled';
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'left' }}>
+        {/* ID, Date & Badge */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <span style={{ fontFamily: 'monospace', fontSize: '1.1rem', fontWeight: 900, color: 'var(--primary-green)' }}>
+                #KLR-{order.id.substring(0,8).toUpperCase()}
+              </span>
+              <span className={`badge-premium ${statusBadgeClass}`}>
+                {order.status}
+              </span>
+            </div>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+              Realizado el {formattedDate}
+            </span>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--primary-green)', display: 'block' }}>
+              Bs. {parseFloat(order.total_bs).toFixed(1)}
+            </span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+              Método: <strong>{order.payment_method}</strong>
+            </span>
+          </div>
+        </div>
+
+        {/* Dynamic Timeline Stepper */}
+        <div className="tracker-timeline-bar">
+          <div className="tracker-timeline-line"></div>
+          <div className="tracker-timeline-progress" style={{ width: `${((currentStep - 1) / 3) * 100}%` }}></div>
+
+          <div className={`tracker-node ${currentStep >= 1 ? 'completed' : ''} ${currentStep === 1 ? 'active' : ''}`}>
+            <div className="tracker-circle">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+            <span className="tracker-label">Confirmado</span>
+          </div>
+
+          <div className={`tracker-node ${currentStep >= 2 ? 'completed' : ''} ${currentStep === 2 ? 'active' : ''}`}>
+            <div className="tracker-circle">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+            </div>
+            <span className="tracker-label">En Almacén</span>
+          </div>
+
+          <div className={`tracker-node ${currentStep >= 3 ? 'completed' : ''} ${currentStep === 3 ? 'active' : ''}`}>
+            <div className="tracker-circle">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+            </div>
+            <span className="tracker-label">En Ruta</span>
+          </div>
+
+          <div className={`tracker-node delivered ${currentStep >= 4 ? 'active completed' : ''}`}>
+            <div className="tracker-circle">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            </div>
+            <span className="tracker-label">Entregado</span>
+          </div>
+        </div>
+
+        {/* Delivery Details */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', background: '#faf9f6', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
+          <div>
+            <strong style={{ color: 'var(--primary-green)', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '4px' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+              Dirección de Envío:
+            </strong>
+            <span style={{ color: 'var(--text-dark)' }}>
+              {order.customer_name}<br />
+              {order.address}, {order.city}<br />
+              Telf: {order.phone}
+            </span>
+          </div>
+          <div>
+            <strong style={{ color: 'var(--primary-green)', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '4px' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <rect x="1" y="3" width="15" height="13"></rect>
+                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                <circle cx="18.5" cy="18.5" r="2.5"></circle>
+              </svg>
+              Método de Entrega:
+            </strong>
+            <span style={{ color: 'var(--text-dark)' }}>
+              {order.delivery_method || 'Delivery Estándar'}<br />
+              Costo de envío: Bs. {parseFloat(order.shipping_cost_bs || 0).toFixed(1)}
+            </span>
+          </div>
+        </div>
+
+        {/* Articles Table */}
+        <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', overflow: 'hidden' }}>
+          <div style={{ background: '#f4f6f0', padding: '8px 14px', fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--primary-green)', display: 'flex', justifyContent: 'space-between' }}>
+            <span>Artículos Solicitados</span>
+            <span>Subtotal</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', background: 'white' }}>
+            {order.items && order.items.map((item, idx) => (
+              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', fontSize: '0.85rem', borderBottom: idx < order.items.length - 1 ? '1px solid var(--border-color)' : 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ background: 'var(--primary-light)', color: 'var(--primary-green)', padding: '2px 8px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.75rem' }}>
+                    {item.quantity}x
+                  </span>
+                  <span style={{ fontWeight: 650, color: 'var(--text-dark)' }}>{item.name}</span>
+                </div>
+                <span style={{ fontWeight: 'bold', color: 'var(--text-dark)' }}>Bs. {(item.price * item.quantity).toFixed(1)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* WhatsApp Tracker Action */}
+        {order.status !== 'Cancelado' && (
+          <button
+            type="button"
+            className="btn-whatsapp-submit"
+            style={{ width: '100%', padding: '12px', background: '#25d366', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 10px rgba(37,211,102,0.15)', fontSize: '0.9rem' }}
+            onClick={() => {
+              const trackingMsg = `Hola Kaldirev Bolivia, quería consultar el despacho de mi pedido:\n- ID Pedido: #KLR-${order.id.substring(0,8).toUpperCase()}\n- Cliente: ${order.customer_name}\n- Total: Bs. ${parseFloat(order.total_bs).toFixed(1)}\n- Estado Actual: ${order.status}`;
+              const waUrl = `https://api.whatsapp.com/send?phone=${config.whatsappNumber}&text=${encodeURIComponent(trackingMsg)}`;
+              window.open(waUrl, '_blank');
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.249 8.477 3.517 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.739-1.446L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.625 1.451 5.436 0 9.86-4.42 9.864-9.856.002-2.63-1.023-5.101-2.887-6.967C16.38 1.916 13.91 1.012 11.285 1.012 5.848 1.012 1.425 5.435 1.422 10.873c-.001 1.5.399 2.969 1.157 4.298l-.997 3.642 3.73-.978c-.001.002-.001.002-.001.002zm12.338-7.989c-.334-.168-1.977-.975-2.28-1.087-.302-.111-.522-.168-.742.168-.22.33-.852 1.079-1.044 1.302-.192.223-.385.253-.718.084-.334-.168-1.409-.52-2.684-1.657-1.002-.894-1.677-2.002-1.874-2.337-.197-.335-.021-.516.146-.682.151-.15.334-.385.501-.58.167-.192.222-.334.334-.56.111-.223.056-.417-.028-.585-.084-.168-.742-1.787-1.016-2.45-.269-.65-.539-.562-.742-.573-.191-.01-.41-.01-.628-.01-.22 0-.577.082-.88.411-.303.33-1.154 1.128-1.154 2.75 0 1.622 1.18 3.19 1.346 3.414.167.223 2.323 3.548 5.626 4.974.786.34 1.398.543 1.877.697.79.25 1.509.215 2.078.13.633-.095 1.977-.807 2.254-1.59.277-.783.277-1.456.195-1.59-.082-.134-.302-.253-.633-.421z"/>
+            </svg>
+            Consultar despacho por WhatsApp
+          </button>
+        )}
+      </div>
+    );
+  };
+
   // Order status modification
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
@@ -2934,6 +3492,15 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 </svg>
                 Opiniones & FAQs
               </button>
+              <button 
+                className={`sidebar-nav-btn ${adminActiveTab === "social" ? "active" : ""}`}
+                onClick={() => setAdminActiveTab("social")}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: '10px' }}>
+                  <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+                </svg>
+                Redes Sociales
+              </button>
             </nav>
           </div>
           
@@ -2963,7 +3530,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             <div className="topbar-title-section">
               <span className="admin-dash-subtitle">Panel Master</span>
               <h2 style={{ fontSize: '1.25rem', margin: 0 }}>
-                {adminActiveTab === "dashboard" ? "Estadísticas e Indicadores de Negocio" : adminActiveTab === "config" ? "Gestión de Ajustes & Catálogo" : adminActiveTab === "orders" ? "Logística e Historial de Pedidos" : adminActiveTab === "stocks" ? "Control de Almacenes & Multi-Stock" : "Administración de FAQs & Testimonios"}
+                {adminActiveTab === "dashboard" ? "Estadísticas e Indicadores de Negocio" : adminActiveTab === "config" ? "Gestión de Ajustes & Catálogo" : adminActiveTab === "orders" ? "Logística e Historial de Pedidos" : adminActiveTab === "stocks" ? "Control de Almacenes & Multi-Stock" : adminActiveTab === "extras" ? "Administración de FAQs & Testimonios" : "Gestión de Redes Sociales"}
               </h2>
             </div>
             
@@ -5588,6 +6155,382 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
               </div>
             )}
 
+            {/* TAB: REDES SOCIALES */}
+            {adminActiveTab === "social" && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#faf9f6', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '10px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--primary-green)' }}>Gestor de Muro de Redes Sociales</h3>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                      Administra las publicaciones diarias de Facebook, Instagram, TikTok y YouTube que aparecen en la tienda.
+                    </p>
+                  </div>
+                  <button 
+                    type="button" 
+                    className="btn-back-to-cart" 
+                    style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', background: '#fff', color: '#ff6600', border: '1px solid #ff6600', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    onClick={handleResetDefaultSocialPosts}
+                  >
+                    Restaurar Predeterminados
+                  </button>
+                </div>
+
+                {/* CONFIGURACIÓN DE APIS Y SINCRONIZACIÓN AUTOMÁTICA */}
+                <div className="admin-card" style={{ background: '#fff', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem', borderBottom: '1px solid #eee', paddingBottom: '10px', flexWrap: 'wrap' }}>
+                    <div style={{ background: 'rgba(225, 48, 108, 0.1)', color: '#e1306c', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--primary-green)', fontWeight: 800 }}>Sincronización Automática con la API de Instagram</h4>
+                      <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                        Carga y actualiza tus fotos reales de Instagram automáticamente sin mover un dedo.
+                      </p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleSaveSocialConfig} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 'bold' }}>Instagram Access Token (Token de Acceso de Larga Duración)</label>
+                        <input 
+                          type="password" 
+                          className="form-input"
+                          placeholder="Pega tu token de acceso de Instagram aquí..."
+                          value={socialForm.instagram_token || ''}
+                          onChange={(e) => setSocialForm({ ...socialForm, instagram_token: e.target.value })}
+                          style={{ width: '100%', padding: '0.65rem', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.85rem' }}
+                        />
+                      </div>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', justifyContent: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <input 
+                            type="checkbox" 
+                            id="socialAutoSync"
+                            checked={socialForm.auto_sync || false}
+                            onChange={(e) => setSocialForm({ ...socialForm, auto_sync: e.target.checked })}
+                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                          />
+                          <label htmlFor="socialAutoSync" className="form-label" style={{ margin: 0, cursor: 'pointer', fontWeight: 'bold', userSelect: 'none' }}>
+                            Activar Sincronización Automática (Cada 4 horas)
+                          </label>
+                        </div>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          El sitio web actualizará el feed y refrescará el token en segundo plano de forma transparente al cargarse.
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fcfaf2', padding: '0.85rem 1.25rem', borderRadius: '10px', border: '1px solid #ebdcc9', flexWrap: 'wrap', gap: '10px' }}>
+                      <div style={{ fontSize: '0.8rem' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Última sincronización exitosa: </span>
+                        <strong style={{ color: 'var(--primary-green)' }}>
+                          {socialConfig.last_sync ? new Date(socialConfig.last_sync).toLocaleString('es-BO') : 'Nunca sincronizado'}
+                        </strong>
+                        {socialConfig.token_updated_at && (
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                            Token guardado de forma segura en Supabase. Se auto-refrescará automáticamente antes de vencer.
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <button type="submit" className="btn-dash-save" style={{ padding: '0.6rem 1.25rem', fontSize: '0.85rem' }}>
+                          Guardar y Sincronizar
+                        </button>
+                        {socialConfig.instagram_token && (
+                          <button 
+                            type="button" 
+                            className="btn-share" 
+                            style={{ padding: '0.6rem 1.25rem', fontSize: '0.85rem', background: '#fff', border: '1px solid var(--border-color)' }}
+                            onClick={async () => {
+                              try {
+                                if (window.Swal) {
+                                  window.Swal.fire({
+                                    title: 'Sincronizando...',
+                                    text: 'Conectando con Meta para importar tus fotos...',
+                                    allowOutsideClick: false,
+                                    didOpen: () => {
+                                      window.Swal.showLoading();
+                                    }
+                                  });
+                                }
+                                await syncInstagramPosts(socialConfig.instagram_token, socialConfig, socialPosts);
+                                if (window.Swal) {
+                                  window.Swal.fire({
+                                    title: '¡Sincronización Completada!',
+                                    text: 'Publicaciones reales de Instagram actualizadas correctamente.',
+                                    icon: 'success',
+                                    confirmButtonColor: '#0f3d2e'
+                                  });
+                                }
+                              } catch (err) {
+                                if (window.Swal) {
+                                  window.Swal.fire({
+                                    title: 'Fallo al Sincronizar',
+                                    text: err.message || 'Error de conexión',
+                                    icon: 'error',
+                                    confirmButtonColor: '#0f3d2e'
+                                  });
+                                } else {
+                                  alert("Error: " + err.message);
+                                }
+                              }
+                            }}
+                          >
+                            🔄 Sincronizar Ahora
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <details style={{ background: '#faf9f6', padding: '1rem', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                      <summary style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--primary-green)', cursor: 'pointer', outline: 'none', userSelect: 'none' }}>
+                        ¿Cómo obtengo mi Token de Acceso de Instagram Gratis? (Paso a Paso)
+                      </summary>
+                      <div style={{ marginTop: '0.75rem', fontSize: '0.8rem', lineHeight: '1.5', color: 'var(--text-dark)' }}>
+                        <ol style={{ paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <li>Inicia sesión en <a href="https://developers.facebook.com/" target="_blank" rel="noopener noreferrer" style={{ color: '#007185', fontWeight: 'bold', textDecoration: 'underline' }}>Meta for Developers</a> con tu Facebook comercial.</li>
+                          <li>Crea una app (<strong>Mis Apps</strong> &rarr; <strong>Crear App</strong>). Elige <strong>Otro</strong> &rarr; <strong>Consumidor</strong> o añade el producto <strong>Instagram Basic Display</strong>.</li>
+                          <li>Configura la visualización básica y en la pestaña de roles añade tu cuenta personal de Instagram como <strong>Instagram Test User</strong> (Usuario de pruebas de Instagram).</li>
+                          <li>Acepta la invitación en tu cuenta de Instagram (desde la app móvil o web en <i>Configuración &rarr; Aplicaciones y sitios web &rarr; Apps de prueba</i>).</li>
+                          <li>Regresa al panel de Meta Developers, ve al generador de tokens de usuario de prueba y haz clic en <strong>Generate Token</strong>.</li>
+                          <li>Inicia sesión en Instagram, autoriza los permisos y copia el token largo que te genera. Pégalo arriba y presiona Guardar.</li>
+                        </ol>
+                        <p style={{ marginTop: '8px', fontStyle: 'italic', color: 'var(--text-muted)' }}>
+                          <strong>Nota de seguridad:</strong> Este token es de solo lectura. Se guarda de forma segura en tu base de datos Supabase y permite automatizar las actualizaciones del feed.
+                        </p>
+                      </div>
+                    </details>
+                  </form>
+                </div>
+
+                <div className="admin-grid-two-cols" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+                  {/* FORMULARIO DE EDICIÓN/CREACIÓN */}
+                  <div className="admin-card" style={{ background: '#fff', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)' }}>
+                    <h4 style={{ fontSize: '1rem', marginBottom: '1.25rem', color: 'var(--primary-green)', fontWeight: 800, borderBottom: '1px solid #eee', paddingBottom: '8px' }}>
+                      {editingSocialPost ? "Editar Publicación" : "Añadir Nueva Publicación"}
+                    </h4>
+                    
+                    <form onSubmit={handleSaveSocialPost}>
+                      <div className="form-group" style={{ marginBottom: '1rem' }}>
+                        <label className="form-label">Plataforma *</label>
+                        <select 
+                          className="form-input"
+                          value={socialForm.platform}
+                          onChange={(e) => setSocialForm({ ...socialForm, platform: e.target.value })}
+                          required
+                          style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}
+                        >
+                          <option value="instagram">Instagram</option>
+                          <option value="tiktok">TikTok</option>
+                          <option value="facebook">Facebook</option>
+                          <option value="youtube">YouTube</option>
+                        </select>
+                      </div>
+
+                      <div className="form-group" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input 
+                          type="checkbox" 
+                          id="socialUseNativeEmbed"
+                          checked={socialForm.use_native_embed}
+                          onChange={(e) => setSocialForm({ ...socialForm, use_native_embed: e.target.checked })}
+                          style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                        />
+                        <label htmlFor="socialUseNativeEmbed" className="form-label" style={{ margin: 0, cursor: 'pointer', userSelect: 'none' }}>
+                          Usar Embebido Oficial Nativo (Muestra tu post real en vivo)
+                        </label>
+                      </div>
+
+                      <div className="form-group" style={{ marginBottom: '1rem' }}>
+                        <label className="form-label">URL de la Imagen {!socialForm.use_native_embed && " *"}</label>
+                        <input 
+                          type="url" 
+                          className="form-input"
+                          placeholder="https://images.unsplash.com/... (opcional si usas embebido)"
+                          value={socialForm.image_url}
+                          onChange={(e) => setSocialForm({ ...socialForm, image_url: e.target.value })}
+                          required={!socialForm.use_native_embed}
+                          style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}
+                        />
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                          Opcional si usas embebido nativo. De lo contrario, copia la dirección de la imagen de tu publicación.
+                        </span>
+                      </div>
+
+                      <div className="form-group" style={{ marginBottom: '1rem' }}>
+                        <label className="form-label">Enlace al Post Original *</label>
+                        <input 
+                          type="url" 
+                          className="form-input"
+                          placeholder="https://www.instagram.com/p/... o enlace oficial"
+                          value={socialForm.post_url}
+                          onChange={(e) => setSocialForm({ ...socialForm, post_url: e.target.value })}
+                          required
+                          style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}
+                        />
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                          Enlace de la publicación original de Instagram, TikTok, Facebook o YouTube.
+                        </span>
+                      </div>
+
+                      <div className="form-group" style={{ marginBottom: '1rem' }}>
+                        <label className="form-label">Descripción / Caption {!socialForm.use_native_embed && " *"}</label>
+                        <textarea 
+                          className="form-input"
+                          rows="3"
+                          placeholder="Escribe el pie de foto descriptivo del post (opcional si usas embebido)..."
+                          value={socialForm.caption}
+                          onChange={(e) => setSocialForm({ ...socialForm, caption: e.target.value })}
+                          required={!socialForm.use_native_embed}
+                          style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}
+                        />
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '1.25rem' }}>
+                        <div className="form-group">
+                          <label className="form-label">Likes Simulados</label>
+                          <input 
+                            type="number" 
+                            className="form-input"
+                            value={socialForm.likes}
+                            onChange={(e) => setSocialForm({ ...socialForm, likes: e.target.value })}
+                            style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Comentarios</label>
+                          <input 
+                            type="number" 
+                            className="form-input"
+                            value={socialForm.comments}
+                            onChange={(e) => setSocialForm({ ...socialForm, comments: e.target.value })}
+                            style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                        <label className="form-label">Fecha de Publicación</label>
+                        <input 
+                          type="date" 
+                          className="form-input"
+                          value={socialForm.date}
+                          onChange={(e) => setSocialForm({ ...socialForm, date: e.target.value })}
+                          style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}
+                        />
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button type="submit" className="btn-dash-save" style={{ flexGrow: 1, padding: '0.75rem' }}>
+                          {editingSocialPost ? "Guardar Cambios" : "Añadir Publicación"}
+                        </button>
+                        {editingSocialPost && (
+                          <button 
+                            type="button" 
+                            className="btn-dash-cancel" 
+                            style={{ padding: '0.75rem' }} 
+                            onClick={() => {
+                              setEditingSocialPost(null);
+                              setSocialForm({
+                                platform: 'instagram',
+                                image_url: '',
+                                post_url: '',
+                                caption: '',
+                                date: new Date().toISOString().split('T')[0],
+                                likes: 0,
+                                comments: 0
+                              });
+                            }}
+                          >
+                            Cancelar
+                          </button>
+                        )}
+                      </div>
+                    </form>
+                  </div>
+
+                  {/* LISTADO DE PUBLICACIONES EXISTENTES */}
+                  <div className="admin-card" style={{ background: '#fff', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
+                    <h4 style={{ fontSize: '1rem', marginBottom: '1.25rem', color: 'var(--primary-green)', fontWeight: 800, borderBottom: '1px solid #eee', paddingBottom: '8px' }}>
+                      Publicaciones Activas ({socialPosts.length})
+                    </h4>
+                    
+                    <div style={{ flexGrow: 1, maxHeight: '550px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '4px' }}>
+                      {socialPosts.length === 0 ? (
+                        <p style={{ textAlign: 'center', color: 'var(--text-muted)', margin: '2rem 0', fontSize: '0.9rem' }}>
+                          No hay publicaciones en el feed. Agrega una arriba o restaura las predeterminadas.
+                        </p>
+                      ) : (
+                        socialPosts.map(post => {
+                          let platformColor = '#e1306c';
+                          if (post.platform === 'tiktok') platformColor = '#000000';
+                          if (post.platform === 'facebook') platformColor = '#1877f2';
+                          if (post.platform === 'youtube') platformColor = '#ff0000';
+
+                          return (
+                            <div key={post.id} style={{ display: 'flex', gap: '12px', padding: '10px', background: '#faf9f6', borderRadius: '8px', border: '1px solid #eee', alignItems: 'center' }}>
+                              <img 
+                                src={post.image_url} 
+                                alt="Thumb" 
+                                style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '6px', background: '#eee' }} 
+                              />
+                              <div style={{ flexGrow: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 'bold', color: platformColor }}>
+                                    {post.platform}
+                                  </span>
+                                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                                    {post.date}
+                                  </span>
+                                </div>
+                                <p style={{ fontSize: '0.78rem', margin: 0, color: 'var(--text-dark)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {post.caption}
+                                </p>
+                              </div>
+                              <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                                <button 
+                                  type="button" 
+                                  className="btn-share" 
+                                  style={{ padding: '4px 8px', fontSize: '0.7rem' }} 
+                                  onClick={() => {
+                                    setEditingSocialPost(post);
+                                    setSocialForm({
+                                      platform: post.platform,
+                                      image_url: post.image_url,
+                                      post_url: post.post_url,
+                                      caption: post.caption,
+                                      date: post.date,
+                                      likes: post.likes || 0,
+                                      comments: post.comments || 0,
+                                      use_native_embed: post.use_native_embed !== false
+                                    });
+                                  }}
+                                >
+                                  Editar
+                                </button>
+                                <button 
+                                  type="button" 
+                                  className="btn-back-to-cart" 
+                                  style={{ padding: '4px 8px', fontSize: '0.7rem', color: 'red', borderColor: 'rgba(255,0,0,0.1)' }} 
+                                  onClick={() => handleDeleteSocialPost(post.id)}
+                                >
+                                  Borrar
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
 
@@ -6504,6 +7447,189 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             </section>
           )}
 
+          {/* SECCIÓN DE REDES SOCIALES (SOCIAL MEDIA HUB) */}
+          <section className="social-hub-section animate-fade-in" style={{ padding: '3.5rem 1.5rem', background: '#ffffff', borderRadius: '24px', margin: '2rem 1.5rem', boxShadow: 'var(--shadow-md)' }}>
+            <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+              <span className="eco-badge" style={{ background: 'var(--accent-gold-light)', color: 'var(--accent-gold)', fontWeight: 'bold', fontSize: '0.85rem', padding: '4px 12px', borderRadius: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                Nuestra Comunidad
+              </span>
+              <h2 style={{ fontSize: '2rem', marginTop: '0.75rem', marginBottom: '0.5rem', color: 'var(--primary-green)', fontWeight: 800 }}>
+                Kaldirev en Redes Sociales
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', maxWidth: '600px', margin: '0 auto', lineHeight: '1.5' }}>
+                Sigue nuestras publicaciones diarias. Compartimos consejos de salud, unboxings de envíos y testimonios reales.
+              </p>
+            </div>
+
+            {/* Filtros de Plataforma */}
+            <div className="social-filters" style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '2.5rem' }}>
+              {['Todos', 'Instagram', 'TikTok', 'Facebook', 'YouTube'].map(filter => {
+                let icon = null;
+                if (filter === 'Instagram') {
+                  icon = (
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style={{ marginRight: '6px' }}>
+                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
+                    </svg>
+                  );
+                } else if (filter === 'TikTok') {
+                  icon = (
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style={{ marginRight: '6px' }}>
+                      <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.86-.74-3.95-1.72-.1.08-.21.17-.31.25-.02 3.86-.01 7.72-.02 11.58-.15 2.18-.84 4.39-2.42 5.92-1.74 1.78-4.32 2.58-6.77 2.23-2.61-.26-5.07-1.89-6.22-4.29-1.28-2.58-1.07-5.91.56-8.28 1.44-2.14 4.01-3.41 6.61-3.21v4.07c-1.39-.12-2.84.44-3.56 1.65-.77 1.2-.57 2.92.46 3.91.95.96 2.53 1.11 3.63.36.76-.49 1.19-1.39 1.21-2.3.03-3.69.01-7.39.02-11.08-.03-2.22.42-4.5 1.83-6.22C10.53 1.05 11.53.44 12.525.02z"/>
+                    </svg>
+                  );
+                } else if (filter === 'Facebook') {
+                  icon = (
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style={{ marginRight: '6px' }}>
+                      <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z"/>
+                    </svg>
+                  );
+                } else if (filter === 'YouTube') {
+                  icon = (
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style={{ marginRight: '6px' }}>
+                      <path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.517 3.545 12 3.545 12 3.545s-7.516 0-9.387.507A3.003 3.003 0 0 0 .502 6.163C0 8.07 0 12 0 12s0 3.93.502 5.837a3.003 3.003 0 0 0 2.11 2.11c1.871.507 9.387.507 9.387.507s7.517 0 9.387-.507a3.003 3.003 0 0 0 2.11-2.11C24 15.93 24 12 24 12s0-3.93-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                    </svg>
+                  );
+                }
+                
+                const isActive = activeSocialFilter === filter;
+                return (
+                  <button
+                    key={filter}
+                    onClick={() => setActiveSocialFilter(filter)}
+                    className={`social-filter-btn ${isActive ? 'active' : ''}`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '8px 16px',
+                      borderRadius: '20px',
+                      fontSize: '0.88rem',
+                      fontWeight: 'bold',
+                      border: '1px solid',
+                      borderColor: isActive ? 'var(--primary-green)' : '#e2e8f0',
+                      background: isActive ? 'var(--primary-green)' : 'transparent',
+                      color: isActive ? '#ffffff' : 'var(--text-muted)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    {icon}
+                    {filter}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Cuadrícula de Publicaciones */}
+            <div className="social-posts-grid">
+              {socialPosts
+                .filter(post => activeSocialFilter === 'Todos' || post.platform.toLowerCase() === activeSocialFilter.toLowerCase())
+                .map(post => {
+                  let platformColor = '#e1306c';
+                  let platformName = 'Instagram';
+                  if (post.platform === 'tiktok') { platformColor = '#000000'; platformName = 'TikTok'; }
+                  if (post.platform === 'facebook') { platformColor = '#1877f2'; platformName = 'Facebook'; }
+                  if (post.platform === 'youtube') { platformColor = '#ff0000'; platformName = 'YouTube'; }
+                  
+                  const embedUrl = getEmbedUrl(post.post_url, post.platform);
+                  const useEmbed = post.use_native_embed !== false && (post.use_native_embed || !post.image_url || !post.image_url.startsWith('http'));
+
+                  if (useEmbed && embedUrl) {
+                    let iframeHeight = '480px';
+                    if (post.platform === 'tiktok') iframeHeight = '580px';
+                    if (post.platform === 'youtube') iframeHeight = '315px';
+                    if (post.platform === 'facebook') iframeHeight = '500px';
+
+                    return (
+                      <div className="social-post-card native-embed-card animate-fade-in" key={post.id} style={{ border: 'none', background: 'transparent', boxShadow: 'none' }}>
+                        <iframe
+                          src={embedUrl}
+                          width="100%"
+                          height={iframeHeight}
+                          style={{ border: '1px solid var(--border-color)', borderRadius: '16px', background: '#fff', overflow: 'hidden' }}
+                          scrolling="no"
+                          frameBorder="0"
+                          allowFullScreen={true}
+                          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                          title={`Social Embed ${post.id}`}
+                        ></iframe>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="social-post-card animate-fade-in" key={post.id}>
+                      <div className="post-header">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div className="post-avatar" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary-green)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                            K
+                          </div>
+                          <div>
+                            <span style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary-green)' }}>kaldirev</span>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{post.date}</span>
+                          </div>
+                        </div>
+                        <span className="post-platform-badge" style={{ fontSize: '0.75rem', fontWeight: 'bold', padding: '2px 8px', borderRadius: '12px', backgroundColor: platformColor + '15', color: platformColor }}>
+                          {platformName}
+                        </span>
+                      </div>
+                      
+                      <div className="post-image-container">
+                        <img src={post.image_url} alt={post.caption} className="post-img" />
+                        <div className="post-overlay">
+                          <div style={{ display: 'flex', gap: '20px', color: 'white', fontWeight: 'bold', marginBottom: '15px' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                              </svg>
+                              {post.likes || 0}
+                            </span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/>
+                              </svg>
+                              {post.comments || 0}
+                            </span>
+                          </div>
+                          <a 
+                            href={post.post_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="post-action-btn"
+                          >
+                            Ver en {platformName}
+                          </a>
+                        </div>
+                      </div>
+                      
+                      <div className="post-caption-container">
+                        <p className="post-caption">
+                          {post.caption}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+            
+            {/* CTA para Seguir en todas */}
+            <div style={{ textAlign: 'center', marginTop: '3rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem' }}>
+              <p style={{ color: 'var(--text-dark)', fontWeight: 'bold', marginBottom: '1.25rem', fontSize: '1.1rem' }}>
+                ¡Forma parte de nuestra comunidad activa!
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', flexWrap: 'wrap' }}>
+                <a href="https://www.instagram.com/kaldirev?igsh=czF1enQ0d2VxcGh5" target="_blank" rel="noopener noreferrer" className="btn-share" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.65rem 1.25rem', fontSize: '0.9rem', border: '1px solid var(--border-color)' }}>
+                  📸 Instagram
+                </a>
+                <a href="https://www.tiktok.com/@kaldirev?_r=1&_t=ZS-98qrZwvHN6z" target="_blank" rel="noopener noreferrer" className="btn-share" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.65rem 1.25rem', fontSize: '0.9rem', border: '1px solid var(--border-color)' }}>
+                  🎵 TikTok
+                </a>
+                <a href="https://www.facebook.com/share/1DNC7YMQ81/" target="_blank" rel="noopener noreferrer" className="btn-share" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.65rem 1.25rem', fontSize: '0.9rem', border: '1px solid var(--border-color)' }}>
+                  👥 Facebook
+                </a>
+              </div>
+            </div>
+          </section>
+
           {/* FAQ ACCORDION SECTION */}
           {faqs.length > 0 && (
             <section className="faq-section" style={{ padding: '3rem 1.5rem' }}>
@@ -6854,279 +7980,236 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
       {/* ==================== VIEW 4: DEDICATED ORDERS & PROFILE DASHBOARD PAGE ==================== */}
       {view === "pedidos" && (() => {
         return (
-          <main className="orders-page-wrapper animate-fade-in" style={{ padding: '2rem 1.5rem', maxWidth: '800px', margin: '0 auto', minHeight: '60vh' }}>
-            
-            {/* Header Profile Card - Only if logged in */}
-            {user ? (
-              <div className="dash-panel-card" style={{ 
-                background: 'white', 
-                border: '1px solid var(--border-color)', 
-                borderRadius: '16px', 
-                padding: '1.5rem', 
-                boxShadow: 'var(--shadow-sm)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '1.5rem',
-                marginBottom: '2rem'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
-                  {/* User Avatar */}
-                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--accent-gold)', background: '#e2ebd5', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
-                    {(profile?.avatar_url || user?.user_metadata?.avatar_url) ? (
-                      <img 
-                        src={resolveAssetUrl(profile?.avatar_url || user?.user_metadata?.avatar_url)} 
-                        alt="Avatar" 
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                        onError={(e) => { e.target.style.display = 'none'; }}
-                      />
-                    ) : (
-                      <span style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--primary-green)' }}>
-                        {(profile?.full_name || user?.user_metadata?.full_name || user?.email || "U")[0].toUpperCase()}
-                      </span>
+          <main className="orders-page-wrapper animate-fade-in" style={{ minHeight: '70vh' }}>
+            {/* Page Header */}
+            <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+              <span style={{ background: 'var(--primary-light)', color: 'var(--primary-green)', padding: '6px 16px', borderRadius: '30px', fontSize: '0.82rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                Logística y Envíos Bolivia
+              </span>
+              <h2 style={{ fontSize: '2rem', color: 'var(--primary-green)', fontWeight: 900, marginTop: '8px', marginBottom: '8px' }}>
+                Portal de Rastreo de Pedidos
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', margin: 0 }}>
+                Consulta el estado de despacho de tus suplementos Tiens en tiempo real.
+              </p>
+            </div>
+
+            <div className="premium-dashboard-grid">
+              
+              {/* MAIN CONTAINER: ORDERS / SEARCH RESULT */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+                
+                {/* 1. PUBLIC TRACKING SEARCH BAR (Always accessible if logged out, or as tool if logged in) */}
+                {(!user || publicOrderResult || publicSearchError) && (
+                  <div className="premium-panel-card" style={{ padding: '1.75rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--primary-green)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                      Rastrear un Pedido Específico
+                    </h3>
+                    <p style={{ margin: '4px 0 1.25rem 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                      Ingresa el código de compra que recibiste por WhatsApp o correo para ver su despacho.
+                    </p>
+
+                    <form onSubmit={handlePublicSearchOrder} style={{ display: 'flex', gap: '10px' }}>
+                      <div className="premium-input-wrapper" style={{ flexGrow: 1 }}>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          placeholder="Ej: #KLR-A1B2C3D4 o el ID de tu pedido"
+                          value={publicSearchId}
+                          onChange={(e) => setPublicSearchId(e.target.value)}
+                          style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '12px', border: '1.5px solid var(--border-color)' }}
+                        />
+                      </div>
+                      <button 
+                        type="submit" 
+                        className="btn-dash-save"
+                        disabled={publicSearchLoading}
+                        style={{ padding: '0 1.5rem', height: '46px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem' }}
+                      >
+                        {publicSearchLoading ? (
+                          <div style={{ border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', width: '16px', height: '16px', animation: 'spin 1s linear infinite' }}></div>
+                        ) : 'Buscar'}
+                      </button>
+                    </form>
+
+                    {publicSearchError && (
+                      <div style={{ background: '#fef2f2', border: '1px solid #fee2e2', color: '#dc2626', padding: '0.85rem 1rem', borderRadius: '12px', fontSize: '0.85rem', marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        ⚠️ {publicSearchError}
+                      </div>
                     )}
                   </div>
-                  
-                  {/* User Information */}
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--primary-green)', fontWeight: 900 }}>
-                      {profile?.full_name || user?.user_metadata?.full_name || "Cliente Kaldirev"}
-                    </h3>
-                    <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>
-                      {user?.email}
-                    </span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
-                      <span style={{ background: '#fff9db', color: '#b89047', border: '1px solid #ebdcc9', fontSize: '0.75rem', fontWeight: 'bold', padding: '2px 8px', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        🏅 Cliente Gold
-                      </span>
-                      {profile?.phone && (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                          • {profile.phone}
+                )}
+
+                {/* 2. PUBLIC SEARCH RESULT */}
+                {publicOrderResult && (
+                  <div className="premium-panel-card" style={{ border: '1.5px solid var(--primary-green)', background: '#fafcfa' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', marginBottom: '1rem' }}>
+                      <div>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--primary-green)', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                          Resultado de Búsqueda
                         </span>
-                      )}
+                        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: 'var(--primary-green)' }}>
+                          Pedido #KLR-{publicOrderResult.id.substring(0,8).toUpperCase()}
+                        </h3>
+                      </div>
+                      <button 
+                        onClick={() => { setPublicOrderResult(null); setPublicSearchId(''); }}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
+                      >
+                        Limpiar Búsqueda
+                      </button>
                     </div>
-                  </div>
-                </div>
 
-                {/* Greeter Banner */}
-                <div style={{ background: '#fff9db', borderLeft: '4px solid var(--accent-gold)', padding: '10px 16px', borderRadius: '8px', minWidth: '240px', flexGrow: 1, maxWidth: '400px' }}>
-                  <span style={{ display: 'block', fontWeight: 'bold', color: 'var(--primary-green)', fontSize: '0.9rem' }}>
-                    ¡Hola { (profile?.full_name || user?.user_metadata?.full_name || "Sebastián").split(" ")[0] }!
-                  </span>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-dark)' }}>
-                    Bienvenido a tu panel de control de compras en Bolivia.
-                  </span>
-                </div>
-              </div>
-            ) : (
-              /* Public / Logged out Welcome Banner */
-              <div className="dash-panel-card" style={{ 
-                background: 'white', 
-                border: '1px solid var(--border-color)', 
-                borderRadius: '16px', 
-                padding: '1.5rem', 
-                boxShadow: 'var(--shadow-sm)',
-                marginBottom: '2rem',
-                textAlign: 'left'
-              }}>
-                <h3 style={{ margin: 0, fontSize: '1.45rem', color: 'var(--primary-green)', fontWeight: 900 }}>
-                  Bienvenido a Kaldirev Bolivia 🇧🇴
-                </h3>
-                <p style={{ margin: '4px 0 0 0', fontSize: '0.88rem', color: 'var(--text-muted)' }}>
-                  Tu portal integral para el control de tus compras en Bolivia.
-                </p>
-              </div>
-            )}
-
-            {/* Two-Column Responsive Grid Layout (Always Visible!) */}
-            <div className="responsive-profile-grid">
-              
-              {/* COLUMN 1: ORDERS TRACKING (Conditional login check inside) */}
-              <div>
-                {!user ? (
-                  /* Logged out orders screen */
-                  <div style={{ background: 'white', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '2.5rem 1.5rem', boxShadow: 'var(--shadow-sm)', textAlign: 'center' }}>
-                    <div style={{ color: 'var(--accent-gold)', opacity: 0.3, marginBottom: '0.75rem', display: 'flex', justifyContent: 'center' }}>
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
-                        <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
-                      </svg>
-                    </div>
-                    <h3 style={{ fontWeight: 700, fontSize: '1.15rem', color: 'var(--primary-green)', marginBottom: '8px' }}>Historial Inactivo</h3>
-                    <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Inicia sesión de forma segura para rastrear el despacho de tus compras y guardar tus datos.</p>
-                    <button 
-                      type="button" 
-                      onClick={() => setView("perfil")}
-                      style={{ padding: '10px 20px', background: 'var(--primary-green)', border: 'none', color: 'white', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
-                    >
-                      Ir a Iniciar Sesión
-                    </button>
+                    {/* Render order card detail */}
+                    {renderSingleOrderDetails(publicOrderResult)}
                   </div>
-                ) : (
-                  /* Logged in orders history list */
+                )}
+
+                {/* 3. LOGGED-IN USERS ORDER LIST */}
+                {user && (
                   <div>
-                    <div className="section-title-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem' }}>
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                         <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
                         <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
                       </svg>
-                      <h2 className="section-title" style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0 }}>Tus Pedidos Recientes</h2>
+                      <h3 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0, color: 'var(--primary-green)' }}>Historial de tus Compras</h3>
                     </div>
 
                     {userOrdersLoading ? (
-                      <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--text-muted)' }}>
-                        <div style={{ border: '3px solid rgba(0,0,0,0.1)', borderTop: '3px solid var(--accent-gold)', borderRadius: '50%', width: '30px', height: '30px', animation: 'spin 1s linear infinite', margin: '0 auto 10px auto' }}></div>
-                        <p>Descargando tu historial de compras...</p>
+                      <div className="premium-panel-card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
+                        <div style={{ border: '3px solid rgba(0,0,0,0.1)', borderTop: '3px solid var(--accent-gold)', borderRadius: '50%', width: '36px', height: '36px', animation: 'spin 1s linear infinite', margin: '0 auto 15px auto' }}></div>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>Descargando tu historial de compras de forma segura...</p>
                       </div>
                     ) : userOrders.length === 0 ? (
-                      <div style={{ background: 'white', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '2.5rem 1.5rem', boxShadow: 'var(--shadow-sm)', textAlign: 'center' }}>
-                        <p style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '8px', color: 'var(--primary-green)' }}>No registras pedidos todavía</p>
-                        <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>¡Explora la tienda y realiza tu primera compra hoy mismo!</p>
+                      <div className="premium-panel-card" style={{ textAlign: 'center', padding: '3.5rem 2rem' }}>
+                        <div style={{ color: 'var(--accent-gold)', opacity: 0.15, marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
+                          <svg width="64" height="64" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>
+                          </svg>
+                        </div>
+                        <h4 style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--primary-green)', marginBottom: '8px' }}>Aún no tienes pedidos registrados</h4>
+                        <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '1.5rem', maxWidth: '380px', margin: '0 auto 1.5rem' }}>Explora nuestros combos de suplementos naturales en oferta y haz tu primer pedido por WhatsApp hoy.</p>
                         <button 
                           type="button" 
                           onClick={() => setView("catalog")}
-                          style={{ padding: '10px 20px', background: 'var(--primary-green)', border: 'none', color: 'white', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                          className="btn-add-cart"
+                          style={{ padding: '12px 24px', width: 'auto', background: 'var(--primary-green)', border: 'none', color: 'white', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}
                         >
-                          Explorar Catálogo
+                          Explorar Catálogo de Combos
                         </button>
                       </div>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        {userOrders.map(order => {
-                          let currentStep = 1;
-                          if (order.status === 'Completado') currentStep = 4;
-                          else if (order.status === 'En Camino') currentStep = 3;
-                          else if (order.status === 'Pendiente') currentStep = 2;
-
-                          return (
-                            <div 
-                              key={order.id} 
-                              className="order-history-card animate-fade-in" 
-                              style={{ 
-                                background: 'white', 
-                                border: '1px solid var(--border-color)', 
-                                borderRadius: '16px', 
-                                padding: '1.25rem',
-                                boxShadow: 'var(--shadow-sm)',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '12px',
-                                textAlign: 'left'
-                              }}
-                            >
-                              {/* Card ID and Price */}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', borderBottom: '1px solid #f1ece4', paddingBottom: '10px' }}>
-                                <div>
-                                  <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--primary-green)' }}>
-                                    #KLR-{order.id.substring(0,8).toUpperCase()}
-                                  </span>
-                                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block' }}>
-                                    Adquirido: {new Date(order.created_at).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                  </span>
-                                </div>
-                                <div style={{ textAlign: 'right' }}>
-                                  <span style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--primary-green)' }}>
-                                    Bs. {parseFloat(order.total_bs).toFixed(1)}
-                                  </span>
-                                  <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                    {order.payment_method}
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Tracking Timeline */}
-                              <div style={{ margin: '8px 0', padding: '0.5rem 0' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', marginBottom: '8px' }}>
-                                  <div style={{ position: 'absolute', top: '15px', left: '10px', right: '10px', height: '4px', background: '#e1ece5', zIndex: 1 }}></div>
-                                  <div style={{ position: 'absolute', top: '15px', left: '10px', width: `${((currentStep - 1) / 3) * 100}%`, height: '4px', background: 'var(--primary-green)', zIndex: 2, transition: 'width 0.4s ease' }}></div>
-
-                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, position: 'relative' }}>
-                                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: currentStep >= 1 ? 'var(--primary-green)' : '#e1ece5', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                    </div>
-                                    <span style={{ fontSize: '0.7rem', fontWeight: currentStep >= 1 ? '800' : '500', color: currentStep >= 1 ? 'var(--primary-green)' : 'var(--text-muted)', marginTop: '4px' }}>Confirmado</span>
-                                  </div>
-
-                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, position: 'relative' }}>
-                                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: currentStep >= 2 ? 'var(--primary-green)' : '#e1ece5', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-                                    </div>
-                                    <span style={{ fontSize: '0.7rem', fontWeight: currentStep >= 2 ? '800' : '500', color: currentStep >= 2 ? 'var(--primary-green)' : 'var(--text-muted)', marginTop: '4px' }}>Preparando</span>
-                                  </div>
-
-                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, position: 'relative' }}>
-                                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: currentStep >= 3 ? 'var(--primary-green)' : '#e1ece5', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-                                    </div>
-                                    <span style={{ fontSize: '0.7rem', fontWeight: currentStep >= 3 ? '800' : '500', color: currentStep >= 3 ? 'var(--primary-green)' : 'var(--text-muted)', marginTop: '4px' }}>En camino</span>
-                                  </div>
-
-                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, position: 'relative' }}>
-                                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: currentStep >= 4 ? 'var(--accent-gold)' : '#e1ece5', color: currentStep >= 4 ? 'var(--primary-green)' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                                    </div>
-                                    <span style={{ fontSize: '0.7rem', fontWeight: currentStep >= 4 ? '800' : '500', color: currentStep >= 4 ? 'var(--accent-gold)' : 'var(--text-muted)', marginTop: '4px' }}>Entregado</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Details and items */}
-                              <div style={{ background: '#faf9f6', padding: '10px 14px', borderRadius: '8px', fontSize: '0.82rem', border: '1px solid rgba(15,61,46,0.04)' }}>
-                                <span style={{ fontWeight: 800, color: 'var(--primary-green)', display: 'block', marginBottom: '4px' }}>Artículos:</span>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                                  {order.items && order.items.map((item, idx) => (
-                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-dark)' }}>
-                                      <span>• {item.quantity}x {item.name}</span>
-                                      <span style={{ fontWeight: 700 }}>Bs. {(item.price * item.quantity).toFixed(1)}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {/* Footer card action */}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', flexWrap: 'wrap', gap: '8px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <span style={{ 
-                                    display: 'inline-flex', 
-                                    alignItems: 'center', 
-                                    width: '8px', 
-                                    height: '8px', 
-                                    borderRadius: '50%', 
-                                    background: order.status === 'Completado' ? '#25d366' : order.status === 'Cancelado' ? 'red' : 'var(--accent-gold)' 
-                                  }}></span>
-                                  <span style={{ fontSize: '0.8rem', fontWeight: 800, color: order.status === 'Completado' ? '#115e3b' : order.status === 'Cancelado' ? 'red' : '#a16207' }}>
-                                    Estado: {order.status}
-                                  </span>
-                                </div>
-
-                                {order.status !== 'Cancelado' && (
-                                  <button
-                                    type="button"
-                                    className="btn-whatsapp-submit"
-                                    style={{ padding: '8px 14px', fontSize: '0.78rem', width: 'auto', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', background: '#25d366', border: 'none', borderRadius: '8px', color: 'white', cursor: 'pointer', boxShadow: '0 2px 4px rgba(37,211,102,0.2)' }}
-                                    onClick={() => {
-                                      const trackingMsg = `Hola Kaldirev Bolivia, quería consultar el despacho de mi pedido:\n- ID Pedido: #KLR-${order.id.substring(0,8).toUpperCase()}\n- Cliente: ${order.customer_name}\n- Total: Bs. ${parseFloat(order.total_bs).toFixed(1)}\n- Estado Actual: ${order.status}`;
-                                      const waUrl = `https://api.whatsapp.com/send?phone=${config.whatsappNumber}&text=${encodeURIComponent(trackingMsg)}`;
-                                      window.open(waUrl, '_blank');
-                                    }}
-                                  >
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                                      <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.249 8.477 3.517 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.739-1.446L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.625 1.451 5.436 0 9.86-4.42 9.864-9.856.002-2.63-1.023-5.101-2.887-6.967C16.38 1.916 13.91 1.012 11.285 1.012 5.848 1.012 1.425 5.435 1.422 10.873c-.001 1.5.399 2.969 1.157 4.298l-.997 3.642 3.73-.978c-.001.002-.001.002-.001.002zm12.338-7.989c-.334-.168-1.977-.975-2.28-1.087-.302-.111-.522-.168-.742.168-.22.33-.852 1.079-1.044 1.302-.192.223-.385.253-.718.084-.334-.168-1.409-.52-2.684-1.657-1.002-.894-1.677-2.002-1.874-2.337-.197-.335-.021-.516.146-.682.151-.15.334-.385.501-.58.167-.192.222-.334.334-.56.111-.223.056-.417-.028-.585-.084-.168-.742-1.787-1.016-2.45-.269-.65-.539-.562-.742-.573-.191-.01-.41-.01-.628-.01-.22 0-.577.082-.88.411-.303.33-1.154 1.128-1.154 2.75 0 1.622 1.18 3.19 1.346 3.414.167.223 2.323 3.548 5.626 4.974.786.34 1.398.543 1.877.697.79.25 1.509.215 2.078.13.633-.095 1.977-.807 2.254-1.59.277-.783.277-1.456.195-1.59-.082-.134-.302-.253-.633-.421z"/>
-                                    </svg>
-                                    Rastrear WhatsApp
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
+                        {userOrders.map(order => (
+                          <div key={order.id} className="premium-panel-card" style={{ padding: '1.5rem' }}>
+                            {renderSingleOrderDetails(order)}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
                 )}
               </div>
 
+              {/* SIDEBAR COLUMNS: GREETINGS & INFORMATION */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                
+                {/* User Info card (Logged in) */}
+                {user ? (
+                  <div className="premium-panel-card" style={{ padding: '1.5rem', textAlign: 'center' }}>
+                    <div style={{ width: '70px', height: '70px', borderRadius: '50%', margin: '0 auto 12px auto', border: '3px solid var(--accent-gold)', overflow: 'hidden', background: '#f4f6f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {(profile?.avatar_url || user?.user_metadata?.avatar_url) ? (
+                        <img 
+                          src={resolveAssetUrl(profile?.avatar_url || user?.user_metadata?.avatar_url)} 
+                          alt="Avatar" 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        />
+                      ) : (
+                        <span style={{ fontSize: '1.6rem', fontWeight: 'bold', color: 'var(--primary-green)' }}>
+                          {(profile?.full_name || user?.user_metadata?.full_name || user?.email || "U")[0].toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <h4 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--primary-green)', fontWeight: 900 }}>
+                      {profile?.full_name || user?.user_metadata?.full_name || "Cliente Kaldirev"}
+                    </h4>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{user.email}</span>
+                    
+                    <div style={{ margin: '1rem 0', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', padding: '10px 0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', margin: '4px 0' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Membresía:</span>
+                        <strong style={{ color: 'var(--accent-gold)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                          Cliente Gold
+                        </strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', margin: '4px 0' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Pedidos hechos:</span>
+                        <strong>{userOrders.length} compras</strong>
+                      </div>
+                      {profile?.city && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', margin: '4px 0' }}>
+                          <span style={{ color: 'var(--text-muted)' }}>Ciudad:</span>
+                          <strong>{profile.city}</strong>
+                        </div>
+                      )}
+                    </div>
+
+                    <button 
+                      type="button" 
+                      onClick={() => setView("perfil")}
+                      className="btn-share"
+                      style={{ width: '100%', padding: '8px', fontSize: '0.8rem', background: '#fff', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                      Editar mis Datos
+                    </button>
+                  </div>
+                ) : (
+                  /* Welcome Info Card (Logged out) */
+                  <div className="premium-panel-card" style={{ padding: '1.5rem' }}>
+                    <h4 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', color: 'var(--primary-green)', fontWeight: 800 }}>
+                      ¿Quieres guardar tu historial?
+                    </h4>
+                    <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-dark)', lineHeight: '1.45', marginBottom: '1.25rem' }}>
+                      Regístrate gratis con tu correo o cuenta de Google para guardar tus direcciones de entrega por defecto y rastrear tus pedidos sin tener que ingresar códigos.
+                    </p>
+                    <button 
+                      type="button" 
+                      onClick={() => setView("perfil")}
+                      className="btn-add-cart"
+                      style={{ padding: '10px 16px', fontSize: '0.85rem' }}
+                    >
+                      Crear Cuenta / Ingresar
+                    </button>
+                  </div>
+                )}
+
+                {/* Live Support Card */}
+                <div className="premium-panel-card" style={{ padding: '1.5rem', background: '#f6fdf9', border: '1px solid #d1fae5' }}>
+                  <h4 style={{ margin: '0 0 6px 0', fontSize: '1rem', color: '#065f46', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
+                    Asistencia Logística
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#047857', lineHeight: '1.4', marginBottom: '1rem' }}>
+                    ¿Tienes dudas sobre el horario de entrega o el delivery? Chatea directamente con el operador de despacho de Kaldirev Bolivia.
+                  </p>
+                  <a 
+                    href={`https://wa.me/${config.whatsappNumber || '59163488086'}?text=Hola,%20necesito%20ayuda%20con%20el%20despacho%20de%20un%20pedido.`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-whatsapp-submit"
+                    style={{ background: '#25d366', color: '#fff', fontSize: '0.82rem', padding: '10px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', border: 'none', borderRadius: '10px', fontWeight: 'bold' }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                    Contactar Soporte
+                  </a>
+                </div>
+              </div>
 
             </div>
           </main>
@@ -7135,166 +8218,216 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
 
       {/* ==================== VIEW 5: DEDICATED CORPORATE NOSOTROS PAGE ==================== */}
       {view === "nosotros" && (
-        <main className="nosotros-page-wrapper animate-fade-in" style={{ padding: '2rem 1.5rem', maxWidth: '800px', margin: '0 auto', minHeight: '60vh' }}>
-          <h2 style={{ fontSize: '1.6rem', color: 'var(--primary-green)', marginBottom: '0.25rem' }}>Sobre Nosotros</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Identidad, misión y deslinde de responsabilidad corporativa.</p>
+        <main className="nosotros-page-wrapper animate-fade-in" style={{ minHeight: '70vh' }}>
+          
+          {/* About Us Hero Cover */}
+          <div className="about-hero-section">
+            <span style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', padding: '5px 12px', borderRadius: '30px', fontSize: '0.78rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M2 22C2 22 6 12 12 12C12 12 16 16 22 2C22 2 12 6 12 12C12 12 8 16 2 22Z"></path></svg>
+              Transparencia y Propósito
+            </span>
+            <h2 style={{ fontSize: '2.2rem', fontWeight: 900, marginTop: '10px', marginBottom: '10px' }}>
+              Sobre Nosotros
+            </h2>
+            <p style={{ margin: '0 auto', maxWidth: '650px', fontSize: '0.98rem', opacity: 0.9, lineHeight: '1.5' }}>
+              Profesionalizando la distribución logística y el e-commerce de bienestar en Bolivia con sellos de seguridad y empaques ecológicos.
+            </p>
+          </div>
 
-          <div style={{ display: 'flex', borderBottom: '1px solid #ebdcc9', background: 'white', borderRadius: '8px 8px 0 0', overflow: 'hidden' }}>
+          {/* Navigation Tabs */}
+          <div style={{ display: 'flex', background: '#f4f6f0', borderRadius: '14px', padding: '6px', border: '1px solid var(--border-color)', marginBottom: '1.5rem', gap: '6px' }}>
             <button 
               type="button" 
-              style={{ flex: 1, padding: '12px', border: 'none', borderBottom: infoActiveTab === 'mision' ? '3px solid var(--accent-gold)' : 'none', background: infoActiveTab === 'mision' ? '#fff' : '#f8f9fa', fontSize: '0.92rem', fontWeight: 700, color: infoActiveTab === 'mision' ? 'var(--primary-green)' : 'var(--text-muted)', cursor: 'pointer' }}
+              style={{ flex: 1, padding: '10px', border: 'none', borderRadius: '10px', background: infoActiveTab === 'mision' ? 'var(--primary-green)' : 'transparent', fontSize: '0.9rem', fontWeight: 700, color: infoActiveTab === 'mision' ? 'white' : 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.25s', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               onClick={() => setInfoActiveTab('mision')}
             >
-              Misión, Visión y Valores
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+              Nuestra Esencia
             </button>
             <button 
               type="button" 
-              style={{ flex: 1, padding: '12px', border: 'none', borderBottom: infoActiveTab === 'legal' ? '3px solid var(--accent-gold)' : 'none', background: infoActiveTab === 'legal' ? '#fff' : '#f8f9fa', fontSize: '0.92rem', fontWeight: 700, color: infoActiveTab === 'legal' ? 'var(--primary-green)' : 'var(--text-muted)', cursor: 'pointer' }}
+              style={{ flex: 1, padding: '10px', border: 'none', borderRadius: '10px', background: infoActiveTab === 'ecologia' ? 'var(--primary-green)' : 'transparent', fontSize: '0.9rem', fontWeight: 700, color: infoActiveTab === 'ecologia' ? 'white' : 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.25s', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              onClick={() => setInfoActiveTab('ecologia')}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+              Compromiso Ecológico
+            </button>
+            <button 
+              type="button" 
+              style={{ flex: 1, padding: '10px', border: 'none', borderRadius: '10px', background: infoActiveTab === 'legal' ? 'var(--primary-green)' : 'transparent', fontSize: '0.9rem', fontWeight: 700, color: infoActiveTab === 'legal' ? 'white' : 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.25s', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               onClick={() => setInfoActiveTab('legal')}
             >
-              Deslinde Legal & Compliance
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M12 22V2M12 5h8M12 19H4M12 12h10M12 12H2"></path></svg>
+              Deslinde y Cumplimiento
             </button>
           </div>
 
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: '0 0 8px 8px', border: '1px solid var(--border-color)', borderTop: 'none', fontSize: '0.95rem', color: 'var(--text-dark)', lineHeight: '1.6' }}>
-            {infoActiveTab === 'mision' ? (
-              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div>
-                  <h4 style={{ color: 'var(--primary-green)', fontSize: '1.15rem', margin: '0 0 8px 0', fontWeight: 800 }}>Nuestra Misión</h4>
-                  <p style={{ margin: 0, background: '#fcfbf7', padding: '12px 16px', borderRadius: '8px', borderLeft: '4px solid var(--accent-gold)' }}>
-                    "Proveer un sistema operativo y logístico integral que profesionalice la distribución de suplementos de bienestar en Bolivia, ofreciendo a clientes y emprendedores tecnología de cobro, atención estandarizada y entregas eficientes con absoluta transparencia comercial."
-                  </p>
+          {/* Tab Content Display */}
+          <div className="premium-panel-card" style={{ padding: '2rem' }}>
+            
+            {infoActiveTab === 'mision' && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                  <div style={{ background: '#fafcfa', padding: '1.5rem', borderRadius: '16px', borderLeft: '4px solid var(--primary-green)', border: '1px solid var(--border-color)', borderLeftWidth: '5px' }}>
+                    <h4 style={{ color: 'var(--primary-green)', fontSize: '1.1rem', fontWeight: 800, margin: '0 0 8px 0' }}>Nuestra Misión</h4>
+                    <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-dark)', lineHeight: '1.5' }}>
+                      Proveer un canal logístico y digital estandarizado que modernice la distribución de suplementos de bienestar en Bolivia, garantizando a los consumidores entregas higiénicas, empaques responsables y total claridad comercial.
+                    </p>
+                  </div>
+
+                  <div style={{ background: '#fafcfa', padding: '1.5rem', borderRadius: '16px', borderLeft: '4px solid var(--accent-gold)', border: '1px solid var(--border-color)', borderLeftWidth: '5px' }}>
+                    <h4 style={{ color: 'var(--primary-green)', fontSize: '1.1rem', fontWeight: 800, margin: '0 0 8px 0' }}>Nuestra Visión</h4>
+                    <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-dark)', lineHeight: '1.5' }}>
+                      Consolidarse como la plataforma de intermediación digital de suplementos independientes más confiable de Bolivia, destacando por nuestro rigor en la manipulación y la transparencia de cara al cliente final.
+                    </p>
+                  </div>
                 </div>
 
                 <div>
-                  <h4 style={{ color: 'var(--primary-green)', fontSize: '1.15rem', margin: '0 0 8px 0', fontWeight: 800 }}>Nuestra Visión</h4>
-                  <p style={{ margin: 0, background: '#fcfbf7', padding: '12px 16px', borderRadius: '8px', borderLeft: '4px solid var(--accent-gold)' }}>
-                    "Consolidarse para el año 2028 como la red independiente de distribución e intermediación comercial más confiable y mejor estructurada de Bolivia, reconocida por su excelencia operativa, rigor ético y modernización tecnológica de canales de venta."
-                  </p>
-                </div>
-
-                <div>
-                  <h4 style={{ color: 'var(--primary-green)', fontSize: '1.15rem', margin: '0 0 10px 0', fontWeight: 800 }}>Valores Corporativos</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{ background: '#fcfbf7', padding: '10px 14px', borderRadius: '8px' }}>
-                      <strong style={{ color: 'var(--primary-green)' }}>• Excelencia Operativa:</strong> Rigor y exactitud en el cumplimiento de tiempos, empaque secundario y trazabilidad de cada pedido.
+                  <h4 style={{ color: 'var(--primary-green)', fontSize: '1.1rem', fontWeight: 800, marginBottom: '1rem', textAlign: 'center' }}>
+                    Nuestros Valores Fundamentales
+                  </h4>
+                  <div className="about-grid-cards">
+                    <div className="about-value-card">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '8px' }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                      <strong style={{ display: 'block', color: 'var(--primary-green)', fontSize: '0.9rem', marginBottom: '4px' }}>Rigor y Ética</strong>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>Respetamos estrictamente los derechos de marcas registradas y promovemos una venta clara sin diagnósticos falsos.</span>
                     </div>
-                    <div style={{ background: '#fcfbf7', padding: '10px 14px', borderRadius: '8px' }}>
-                      <strong style={{ color: 'var(--primary-green)' }}>• Transparencia y Compliance:</strong> Delimitación clara de roles comerciales, respetando las marcas registradas de terceros y las normativas vigentes.
+                    <div className="about-value-card">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '8px' }}><path d="M2 22C2 22 6 12 12 12C12 12 16 16 22 2C22 2 12 6 12 12C12 12 8 16 2 22Z"></path></svg>
+                      <strong style={{ display: 'block', color: 'var(--primary-green)', fontSize: '0.9rem', marginBottom: '4px' }}>Responsabilidad Verde</strong>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>Reducimos el uso de plásticos utilizando cajas reciclables y papel kraft de relleno en todas nuestras entregas.</span>
                     </div>
-                    <div style={{ background: '#fcfbf7', padding: '10px 14px', borderRadius: '8px' }}>
-                      <strong style={{ color: 'var(--primary-green)' }}>• Innovación Digital:</strong> Implementación continua de herramientas tecnológicas para cobros inmediatos vía QR y atención al cliente ágil.
-                    </div>
-                    <div style={{ background: '#fcfbf7', padding: '10px 14px', borderRadius: '8px' }}>
-                      <strong style={{ color: 'var(--primary-green)' }}>• Dignificación Comercial:</strong> Promoción de un modelo de venta ético, estandarizado y transparente que eleve la confianza del consumidor final.
+                    <div className="about-value-card">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '8px' }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                      <strong style={{ display: 'block', color: 'var(--primary-green)', fontSize: '0.9rem', marginBottom: '4px' }}>Eficiencia Digital</strong>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>Facilitamos tu compra mediante integraciones de pago QR inmediato de transferencia bancaria y chat en un clic.</span>
                     </div>
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', fontSize: '0.92rem' }}>
-                <div style={{ borderBottom: '1px solid #ebdcc9', paddingBottom: '1rem' }}>
-                  <h4 style={{ color: '#d93025', fontSize: '1.05rem', margin: '0 0 6px 0', fontWeight: 800 }}>KALDIREV • RED EMPRESARIAL DE DISTRIBUCIÓN</h4>
-                  <p style={{ margin: 0, color: 'var(--text-dark)' }}>
-                    Kaldirev es un emprendimiento y marca independiente dedicado a la intermediación comercial, logística urbana y facilitación de ventas mediante herramientas tecnológicas. No constituimos una subsidiaria, filial, ni representación corporativa directa de marcas multinacionales.
+            )}
+
+            {infoActiveTab === 'ecologia' && (
+              <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', alignItems: 'center' }}>
+                <div style={{ textAlign: 'left' }}>
+                  <span style={{ background: '#e8f5e9', color: '#2e7d32', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
+                    Eco-Logística Bolivia
+                  </span>
+                  <h3 style={{ fontSize: '1.4rem', color: 'var(--primary-green)', fontWeight: 800, marginTop: '8px', marginBottom: '10px' }}>
+                    Empaques Biodegradables y Seguros
+                  </h3>
+                  <p style={{ fontSize: '0.88rem', color: 'var(--text-dark)', lineHeight: '1.5', marginBottom: '12px' }}>
+                    En <strong>Kaldirev</strong> creemos que cuidar tu salud interna no debe significar dañar nuestro entorno externo. Por eso, hemos diseñado un protocolo de despacho libre de envoltorios plásticos contaminantes.
                   </p>
+                  <ul style={{ paddingLeft: '0', listStyle: 'none', fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}><span style={{ color: 'var(--primary-green)' }}>•</span> Cajas de cartón corrugado 100% reciclables y reutilizables.</li>
+                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}><span style={{ color: 'var(--primary-green)' }}>•</span> Cinta adhesiva de papel activada por agua (biodegradable).</li>
+                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}><span style={{ color: 'var(--primary-green)' }}>•</span> Etiquetas impresas en papel reciclado con tinta ecológica.</li>
+                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}><span style={{ color: 'var(--primary-green)' }}>•</span> Sellos de seguridad inviolables que garantizan que tu producto viene directo de origen.</li>
+                  </ul>
                 </div>
-
-                <div>
-                  <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.95rem' }}>Aviso de Autonomía de Marcas Terciarias</h5>
-                  <p style={{ margin: 0, fontStyle: 'italic', color: '#555' }}>
-                    Todos los nombres de productos, marcas registradas y logotipos de terceros citados en esta plataforma (incluyendo Tiens Bolivia, Yango, PedidosYa, inDrive, BCP y Yape) son propiedad exclusiva de sus respectivos titulares.
+                <div style={{ background: '#faf9f6', padding: '1.5rem', borderRadius: '16px', border: '1px dashed var(--accent-gold)', textAlign: 'center' }}>
+                  <div style={{ width: '42px', height: '42px', background: 'var(--primary-light)', color: 'var(--primary-green)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px auto' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                  </div>
+                  <strong style={{ color: 'var(--primary-green)', display: 'block', fontSize: '0.95rem', marginBottom: '6px' }}>Nuestro Compromiso Local</strong>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-dark)', margin: 0, lineHeight: '1.4' }}>
+                    Coordinamos rutas de despacho optimizadas con mensajería local para reducir la huella de carbono de cada envío dentro de Santa Cruz, La Paz y Cochabamba.
                   </p>
-                </div>
-
-                <div>
-                  <h5 style={{ margin: '0 0 8px 0', fontWeight: 700, fontSize: '0.95rem' }}>Marco de Relación y Responsabilidad</h5>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left', border: '1px solid #ebdcc9', borderRadius: '8px', overflow: 'hidden' }}>
-                    <thead>
-                      <tr style={{ background: '#fcfbf7' }}>
-                        <th style={{ padding: '8px 12px', borderBottom: '1px solid #ebdcc9', fontWeight: 'bold' }}>Ámbito Legal</th>
-                        <th style={{ padding: '8px 12px', borderBottom: '1px solid #ebdcc9', fontWeight: 'bold' }}>Fabricante (Tiens)</th>
-                        <th style={{ padding: '8px 12px', borderBottom: '1px solid #ebdcc9', fontWeight: 'bold' }}>Intermediario (Kaldirev)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td style={{ padding: '8px 12px', borderBottom: '1px solid #ebdcc9', fontWeight: 'bold' }}>Registro / Importación</td>
-                        <td style={{ padding: '8px 12px', borderBottom: '1px solid #ebdcc9' }}>Titular de registros sanitarios (SENASAG/UNIMED), calidad de origen.</td>
-                        <td style={{ padding: '8px 12px', borderBottom: '1px solid #ebdcc9' }}>Comercialización independiente de unidades oficiales adquiridas legítimamente.</td>
-                      </tr>
-                      <tr>
-                        <td style={{ padding: '8px 12px', borderBottom: '1px solid #ebdcc9', fontWeight: 'bold' }}>Garantía</td>
-                        <td style={{ padding: '8px 12px', borderBottom: '1px solid #ebdcc9' }}>Respaldo técnico de laboratorio y sellos de fábrica.</td>
-                        <td style={{ padding: '8px 12px', borderBottom: '1px solid #ebdcc9' }}>Gestión de entrega, empaque secundario y recepción en conformidad.</td>
-                      </tr>
-                      <tr>
-                        <td style={{ padding: '8px 12px', fontWeight: 'bold' }}>Estructura</td>
-                        <td style={{ padding: '8px 12px' }}>Estructura corporativa multinacional y almacenes autorizados.</td>
-                        <td style={{ padding: '8px 12px' }}>Plataforma digital independiente de atención, cobro QR y despacho.</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', padding: '12px 14px', borderRadius: '8px', color: '#c2410c' }}>
-                  <strong>Cláusula de Exención de Responsabilidad Sanitaria:</strong> Los productos comercializados por la red KALDIREV no son medicamentos ni sustituyen tratamientos médicos profesionales. KALDIREV prohíbe taxativamente la emisión de diagnósticos o curaciones no respaldadas legalmente.
                 </div>
               </div>
             )}
+
+            {infoActiveTab === 'legal' && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', fontSize: '0.88rem', textAlign: 'left' }}>
+                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+                  <h4 style={{ color: '#d93025', fontSize: '1rem', margin: '0 0 6px 0', fontWeight: 800 }}>
+                    AVISO DE AUTONOMÍA Y COMPLIANCE
+                  </h4>
+                  <p style={{ margin: 0, color: 'var(--text-dark)', lineHeight: '1.45' }}>
+                    <strong>Kaldirev</strong> es una red digital y logística independiente de distribución comercial. No formamos parte corporativa, ni somos representantes legales, filiales, ni sucursales directas de la corporación multinacional <strong>Tiens (Tianshi)</strong>. Adquirimos de manera legítima los productos originales para su venta e intermediación minorista en Bolivia.
+                  </p>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '15px' }}>
+                  <div>
+                    <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.85rem', color: 'var(--primary-green)' }}>Trademarks de Terceros</h5>
+                    <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                      Todas las marcas y logotipos como Tiens, BCP, Yape, PedidosYa, inDrive, etc., pertenecen de forma exclusiva a sus respectivos titulares legales. Su mención es meramente logística y referencial para el consumidor.
+                    </p>
+                  </div>
+                  <div>
+                    <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.85rem', color: 'var(--primary-green)' }}>Deslinde Sanitario</h5>
+                    <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                      Los suplementos alimenticios Tiens son productos preventivos y coadyuvantes de bienestar. No son medicamentos, ni pretenden reemplazar terapias o prescripciones médicas autorizadas por profesionales de salud.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', padding: '12px 14px', borderRadius: '12px', color: '#c2410c', fontSize: '0.8rem', lineHeight: '1.4' }}>
+                  <strong>Aviso Importante:</strong> Kaldirev prohíbe explícitamente a sus asesores y distribuidores formular diagnósticos médicos, prescribir tratamientos curativos definitivos, o alterar las dosificaciones oficiales establecidas por los registros sanitarios correspondientes (SENASAG / UNIMED).
+                </div>
+              </div>
+            )}
+
           </div>
         </main>
       )}
 
       {/* ==================== VIEW 6: DEDICATED PROFILE PAGE ==================== */}
       {view === "perfil" && (
-        <main className="perfil-page-wrapper animate-fade-in" style={{ padding: '2rem 1.5rem', maxWidth: '500px', margin: '0 auto', minHeight: '60vh' }}>
+        <main className="perfil-page-wrapper animate-fade-in" style={{ minHeight: '70vh' }}>
           {!user ? (
-            /* Login native box */
-            <div style={{ background: 'white', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '2rem', boxShadow: 'var(--shadow-md)', textAlign: 'center' }}>
-              <div style={{ width: '50px', height: '50px', background: 'var(--primary-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto', color: 'var(--primary-green)' }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                </svg>
+            /* ==================== LOGIN VIEW ==================== */
+            <div className="premium-panel-card" style={{ maxWidth: '460px', margin: '0 auto', textAlign: 'center', padding: '2.5rem 2rem' }}>
+              {/* Logo / Badge */}
+              <div style={{ width: '60px', height: '60px', background: 'var(--primary-light)', color: 'var(--primary-green)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem auto', boxShadow: '0 4px 12px rgba(15, 61, 46, 0.08)' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M2 22C2 22 6 12 12 12C12 12 16 16 22 2C22 2 12 6 12 12C12 12 8 16 2 22Z"></path></svg>
               </div>
-              <h2 style={{ fontSize: '1.4rem', color: 'var(--primary-green)', marginBottom: '0.5rem' }}>Iniciar Sesión</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '1.5rem' }}>Guarda tu dirección de entrega y accede al rastreo de tus pedidos al instante.</p>
+              
+              <h2 style={{ fontSize: '1.6rem', color: 'var(--primary-green)', fontWeight: 900, marginBottom: '6px' }}>
+                Mi Cuenta Kaldirev
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '1.75rem', lineHeight: '1.45' }}>
+                Guarda tus direcciones de entrega por defecto y haz seguimiento de tus pedidos en Bolivia al instante.
+              </p>
 
               {authError && (
-                <div style={{ background: '#ffeeee', border: '1px solid #ffcccc', color: '#cc0000', padding: '8px 12px', borderRadius: '8px', fontSize: '0.82rem', marginBottom: '1rem', textAlign: 'left' }}>
-                  {authError}
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', padding: '10px 14px', borderRadius: '12px', fontSize: '0.82rem', marginBottom: '1.25rem', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  ⚠️ {authError}
                 </div>
               )}
 
-              {/* Google Button */}
+              {/* Google Sign In */}
               <button 
                 type="button" 
                 onClick={handleGoogleLogin}
                 className="btn-google-login"
-                style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #ebdcc9', background: '#fcfaf2', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.95rem' }}
-                onMouseEnter={(e) => { e.target.style.background = '#f2edd9'; }}
-                onMouseLeave={(e) => { e.target.style.background = '#fcfaf2'; }}
+                style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1.5px solid var(--border-color)', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.25s', fontSize: '0.92rem', color: 'var(--text-dark)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#fafbfa'; e.currentTarget.style.borderColor = 'var(--primary-green)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24">
+                <svg width="18" height="18" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                   <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.56-2.77c-.98.66-2.23 1.06-3.72 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
                 </svg>
-                Entrar con Google
+                Acceder con Google
               </button>
 
               <div style={{ display: 'flex', alignItems: 'center', margin: '1.5rem 0', color: '#bbb' }}>
-                <div style={{ flexGrow: 1, height: '1px', background: '#e2e8f0' }}></div>
-                <span style={{ padding: '0 10px', fontSize: '0.8rem' }}>o utiliza tu correo</span>
-                <div style={{ flexGrow: 1, height: '1px', background: '#e2e8f0' }}></div>
+                <div style={{ flexGrow: 1, height: '1px', background: 'var(--border-color)' }}></div>
+                <span style={{ padding: '0 12px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>o ingresa con tu correo</span>
+                <div style={{ flexGrow: 1, height: '1px', background: 'var(--border-color)' }}></div>
               </div>
 
               {/* Email Form */}
-              <form onSubmit={handleEmailLogin} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', textAlign: 'left' }}>
+              <form onSubmit={handleEmailLogin} className="premium-input-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'left' }}>
                 <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '0.82rem' }}>Correo Electrónico</label>
+                  <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Correo Electrónico</label>
                   <input 
                     type="email" 
                     required 
@@ -7302,11 +8435,11 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     placeholder="correo@ejemplo.com"
                     value={authEmail} 
                     onChange={(e) => setAuthEmail(e.target.value)} 
-                    style={{ padding: '8px 12px', fontSize: '0.9rem' }}
+                    style={{ width: '100%' }}
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '0.82rem' }}>Contraseña</label>
+                  <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Contraseña</label>
                   <input 
                     type="password" 
                     required 
@@ -7314,136 +8447,241 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     placeholder="••••••••" 
                     value={authPassword} 
                     onChange={(e) => setAuthPassword(e.target.value)}
-                    style={{ padding: '8px 12px', fontSize: '0.9rem' }}
+                    style={{ width: '100%' }}
                   />
                 </div>
-                <button type="submit" className="btn-add-cart" style={{ width: '100%', padding: '10px', border: 'none', background: 'var(--primary-green)', color: 'white', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '0.5rem' }}>
-                  {authLoading ? "Cargando..." : "Ingresar con Correo"}
+                
+                <button 
+                  type="submit" 
+                  className="btn-dash-save animate-pulse-slow" 
+                  style={{ width: '100%', padding: '12px', height: '46px', border: 'none', background: 'var(--primary-green)', color: 'white', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  disabled={authLoading}
+                >
+                  {authLoading ? (
+                    <div style={{ border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', width: '16px', height: '16px', animation: 'spin 1s linear infinite' }}></div>
+                  ) : "Iniciar Sesión"}
                 </button>
               </form>
+
+              {/* Login Benefits list */}
+              <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem', textAlign: 'left' }}>
+                <strong style={{ fontSize: '0.82rem', color: 'var(--primary-green)', display: 'inline-flex', alignItems: 'center', gap: '5px', marginBottom: '8px' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                  Beneficios de tener cuenta:
+                </strong>
+                <ul style={{ padding: 0, margin: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: 'var(--accent-gold)' }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                    Compra rápida en 1-clic (dirección precargada).
+                  </li>
+                  <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: 'var(--primary-green)' }}><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                    Historial y rastreo de envíos en tiempo real.
+                  </li>
+                  <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: 'var(--accent-gold)' }}><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    Acceso a ofertas y cupones exclusivos.
+                  </li>
+                </ul>
+              </div>
             </div>
           ) : (
-            /* User profile dashboard */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div style={{ background: 'white', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '1.5rem', boxShadow: 'var(--shadow-sm)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="Avatar" style={{ width: '60px', height: '60px', borderRadius: '50%', border: '3px solid var(--accent-gold)' }} />
-                ) : (
-                  <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--accent-gold)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.5rem' }}>
-                    {profile?.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
+            /* ==================== USER DASHBOARD VIEW ==================== */
+            <div className="premium-dashboard-grid animate-fade-in">
+              
+              {/* SIDEBAR: USER ACCOUNT OVERVIEW */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                
+                {/* Profile Card */}
+                <div className="premium-panel-card" style={{ padding: '1.75rem', textAlign: 'center' }}>
+                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', margin: '0 auto 12px auto', border: '3px solid var(--accent-gold)', overflow: 'hidden', background: '#f4f6f0', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--primary-green)' }}>
+                        {profile?.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                   </div>
-                )}
-                <div style={{ textAlign: 'left' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--primary-green)' }}>{profile?.full_name || "Cliente"}</h3>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{user.email}</span>
-                </div>
-              </div>
+                  
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--primary-green)', fontWeight: 900 }}>
+                    {profile?.full_name || "Cliente"}
+                  </h3>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
+                    {user.email}
+                  </span>
+                  
+                  <span style={{ background: '#fff9db', color: '#b89047', border: '1px solid #ebdcc9', fontSize: '0.72rem', fontWeight: 'bold', padding: '3px 10px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    Cliente Prime Gold
+                  </span>
 
-              {/* Form details defaults */}
-              <div style={{ background: 'white', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '1.5rem', boxShadow: 'var(--shadow-sm)', textAlign: 'left' }}>
-                <h4 style={{ margin: '0 0 1rem 0', fontSize: '1.05rem', color: 'var(--primary-green)' }}>Mis Datos de Entrega Predeterminados</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontSize: '0.82rem' }}>Nombre de Contacto</label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      value={formData.name} 
-                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                      style={{ padding: '8px 12px', fontSize: '0.9rem' }}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontSize: '0.82rem' }}>Celular o WhatsApp</label>
-                    <input 
-                      type="tel" 
-                      className="form-input" 
-                      value={formData.phone} 
-                      onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                      style={{ padding: '8px 12px', fontSize: '0.9rem' }}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontSize: '0.82rem' }}>Ciudad</label>
-                    <select 
-                      className="form-select" 
-                      value={formData.city} 
-                      onChange={(e) => handleCityChange(e.target.value)}
-                      style={{ padding: '8px 12px', fontSize: '0.9rem', height: '38px' }}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '1.5rem' }}>
+                    <button 
+                      type="button" 
+                      onClick={() => setView("catalog")}
+                      className="btn-share"
+                      style={{ width: '100%', padding: '10px', fontSize: '0.85rem', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                     >
-                      {branches.map(b => (
-                        <option key={b.id} value={b.name}>{b.name}</option>
-                      ))}
-                    </select>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                      Ir a la Tienda
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => setView("pedidos")}
+                      className="btn-share"
+                      style={{ width: '100%', padding: '10px', fontSize: '0.85rem', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                      Rastrear Envíos
+                    </button>
                   </div>
+                </div>
 
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontSize: '0.82rem' }}>Dirección de Entrega</label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      value={formData.address} 
-                      onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                      style={{ padding: '8px 12px', fontSize: '0.9rem' }}
-                    />
+                {/* Logout Card */}
+                <button 
+                  type="button" 
+                  style={{ width: '100%', padding: '12px', background: 'none', border: '2px solid #ff4d4d', color: '#ff4d4d', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  onClick={handleLogout}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#fff55'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                  Cerrar Sesión
+                </button>
+              </div>
+
+              {/* MAIN CONTENT: SHIPPINGS PRESETS FORM */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                
+                {/* Stats Overview Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1rem' }}>
+                  <div className="profile-stat-box">
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 'bold' }}>Total Pedidos</span>
+                    <strong style={{ fontSize: '1.6rem', color: 'var(--primary-green)', fontWeight: 900 }}>{userOrders.length}</strong>
                   </div>
+                  <div className="profile-stat-box">
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 'bold' }}>Ciudad Local</span>
+                    <strong style={{ fontSize: '1.2rem', color: 'var(--primary-green)', fontWeight: 900, display: 'block', marginTop: '6px' }}>{formData.city}</strong>
+                  </div>
+                  <div className="profile-stat-box">
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 'bold' }}>Nivel Fidelidad</span>
+                    <strong style={{ fontSize: '1.2rem', color: 'var(--accent-gold)', fontWeight: 900, display: 'block', marginTop: '6px' }}>Gold VIP</strong>
+                  </div>
+                </div>
 
-                  <button 
-                    type="button" 
-                    className="btn-add-cart" 
-                    style={{ width: '100%', padding: '12px', border: 'none', background: 'var(--primary-green)', color: 'white', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s', marginTop: '0.5rem' }}
-                    onClick={async () => {
-                      try {
-                        const updatedProfile = {
-                          ...profile,
-                          full_name: formData.name,
-                          phone: formData.phone,
-                          address: formData.address,
-                          city: formData.city
-                        };
-                        const { error } = await supabase.from('profiles').upsert(updatedProfile);
-                        if (error) throw error;
-                        setProfile(updatedProfile);
-                        localStorage.setItem(`kaldirev_local_profile_${user.id}`, JSON.stringify(updatedProfile));
-                        window.Swal.fire({
-                          title: '¡Guardado!',
-                          text: 'Datos actualizados de forma segura.',
-                          icon: 'success',
-                          confirmButtonColor: 'var(--primary-green)'
-                        });
-                      } catch (err) {
-                        console.warn("Could not save profile directly, fallback to local storage:", err);
-                        localStorage.setItem(`kaldirev_local_profile_${user.id}`, JSON.stringify({
-                          id: user.id,
-                          full_name: formData.name,
-                          phone: formData.phone,
-                          address: formData.address,
-                          city: formData.city
-                        }));
-                        window.Swal.fire({
-                          title: '¡Guardado Local!',
-                          text: 'Datos guardados en este dispositivo (RLS activo).',
-                          icon: 'success',
-                          confirmButtonColor: 'var(--primary-green)'
-                        });
-                      }
-                    }}
-                  >
-                    Guardar Cambios
-                  </button>
+                {/* Form Details Card */}
+                <div className="premium-panel-card" style={{ padding: '2rem' }}>
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: '1.15rem', color: 'var(--primary-green)', fontWeight: 800 }}>
+                    Datos de Despacho Predeterminados
+                  </h4>
+                  <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    Configura tus datos para que el sistema rellene tu formulario de compras automáticamente al hacer un pedido.
+                  </p>
+
+                  <form className="premium-input-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 'bold' }}>Nombre de Contacto</label>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          placeholder="Tu nombre completo"
+                          value={formData.name} 
+                          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 'bold' }}>Celular / WhatsApp</label>
+                        <input 
+                          type="tel" 
+                          className="form-input" 
+                          placeholder="Ej: 78945612"
+                          value={formData.phone} 
+                          onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 'bold' }}>Ciudad Sucursal</label>
+                        <select 
+                          className="form-select" 
+                          value={formData.city} 
+                          onChange={(e) => handleCityChange(e.target.value)}
+                          style={{ width: '100%', height: '46px' }}
+                        >
+                          {branches.map(b => (
+                            <option key={b.id} value={b.name}>{b.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 'bold' }}>Dirección de Entrega</label>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          placeholder="Calle, número de casa, barrio o referencias"
+                          value={formData.address} 
+                          onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                    </div>
+
+                    <button 
+                      type="button" 
+                      className="btn-dash-save animate-pulse-slow" 
+                      style={{ width: '100%', padding: '12px', height: '46px', border: 'none', background: 'var(--primary-green)', color: 'white', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.25s', marginTop: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                      onClick={async () => {
+                        try {
+                          const updatedProfile = {
+                            ...profile,
+                            full_name: formData.name,
+                            phone: formData.phone,
+                            address: formData.address,
+                            city: formData.city
+                          };
+                          const { error } = await supabase.from('profiles').upsert(updatedProfile);
+                          if (error) throw error;
+                          setProfile(updatedProfile);
+                          localStorage.setItem(`kaldirev_local_profile_${user.id}`, JSON.stringify(updatedProfile));
+                          window.Swal.fire({
+                            title: '¡Guardado!',
+                            text: 'Datos actualizados de forma segura.',
+                            icon: 'success',
+                            confirmButtonColor: 'var(--primary-green)'
+                          });
+                        } catch (err) {
+                          console.warn("Could not save profile directly, fallback to local storage:", err);
+                          localStorage.setItem(`kaldirev_local_profile_${user.id}`, JSON.stringify({
+                            id: user.id,
+                            full_name: formData.name,
+                            phone: formData.phone,
+                            address: formData.address,
+                            city: formData.city
+                          }));
+                          window.Swal.fire({
+                            title: '¡Guardado Local!',
+                            text: 'Datos guardados en este dispositivo (RLS activo).',
+                            icon: 'success',
+                            confirmButtonColor: 'var(--primary-green)'
+                          });
+                        }
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                      Guardar Cambios de Entrega
+                    </button>
+                  </form>
                 </div>
               </div>
 
-              {/* Logout */}
-              <button 
-                type="button" 
-                style={{ width: '100%', padding: '10px', background: 'none', border: '2px solid #ff4d4d', color: '#ff4d4d', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}
-                onClick={handleLogout}
-              >
-                Cerrar Sesión
-              </button>
             </div>
           )}
         </main>
@@ -8090,7 +9328,6 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
               <li>Lunes a Sábado: 8:00 AM - 8:00 PM</li>
               <li>Entregas a domicilio por delivery en Santa Cruz</li>
               <li>Pago Contraentrega QR / Transferencia</li>
-              <li>Enlace al <a href="#admin" style={{ textDecoration: 'underline', color: 'var(--accent-gold)' }}>Panel Admin</a></li>
             </ul>
           </div>
         </div>

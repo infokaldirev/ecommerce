@@ -1,0 +1,16 @@
+LINE NUMBER: 8215
+CHARACTER INDEX: 454875
+
+SNIPPET:
+...
+', opacity: 0.9, lineHeight: '1.5' }}>
+              Profesionalizando la distribución logística y el e-commerce de bienestar en Bolivia con sellos de seguridad y empaques ecológicos.
+            </p>
+          </div>
+
+          {/* Navigation Tabs */}
+          <div style={{ display: 'flex', background: '#f4f6f0', borderRadius: '14px', padding: '6px', border: '1px solid var(--border-color)', marginBottom: '1.5rem', gap: '6px' }}>
+            <button 
+              type="button" 
+              style={{ flex: 1, padding: '10px', border: 'none', borderRadius: '10px', background: infoActiveTab === 'mision' ? 'var(--primary-green)' : 'transparent', fontSize: '0.9rem', fontWeight: 700, color: infoActiveTab === 'mision' ? 'white' : 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.25s' 
+...

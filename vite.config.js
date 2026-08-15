@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import fs from 'fs'
 import path from 'path'
 
+
 // Auto-copy images on dev server start
 const copyImagesPlugin = () => ({
   name: 'copy-tiens-images',
@@ -50,4 +51,12 @@ const copyImagesPlugin = () => ({
 export default defineConfig({
   plugins: [react(), copyImagesPlugin()],
   base: './',
+  server: {
+    allowedHosts: true,
+    hmr: {
+      host: 'localhost',
+      protocol: 'ws',
+      port: 5173
+    }
+  }
 })
