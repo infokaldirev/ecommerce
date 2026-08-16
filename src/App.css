@@ -1415,7 +1415,7 @@ footer {
   padding-top: 1.25rem;
   margin-top: 2rem;
   font-size: 0.8rem;
-  color: #889995;
+  color: #cbd5e1;
 }
 
 /* ==========================================
@@ -1747,8 +1747,8 @@ footer {
 
   .mobile-badge-soldout {
     font-size: 0.68rem !important;
-    background-color: #ebdcc9 !important;
-    color: #8a8276 !important;
+    background-color: #f1f5f9 !important;
+    color: #475569 !important;
     padding: 3px 6px !important;
     border-radius: 4px !important;
     font-weight: 800 !important;
@@ -2681,7 +2681,7 @@ footer {
     background: transparent;
     border: none;
     border-radius: 10px;
-    color: #555;
+    color: #334155; /* Dark Slate 700 for accessibility contrast */
     font-weight: 700;
     font-size: 0.95rem;
     cursor: pointer;
@@ -2704,7 +2704,7 @@ footer {
   }
 
   .sidebar-nav-item svg {
-    color: #888;
+    color: #556b66; /* Muted green for accessibility contrast */
     transition: color 0.25s;
   }
 

@@ -9448,7 +9448,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-dark)', textAlign: 'left', flexGrow: 1 }}>
-            <strong>{socialProofOrder.name}</strong> ({socialProofOrder.city}) compró <strong style={{ color: 'var(--primary-green)' }}>{socialProofOrder.item}</strong> • <span style={{ color: '#888', fontSize: '0.75rem' }}>{socialProofOrder.time}</span>
+            <strong>{socialProofOrder.name}</strong> ({socialProofOrder.city}) compró <strong style={{ color: 'var(--primary-green)' }}>{socialProofOrder.item}</strong> • <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{socialProofOrder.time}</span>
           </span>
           <button 
             type="button" 

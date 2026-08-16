@@ -88,5 +88,26 @@ export default defineConfig({
       protocol: 'ws',
       port: 5173
     }
+  },
+  build: {
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react')) {
+              return 'vendor-react';
+            }
+            if (id.includes('supabase')) {
+              return 'vendor-supabase';
+            }
+            return 'vendor-core';
+          }
+        }
+      }
+    }
+  },
+  esbuild: {
+    drop: ['console', 'debugger']
   }
 })
