@@ -1269,6 +1269,82 @@ function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [isAdminUnlocked]);
 
+  // Auto-compress local images on developer machine (Added by Antigravity)
+  useEffect(() => {
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') return;
+    
+    const targetImages = [
+      'belleza_antienvejecimiento.png',
+      'detox_peso.png',
+      'inmunidad_defensas.png',
+      'kit_antojo_saludable.jpg',
+      'kit_bienestar_huesos.jpg',
+      'kit_energia_diaria.jpg',
+      'salud_osea.png'
+    ];
+
+    const optimize = async () => {
+      console.log("[Image Optimizer] Starting auto-optimization of assets...");
+      for (const imgName of targetImages) {
+        try {
+          const imgUrl = `/products/${imgName}`;
+          const res = await fetch(imgUrl);
+          if (!res.ok) continue;
+          
+          const blob = await res.blob();
+          const img = new Image();
+          img.src = URL.createObjectURL(blob);
+          
+          await new Promise((resolve, reject) => {
+            img.onload = async () => {
+              try {
+                const canvas = document.createElement('canvas');
+                const maxDim = 800; // Resize to a max width/height of 800px (perfect for product details/cards)
+                let width = img.width;
+                let height = img.height;
+                if (width > maxDim || height > maxDim) {
+                  if (width > height) {
+                    height = Math.round((height * maxDim) / width);
+                    width = maxDim;
+                  } else {
+                    width = Math.round((width * maxDim) / height);
+                    height = maxDim;
+                  }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Compress as high-performance webp data and write it back under the original file name
+                const compressedBase64 = canvas.toDataURL('image/webp', 0.75);
+                
+                const saveRes = await fetch('/api/save-optimized-image', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ filename: imgName, base64: compressedBase64 })
+                });
+                const result = await saveRes.json();
+                console.log(`[Image Optimizer] Optimized ${imgName} -> ${result.bytes} bytes`);
+                resolve();
+              } catch (e) {
+                reject(e);
+              }
+            };
+            img.onerror = reject;
+          });
+        } catch (err) {
+          console.error(`[Image Optimizer] Failed to optimize ${imgName}:`, err);
+        }
+      }
+      console.log("[Image Optimizer] Optimization run finished!");
+    };
+    
+    const timer = setTimeout(optimize, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Handle auto-opening product/combo from hash routing (e.g. #product-12 or #combo-5) for shared links (Added by Antigravity)
   useEffect(() => {
     if (products.length === 0 && combos.length === 0) return;
@@ -4412,7 +4488,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                     if (isVideoUrl(mainImg)) {
                                       return <video src={resolveAssetUrl(mainImg)} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
                                     } else {
-                                      return <img src={resolveAssetUrl(mainImg)} alt={editingProduct.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
+                                      return <img src={resolveAssetUrl(mainImg)} alt={editingProduct.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />;
                                     }
                                   } else {
                                     return (
@@ -4525,7 +4601,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                           isVideoUrl(mainImg) ? (
                                             <video src={resolveAssetUrl(mainImg)} autoPlay loop muted playsInline style={{ width: '45px', height: '45px', objectFit: 'cover', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} />
                                           ) : (
-                                            <img src={resolveAssetUrl(mainImg)} alt={prod.name} style={{ width: '45px', height: '45px', objectFit: 'contain', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} />
+                                            <img src={resolveAssetUrl(mainImg)} alt={prod.name} style={{ width: '45px', height: '45px', objectFit: 'contain', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} loading="lazy" />
                                           )
                                         ) : (
                                           <span className="badge-normal" style={{ fontSize: '0.65rem' }}>Sin foto</span>
@@ -4795,7 +4871,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                             return (
                                               <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
                                                 <div style={{ position: 'relative', width: '100px', height: '100px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
-                                                  <img src={resolveAssetUrl(url)} alt="Vista previa" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                                  <img src={resolveAssetUrl(url)} alt="Vista previa" style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />
                                                   {isCover && (
                                                     <span style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'var(--accent-gold)', color: 'var(--primary-green)', fontSize: '0.65rem', fontWeight: 900, textAlign: 'center', padding: '2px 0', textTransform: 'uppercase' }}>
                                                       Portada
@@ -4945,7 +5021,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                                     type="button"
                                                     onClick={() => moveComboMediaInFilteredList(comboVideos, idx, 1)} 
                                                     disabled={idx === comboVideos.length - 1} 
-                                                    style={{ border: '1px solid #ebdcc9', background: idx === comboVideos.length - 1 ? '#f0f0f0' : 'white', padding: '2px 6px', borderRadius: '4px', cursor: idx === comboVideos.length - 1 ? 'not-allowed' : 'pointer', fontSize: '0.7rem', color: idx === comboVideos.length - 1 ? '#aaa' : '#333' }}
+                                                    style={{ border: '1px solid #ebdcc9', background: idx === comboVideos.length - 1 ? '#f0f0f0' : 'white', padding: '2px 6px', borderRadius: '4px', cursor: idx === comboVideos.length - 1 ? 'not-allowed' : 'pointer', fontSize: '0.7rem', color: idx === comboImages.length - 1 ? '#aaa' : '#333' }}
                                                     title="Mover Derecha"
                                                   >
                                                     ▶
@@ -5117,7 +5193,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                     if (isVideoUrl(mainImg)) {
                                       return <video src={resolveAssetUrl(mainImg)} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
                                     } else {
-                                      return <img src={resolveAssetUrl(mainImg)} alt={editingCombo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
+                                      return <img src={resolveAssetUrl(mainImg)} alt={editingCombo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />;
                                     }
                                   } else {
                                     return (
@@ -5229,7 +5305,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                         isVideoUrl(getComboImage(combo.id)) ? (
                                           <video src={resolveAssetUrl(getComboImage(combo.id))} autoPlay loop muted playsInline style={{ width: '45px', height: '45px', objectFit: 'cover', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} />
                                         ) : (
-                                          <img src={resolveAssetUrl(getComboImage(combo.id))} alt={combo.name} style={{ width: '45px', height: '45px', objectFit: 'contain', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} />
+                                          <img src={resolveAssetUrl(getComboImage(combo.id))} alt={combo.name} style={{ width: '45px', height: '45px', objectFit: 'contain', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} loading="lazy" />
                                         )
                                       ) : (
                                         <span className="badge-normal" style={{ fontSize: '0.65rem' }}>Sin foto</span>
@@ -5945,7 +6021,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           <tr key={product.id}>
                             <td style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               {getProductImage(product.id) && (
-                                <img src={getProductImage(product.id)} alt="" style={{ width: '30px', height: '30px', objectFit: 'cover', borderRadius: '4px' }} />
+                                <img src={getProductImage(product.id)} alt="" style={{ width: '30px', height: '30px', objectFit: 'cover', borderRadius: '4px' }} loading="lazy" />
                               )}
                               <strong>{product.name}</strong>
                             </td>
@@ -6477,6 +6553,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                 src={post.image_url} 
                                 alt="Thumb" 
                                 style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '6px', background: '#eee' }} 
+                                loading="lazy" 
                               />
                               <div style={{ flexGrow: 1, minWidth: 0 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
@@ -6590,7 +6667,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 title="Ver mis pedidos"
               >
                 {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="Avatar" className="user-avatar" style={{ width: '32px', height: '32px', borderRadius: '50%', border: '2px solid var(--accent-gold)' }} />
+                  <img src={profile.avatar_url} alt="Avatar" className="user-avatar" style={{ width: '32px', height: '32px', borderRadius: '50%', border: '2px solid var(--accent-gold)' }} loading="lazy" />
                 ) : (
                   <div className="user-avatar-placeholder" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-gold)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
                     {profile?.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
@@ -7011,7 +7088,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                               isVideoUrl(getComboImage(combo.id)) ? (
                                 <video src={resolveAssetUrl(getComboImage(combo.id))} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                               ) : (
-                                <img src={resolveAssetUrl(getComboImage(combo.id))} alt={combo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                <img src={resolveAssetUrl(getComboImage(combo.id))} alt={combo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />
                               )
                             ) : (
                               <div className="product-image-placeholder">
@@ -7144,7 +7221,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                 if (isVideoUrl(mainImg)) {
                                   return <video src={resolveAssetUrl(mainImg)} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
                                 } else {
-                                  return <img src={resolveAssetUrl(mainImg)} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
+                                  return <img src={resolveAssetUrl(mainImg)} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />;
                                 }
                               } else {
                                 return (
@@ -7292,13 +7369,13 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                               isVideoUrl(getComboImage(combo.id)) ? (
                                 <video src={resolveAssetUrl(getComboImage(combo.id))} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                               ) : (
-                                <img src={resolveAssetUrl(getComboImage(combo.id))} alt={combo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                <img src={resolveAssetUrl(getComboImage(combo.id))} alt={combo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />
                               )
                             ) : combo.image_url ? (
                               isVideoUrl(combo.image_url) ? (
                                 <video src={combo.image_url} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                               ) : (
-                                <img src={combo.image_url} alt={combo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                <img src={combo.image_url} alt={combo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />
                               )
                             ) : (
                               <div className="product-image-placeholder">
@@ -7574,7 +7651,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                       </div>
                       
                       <div className="post-image-container">
-                        <img src={post.image_url} alt={post.caption} className="post-img" />
+                        <img src={post.image_url} alt={post.caption} className="post-img" loading="lazy" />
                         <div className="post-overlay">
                           <div style={{ display: 'flex', gap: '20px', color: 'white', fontWeight: 'bold', marginBottom: '15px' }}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -7715,7 +7792,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     } else if (media.type === 'image') {
                       return (
                         <div key={index} className="details-main-media-box" style={{ overflow: 'hidden', borderRadius: '12px', background: selectedCombo.bg_color || '#faf9f6', border: '1px solid var(--border-color)', aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <img src={resolveAssetUrl(media.url)} alt={selectedCombo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                          <img src={resolveAssetUrl(media.url)} alt={selectedCombo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />
                         </div>
                       );
                     }
@@ -8003,10 +8080,10 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 {/* 1. PUBLIC TRACKING SEARCH BAR (Always accessible if logged out, or as tool if logged in) */}
                 {(!user || publicOrderResult || publicSearchError) && (
                   <div className="premium-panel-card" style={{ padding: '1.75rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--primary-green)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h2 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--primary-green)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                       Rastrear un Pedido Específico
-                    </h3>
+                    </h2>
                     <p style={{ margin: '4px 0 1.25rem 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
                       Ingresa el código de compra que recibiste por WhatsApp o correo para ver su despacho.
                     </p>
@@ -8050,9 +8127,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                         <span style={{ fontSize: '0.78rem', color: 'var(--primary-green)', fontWeight: 'bold', textTransform: 'uppercase' }}>
                           Resultado de Búsqueda
                         </span>
-                        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: 'var(--primary-green)' }}>
+                        <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: 'var(--primary-green)' }}>
                           Pedido #KLR-{publicOrderResult.id.substring(0,8).toUpperCase()}
-                        </h3>
+                        </h2>
                       </div>
                       <button 
                         onClick={() => { setPublicOrderResult(null); setPublicSearchId(''); }}
@@ -8075,7 +8152,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                         <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
                         <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
                       </svg>
-                      <h3 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0, color: 'var(--primary-green)' }}>Historial de tus Compras</h3>
+                      <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0, color: 'var(--primary-green)' }}>Historial de tus Compras</h2>
                     </div>
 
                     {userOrdersLoading ? (
@@ -8090,7 +8167,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                             <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>
                           </svg>
                         </div>
-                        <h4 style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--primary-green)', marginBottom: '8px' }}>Aún no tienes pedidos registrados</h4>
+                        <h3 style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--primary-green)', marginBottom: '8px' }}>Aún no tienes pedidos registrados</h3>
                         <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '1.5rem', maxWidth: '380px', margin: '0 auto 1.5rem' }}>Explora nuestros combos de suplementos naturales en oferta y haz tu primer pedido por WhatsApp hoy.</p>
                         <button 
                           type="button" 
@@ -8134,9 +8211,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                       )}
                     </div>
                     
-                    <h4 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--primary-green)', fontWeight: 900 }}>
+                    <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--primary-green)', fontWeight: 900 }}>
                       {profile?.full_name || user?.user_metadata?.full_name || "Cliente Kaldirev"}
-                    </h4>
+                    </h3>
                     <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{user.email}</span>
                     
                     <div style={{ margin: '1rem 0', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', padding: '10px 0' }}>
@@ -8172,9 +8249,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 ) : (
                   /* Welcome Info Card (Logged out) */
                   <div className="premium-panel-card" style={{ padding: '1.5rem' }}>
-                    <h4 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', color: 'var(--primary-green)', fontWeight: 800 }}>
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', color: 'var(--primary-green)', fontWeight: 800 }}>
                       ¿Quieres guardar tu historial?
-                    </h4>
+                    </h3>
                     <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-dark)', lineHeight: '1.45', marginBottom: '1.25rem' }}>
                       Regístrate gratis con tu correo o cuenta de Google para guardar tus direcciones de entrega por defecto y rastrear tus pedidos sin tener que ingresar códigos.
                     </p>
@@ -8191,10 +8268,10 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
 
                 {/* Live Support Card */}
                 <div className="premium-panel-card" style={{ padding: '1.5rem', background: '#f6fdf9', border: '1px solid #d1fae5' }}>
-                  <h4 style={{ margin: '0 0 6px 0', fontSize: '1rem', color: '#065f46', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <h3 style={{ margin: '0 0 6px 0', fontSize: '1rem', color: '#065f46', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
                     Asistencia Logística
-                  </h4>
+                  </h3>
                   <p style={{ margin: 0, fontSize: '0.8rem', color: '#047857', lineHeight: '1.4', marginBottom: '1rem' }}>
                     ¿Tienes dudas sobre el horario de entrega o el delivery? Chatea directamente con el operador de despacho de Kaldirev Bolivia.
                   </p>
@@ -8269,14 +8346,14 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
               <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
                   <div style={{ background: '#fafcfa', padding: '1.5rem', borderRadius: '16px', borderLeft: '4px solid var(--primary-green)', border: '1px solid var(--border-color)', borderLeftWidth: '5px' }}>
-                    <h4 style={{ color: 'var(--primary-green)', fontSize: '1.1rem', fontWeight: 800, margin: '0 0 8px 0' }}>Nuestra Misión</h4>
+                    <h2 style={{ color: 'var(--primary-green)', fontSize: '1.1rem', fontWeight: 800, margin: '0 0 8px 0' }}>Nuestra Misión</h2>
                     <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-dark)', lineHeight: '1.5' }}>
                       Proveer un canal logístico y digital estandarizado que modernice la distribución de suplementos de bienestar en Bolivia, garantizando a los consumidores entregas higiénicas, empaques responsables y total claridad comercial.
                     </p>
                   </div>
 
                   <div style={{ background: '#fafcfa', padding: '1.5rem', borderRadius: '16px', borderLeft: '4px solid var(--accent-gold)', border: '1px solid var(--border-color)', borderLeftWidth: '5px' }}>
-                    <h4 style={{ color: 'var(--primary-green)', fontSize: '1.1rem', fontWeight: 800, margin: '0 0 8px 0' }}>Nuestra Visión</h4>
+                    <h2 style={{ color: 'var(--primary-green)', fontSize: '1.1rem', fontWeight: 800, margin: '0 0 8px 0' }}>Nuestra Visión</h2>
                     <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-dark)', lineHeight: '1.5' }}>
                       Consolidarse como la plataforma de intermediación digital de suplementos independientes más confiable de Bolivia, destacando por nuestro rigor en la manipulación y la transparencia de cara al cliente final.
                     </p>
@@ -8284,9 +8361,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 </div>
 
                 <div>
-                  <h4 style={{ color: 'var(--primary-green)', fontSize: '1.1rem', fontWeight: 800, marginBottom: '1rem', textAlign: 'center' }}>
+                  <h2 style={{ color: 'var(--primary-green)', fontSize: '1.1rem', fontWeight: 800, marginBottom: '1rem', textAlign: 'center' }}>
                     Nuestros Valores Fundamentales
-                  </h4>
+                  </h2>
                   <div className="about-grid-cards">
                     <div className="about-value-card">
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '8px' }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
@@ -8315,9 +8392,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
                     Eco-Logística Bolivia
                   </span>
-                  <h3 style={{ fontSize: '1.4rem', color: 'var(--primary-green)', fontWeight: 800, marginTop: '8px', marginBottom: '10px' }}>
+                  <h2 style={{ fontSize: '1.4rem', color: 'var(--primary-green)', fontWeight: 800, marginTop: '8px', marginBottom: '10px' }}>
                     Empaques Biodegradables y Seguros
-                  </h3>
+                  </h2>
                   <p style={{ fontSize: '0.88rem', color: 'var(--text-dark)', lineHeight: '1.5', marginBottom: '12px' }}>
                     En <strong>Kaldirev</strong> creemos que cuidar tu salud interna no debe significar dañar nuestro entorno externo. Por eso, hemos diseñado un protocolo de despacho libre de envoltorios plásticos contaminantes.
                   </p>
@@ -8343,9 +8420,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             {infoActiveTab === 'legal' && (
               <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', fontSize: '0.88rem', textAlign: 'left' }}>
                 <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
-                  <h4 style={{ color: '#d93025', fontSize: '1rem', margin: '0 0 6px 0', fontWeight: 800 }}>
+                  <h2 style={{ color: '#d93025', fontSize: '1rem', margin: '0 0 6px 0', fontWeight: 800 }}>
                     AVISO DE AUTONOMÍA Y COMPLIANCE
-                  </h4>
+                  </h2>
                   <p style={{ margin: 0, color: 'var(--text-dark)', lineHeight: '1.45' }}>
                     <strong>Kaldirev</strong> es una red digital y logística independiente de distribución comercial. No formamos parte corporativa, ni somos representantes legales, filiales, ni sucursales directas de la corporación multinacional <strong>Tiens (Tianshi)</strong>. Adquirimos de manera legítima los productos originales para su venta e intermediación minorista en Bolivia.
                   </p>
@@ -8379,6 +8456,20 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
       {/* ==================== VIEW 6: DEDICATED PROFILE PAGE ==================== */}
       {view === "perfil" && (
         <main className="perfil-page-wrapper animate-fade-in" style={{ minHeight: '70vh' }}>
+          {/* Page Header */}
+          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+            <span style={{ background: 'var(--primary-light)', color: 'var(--primary-green)', padding: '6px 16px', borderRadius: '30px', fontSize: '0.82rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              Mi Cuenta Cliente
+            </span>
+            <h1 style={{ fontSize: '2rem', color: 'var(--primary-green)', fontWeight: 900, marginTop: '8px', marginBottom: '8px' }}>
+              {user ? "Panel de Control de Cliente" : "Mi Cuenta Kaldirev"}
+            </h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', margin: 0 }}>
+              {user ? "Administra tus direcciones y haz seguimiento de tus compras de bienestar." : "Guarda tus direcciones de entrega por defecto y haz seguimiento de tus pedidos en Bolivia."}
+            </p>
+          </div>
+
           {!user ? (
             /* ==================== LOGIN VIEW ==================== */
             <div className="premium-panel-card" style={{ maxWidth: '460px', margin: '0 auto', textAlign: 'center', padding: '2.5rem 2rem' }}>
@@ -8387,11 +8478,11 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M2 22C2 22 6 12 12 12C12 12 16 16 22 2C22 2 12 6 12 12C12 12 8 16 2 22Z"></path></svg>
               </div>
               
-              <h2 style={{ fontSize: '1.6rem', color: 'var(--primary-green)', fontWeight: 900, marginBottom: '6px' }}>
-                Mi Cuenta Kaldirev
+              <h2 style={{ fontSize: '1.4rem', color: 'var(--primary-green)', fontWeight: 900, marginBottom: '6px' }}>
+                Acceder a mi Cuenta
               </h2>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '1.75rem', lineHeight: '1.45' }}>
-                Guarda tus direcciones de entrega por defecto y haz seguimiento de tus pedidos en Bolivia al instante.
+                Ingresa con tu método preferido de forma rápida y segura.
               </p>
 
               {authError && (
@@ -8504,9 +8595,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     )}
                   </div>
                   
-                  <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--primary-green)', fontWeight: 900 }}>
+                  <h2 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--primary-green)', fontWeight: 900 }}>
                     {profile?.full_name || "Cliente"}
-                  </h3>
+                  </h2>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
                     {user.email}
                   </span>
@@ -8572,9 +8663,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
 
                 {/* Form Details Card */}
                 <div className="premium-panel-card" style={{ padding: '2rem' }}>
-                  <h4 style={{ margin: '0 0 4px 0', fontSize: '1.15rem', color: 'var(--primary-green)', fontWeight: 800 }}>
+                  <h2 style={{ margin: '0 0 4px 0', fontSize: '1.15rem', color: 'var(--primary-green)', fontWeight: 800 }}>
                     Datos de Despacho Predeterminados
-                  </h4>
+                  </h2>
                   <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
                     Configura tus datos para que el sistema rellene tu formulario de compras automáticamente al hacer un pedido.
                   </p>

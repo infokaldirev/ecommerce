@@ -47,9 +47,39 @@ const copyImagesPlugin = () => ({
   }
 });
 
+// Custom middleware to save optimized images directly from browser canvas
+const saveImagePlugin = () => ({
+  name: 'save-image-api',
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      if (req.url === '/api/save-optimized-image' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', () => {
+          try {
+            const { filename, base64 } = JSON.parse(body);
+            const buffer = Buffer.from(base64.split(',')[1], 'base64');
+            const destPath = path.resolve(__dirname, 'public/products', filename);
+            fs.writeFileSync(destPath, buffer);
+            console.log(`[Vite Image Optimizer] Saved compressed asset: ${filename} (${buffer.length} bytes)`);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, bytes: buffer.length }));
+          } catch (err) {
+            console.error('[Vite Image Optimizer] Error saving image:', err);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: err.message }));
+          }
+        });
+      } else {
+        next();
+      }
+    });
+  }
+});
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), copyImagesPlugin()],
+  plugins: [react(), copyImagesPlugin(), saveImagePlugin()],
   base: './',
   server: {
     allowedHosts: true,
