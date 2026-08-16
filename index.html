@@ -38,13 +38,7 @@
       }
     </script>
 
-    <!-- Google Fonts: Outfit & Inter -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-    <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
-    <script type="module" crossorigin src="./assets/index-BF-5qJtn.js"></script>
+    <script type="module" crossorigin src="./assets/index-3POebsFW.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/rolldown-runtime-Bh1tDfsg.js">
     <link rel="modulepreload" crossorigin href="./assets/vendor-core-7xWNLR5g.js">
     <link rel="modulepreload" crossorigin href="./assets/vendor-react-ChM3vhK7.js">
@@ -53,5 +47,7 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- SweetAlert2 (Deferred loading at body bottom to prevent render blocking) -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
   </body>
 </html>
