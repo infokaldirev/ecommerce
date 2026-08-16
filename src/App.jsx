@@ -1269,6 +1269,25 @@ function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [isAdminUnlocked]);
 
+  // Load Google Fonts asynchronously after mount to eliminate render-blocking delay (Added by Antigravity)
+  useEffect(() => {
+    const preconnect1 = document.createElement('link');
+    preconnect1.rel = 'preconnect';
+    preconnect1.href = 'https://fonts.googleapis.com';
+    document.head.appendChild(preconnect1);
+
+    const preconnect2 = document.createElement('link');
+    preconnect2.rel = 'preconnect';
+    preconnect2.href = 'https://fonts.gstatic.com';
+    preconnect2.crossOrigin = 'anonymous';
+    document.head.appendChild(preconnect2);
+
+    const fontLink = document.createElement('link');
+    fontLink.rel = 'stylesheet';
+    fontLink.href = 'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap';
+    document.head.appendChild(fontLink);
+  }, []);
+
   // Auto-compress local images on developer machine (Added by Antigravity)
   useEffect(() => {
     if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') return;

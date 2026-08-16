@@ -30,8 +30,8 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests and exclude Supabase api calls or hot reloads
-  if (event.request.method !== 'GET' || event.request.url.includes('/supabase/') || event.request.url.includes('socket')) {
+  // Only handle GET requests with HTTP/HTTPS schemes, excluding Supabase api calls or hot reloads
+  if (event.request.method !== 'GET' || !event.request.url.startsWith('http') || event.request.url.includes('/supabase/') || event.request.url.includes('socket')) {
     return;
   }
   

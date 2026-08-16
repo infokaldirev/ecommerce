@@ -15,14 +15,19 @@ const copyImagesPlugin = () => ({
       fs.mkdirSync(destDir, { recursive: true });
     }
 
-    // Copy the user's webp image to public/products/
+    // Copy the user's webp image to public/products/ (only if missing)
     const rootWebp = path.resolve(__dirname, '1295618666295402496.webp');
     const destWebp = path.resolve(destDir, 'cordycafe.webp');
     const destWebpAlt = path.resolve(destDir, '1295618666295402496.webp');
     if (fs.existsSync(rootWebp)) {
-      fs.copyFileSync(rootWebp, destWebp);
-      fs.copyFileSync(rootWebp, destWebpAlt);
-      console.log(`[Vite Startup] Copied Cordycafe webp to ${destWebp}`);
+      if (!fs.existsSync(destWebp)) {
+        fs.copyFileSync(rootWebp, destWebp);
+        console.log(`[Vite Startup] Copied Cordycafe webp to ${destWebp}`);
+      }
+      if (!fs.existsSync(destWebpAlt)) {
+        fs.copyFileSync(rootWebp, destWebpAlt);
+        console.log(`[Vite Startup] Copied Cordycafe webp alt to ${destWebpAlt}`);
+      }
     }
 
     if (fs.existsSync(srcDir)) {
@@ -38,8 +43,10 @@ const copyImagesPlugin = () => ({
           if (file.startsWith(key) && (file.endsWith('.jpg') || file.endsWith('.png'))) {
             const srcPath = path.join(srcDir, file);
             const destPath = path.join(destDir, destName);
-            fs.copyFileSync(srcPath, destPath);
-            console.log(`[Vite Startup] Copied product asset: ${file} -> ${destName}`);
+            if (!fs.existsSync(destPath)) {
+              fs.copyFileSync(srcPath, destPath);
+              console.log(`[Vite Startup] Copied product asset: ${file} -> ${destName}`);
+            }
           }
         }
       });
@@ -82,15 +89,9 @@ export default defineConfig({
   plugins: [react(), copyImagesPlugin(), saveImagePlugin()],
   base: './',
   server: {
-    allowedHosts: true,
-    hmr: {
-      host: 'localhost',
-      protocol: 'ws',
-      port: 5173
-    }
+    allowedHosts: true
   },
   build: {
-    minify: 'esbuild',
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -106,8 +107,5 @@ export default defineConfig({
         }
       }
     }
-  },
-  esbuild: {
-    drop: ['console', 'debugger']
   }
 })
