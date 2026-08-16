@@ -1,9 +1,10 @@
-const CACHE_NAME = 'kaldirev-cache-v1';
+const CACHE_NAME = 'kaldirev-cache-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/favicon.svg',
-  '/logo.svg'
+  '/logo.svg',
+  '/icons.svg'
 ];
 
 self.addEventListener('install', (event) => {
@@ -40,7 +41,8 @@ self.addEventListener('fetch', (event) => {
         return cachedResponse;
       }
       return fetch(event.request).then((response) => {
-        if (!response || response.status !== 200 || response.type !== 'basic') {
+        // Cache same-origin (basic) and cross-origin (cors) assets like Google Fonts and CDNs
+        if (!response || response.status !== 200 || (response.type !== 'basic' && response.type !== 'cors')) {
           return response;
         }
         const responseToCache = response.clone();
