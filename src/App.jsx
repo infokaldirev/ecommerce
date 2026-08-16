@@ -642,6 +642,12 @@ function App() {
   // Helper to resolve local and remote asset URLs (Added by Antigravity)
   const resolveAssetUrl = (url) => {
     if (!url) return '';
+    
+    // Optimize Cloudinary URLs dynamically (width 600px, modern format auto, auto compression)
+    if (url.includes('res.cloudinary.com') && url.includes('/upload/')) {
+      return url.replace('/upload/', '/upload/w_600,f_auto,q_auto/');
+    }
+    
     if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
       return url;
     }
@@ -4533,7 +4539,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                 <h3 className="product-name" style={{ fontSize: '1.2rem', fontWeight: 800, margin: '4px 0', color: 'var(--primary-green)' }}>
                                   {editingProduct.name || "Nombre del Producto"}
                                 </h3>
-                                <span style={{ display: 'block', fontSize: '0.85rem', color: '#b89047', fontWeight: 700, marginBottom: '8px' }}>
+                                <span style={{ display: 'block', fontSize: '0.85rem', color: '#7c581a', fontWeight: 700, marginBottom: '8px' }}>
                                   {editingProduct.tagline || "Tagline / Frase llamativa"}
                                 </span>
                                 
@@ -5238,7 +5244,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                 <h3 className="product-name" style={{ fontSize: '1.2rem', fontWeight: 800, margin: '4px 0', color: 'var(--primary-green)' }}>
                                   {editingCombo.name || "Nombre del Combo"}
                                 </h3>
-                                <span style={{ display: 'block', fontSize: '0.85rem', color: '#b89047', fontWeight: 700, marginBottom: '8px' }}>
+                                <span style={{ display: 'block', fontSize: '0.85rem', color: '#7c581a', fontWeight: 700, marginBottom: '8px' }}>
                                   {editingCombo.tagline || "Tagline / Frase llamativa"}
                                 </span>
                                 
@@ -6932,7 +6938,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 </svg>
               </div>
               <div>
-                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--accent-gold)' }}>Despacho Express</h4>
+                <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--accent-gold)' }}>Despacho Express</h2>
                 <p style={{ margin: '4px 0 0', fontSize: '0.85rem', opacity: 0.9 }}>Entregas coordinadas en menos de 2 horas en Santa Cruz por courier express.</p>
               </div>
             </div>
@@ -6944,19 +6950,19 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 </svg>
               </div>
               <div>
-                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--primary-green)' }}>Garantía 100% Sellado</h4>
+                <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--primary-green)' }}>Garantía 100% Sellado</h2>
                 <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Bolsas kraft termoselladas manuales con precinto de seguridad anti-manipulación.</p>
               </div>
             </div>
 
             <div className="promo-tile-card" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', display: 'flex', gap: '15px', alignItems: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
-              <div style={{ background: 'rgba(197, 160, 89, 0.08)', padding: '0.75rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b89047" strokeWidth="2.5">
+              <div style={{ background: 'rgba(124, 88, 26, 0.08)', padding: '0.75rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7c581a" strokeWidth="2.5">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                 </svg>
               </div>
               <div>
-                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#b89047' }}>Asesoría Directa</h4>
+                <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#7c581a' }}>Asesoría Directa</h2>
                 <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>¿Dudas sobre dosis? Chatea en vivo con nuestros asesores de salud autorizados.</p>
               </div>
             </div>
@@ -7125,7 +7131,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           <div className="product-details">
                             <span className="product-category">Combo Especial</span>
                             <h3 className="product-name" style={{ fontSize: '1.25rem', fontWeight: 800, margin: '2px 0 4px' }}>{combo.name}</h3>
-                            <span style={{ display: 'block', fontSize: '0.88rem', color: '#b89047', fontWeight: 700, marginBottom: '6px' }}>
+                            <span style={{ display: 'block', fontSize: '0.88rem', color: '#7c581a', fontWeight: 700, marginBottom: '6px' }}>
                               {combo.tagline}
                             </span>
                             
@@ -7263,7 +7269,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                               Tiens • {categoriesList.find(cat => cat.id === product.category_id)?.name || 'Nutrición'}
                             </span>
                             <h3 className="product-name" style={{ fontSize: '1.2rem', fontWeight: 800, margin: '2px 0 4px' }}>{product.name}</h3>
-                            <span style={{ display: 'block', fontSize: '0.88rem', color: '#b89047', fontWeight: 700, marginBottom: '6px' }}>
+                            <span style={{ display: 'block', fontSize: '0.88rem', color: '#7c581a', fontWeight: 700, marginBottom: '6px' }}>
                               {product.tagline}
                             </span>
                             
@@ -7412,7 +7418,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           <div className="product-details">
                             <span className="product-category">Combo Especial</span>
                             <h3 className="product-name" style={{ fontSize: '1.25rem', fontWeight: 800, margin: '2px 0 4px' }}>{combo.name}</h3>
-                            <span style={{ display: 'block', fontSize: '0.88rem', color: '#b89047', fontWeight: 700, marginBottom: '6px' }}>
+                            <span style={{ display: 'block', fontSize: '0.88rem', color: '#7c581a', fontWeight: 700, marginBottom: '6px' }}>
                               {combo.tagline}
                             </span>
                             
@@ -7546,7 +7552,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
           {/* SECCIÓN DE REDES SOCIALES (SOCIAL MEDIA HUB) */}
           <section className="social-hub-section animate-fade-in" style={{ padding: '3.5rem 1.5rem', background: '#ffffff', borderRadius: '24px', margin: '2rem 1.5rem', boxShadow: 'var(--shadow-md)' }}>
             <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-              <span className="eco-badge" style={{ background: 'var(--accent-gold-light)', color: 'var(--accent-gold)', fontWeight: 'bold', fontSize: '0.85rem', padding: '4px 12px', borderRadius: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              <span className="eco-badge" style={{ background: 'var(--accent-gold-light)', color: '#7c581a', fontWeight: 'bold', fontSize: '0.85rem', padding: '4px 12px', borderRadius: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                 Nuestra Comunidad
               </span>
               <h2 style={{ fontSize: '2rem', marginTop: '0.75rem', marginBottom: '0.5rem', color: 'var(--primary-green)', fontWeight: 800 }}>
@@ -7620,11 +7626,24 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
               {socialPosts
                 .filter(post => activeSocialFilter === 'Todos' || post.platform.toLowerCase() === activeSocialFilter.toLowerCase())
                 .map(post => {
-                  let platformColor = '#e1306c';
+                  let platformColor = '#a81747'; // Darker pink for Instagram text contrast
+                  let badgeBgColor = '#fdf2f4';   // Solid background color with high contrast
                   let platformName = 'Instagram';
-                  if (post.platform === 'tiktok') { platformColor = '#000000'; platformName = 'TikTok'; }
-                  if (post.platform === 'facebook') { platformColor = '#1877f2'; platformName = 'Facebook'; }
-                  if (post.platform === 'youtube') { platformColor = '#ff0000'; platformName = 'YouTube'; }
+                  if (post.platform === 'tiktok') {
+                    platformColor = '#1a1a1a';
+                    badgeBgColor = '#f5f5f5';
+                    platformName = 'TikTok';
+                  }
+                  if (post.platform === 'facebook') {
+                    platformColor = '#0f60c4';
+                    badgeBgColor = '#edf5ff';
+                    platformName = 'Facebook';
+                  }
+                  if (post.platform === 'youtube') {
+                    platformColor = '#c41c1c';
+                    badgeBgColor = '#fff5f5';
+                    platformName = 'YouTube';
+                  }
                   
                   const embedUrl = getEmbedUrl(post.post_url, post.platform);
                   const useEmbed = post.use_native_embed !== false && (post.use_native_embed || !post.image_url || !post.image_url.startsWith('http'));
@@ -7664,7 +7683,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                             <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{post.date}</span>
                           </div>
                         </div>
-                        <span className="post-platform-badge" style={{ fontSize: '0.75rem', fontWeight: 'bold', padding: '2px 8px', borderRadius: '12px', backgroundColor: platformColor + '15', color: platformColor }}>
+                        <span className="post-platform-badge" style={{ fontSize: '0.75rem', fontWeight: 'bold', padding: '2px 8px', borderRadius: '12px', backgroundColor: badgeBgColor, color: platformColor }}>
                           {platformName}
                         </span>
                       </div>
@@ -7691,6 +7710,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                             target="_blank" 
                             rel="noopener noreferrer" 
                             className="post-action-btn"
+                            aria-label={`Ver publicación de ${platformName} del ${post.date}`}
                           >
                             Ver en {platformName}
                           </a>
@@ -7941,7 +7961,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                       marginTop: '0.25rem'
                     }}>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <div style={{ color: '#b89047', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <div style={{ color: '#7c581a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
                             <line x1="12" y1="9" x2="12" y2="13"></line>
@@ -8621,7 +8641,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     {user.email}
                   </span>
                   
-                  <span style={{ background: '#fff9db', color: '#b89047', border: '1px solid #ebdcc9', fontSize: '0.72rem', fontWeight: 'bold', padding: '3px 10px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ background: '#fff9db', color: '#7c581a', border: '1px solid #ebdcc9', fontSize: '0.72rem', fontWeight: 'bold', padding: '3px 10px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                     Cliente Prime Gold
                   </span>

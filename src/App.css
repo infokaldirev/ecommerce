@@ -128,7 +128,7 @@ header {
 .logo-subtitle {
   font-size: 0.65rem;
   font-weight: 700;
-  color: var(--accent-gold);
+  color: #7c581a;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -411,7 +411,7 @@ header {
 .product-category {
   font-size: 0.65rem;
   font-weight: 700;
-  color: #a27c3d;
+  color: #7c581a;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -457,7 +457,7 @@ header {
 
 .price-original {
   text-decoration: line-through;
-  color: #a89e90;
+  color: #5f574d;
   font-size: 0.8rem;
 }
 
