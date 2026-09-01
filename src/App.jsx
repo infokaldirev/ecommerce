@@ -2,6 +2,11 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from './supabaseClient';
 import './App.css';
 
+const getEffectivePriceAndPoints = (item) => {
+  const regularPrice = parseFloat(item.price_bs) || parseFloat(item.price) || 0;
+  return { price: regularPrice, points: 0 };
+};
+
 // Fallback Combos Data in Bolivianos
 // Fallback Combos Data in Bolivianos
 const DEFAULT_CATEGORIES = [
@@ -326,7 +331,6 @@ function App() {
     return savedCart ? JSON.parse(savedCart) : [];
   });
   
-  // UI Navigation states
   const [view, setView] = useState("catalog"); // "catalog", "details", or "admin"
   const [selectedCombo, setSelectedCombo] = useState(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -356,6 +360,8 @@ function App() {
     is_active: true
   });
   const [socialProofOrder, setSocialProofOrder] = useState(null);
+  
+
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [infoActiveTab, setInfoActiveTab] = useState("mision"); // "mision" or "legal"
   
@@ -368,6 +374,7 @@ function App() {
   const [userOrders, setUserOrders] = useState([]);
   const [userOrdersLoading, setUserOrdersLoading] = useState(false);
   const [isMyOrdersOpen, setIsMyOrdersOpen] = useState(false);
+  const [pointTransactions, setPointTransactions] = useState([]);
   const preloadedUrls = useRef(new Set());
 
   // Email/Password Auth Modal states
@@ -445,11 +452,25 @@ function App() {
     city: 'Santa Cruz',
     paymentMethod: 'Contraentrega',
     deliveryMethod: 'Local (Yango)',
-    gpsCoordinates: ''
+    gpsCoordinates: '',
+    distributorCode: ''
   });
 
   // Initialize Auth session & listen to changes
   useEffect(() => {
+    const mockUser = localStorage.getItem('kaldirev_mock_user');
+    if (mockUser) {
+      try {
+        const parsed = JSON.parse(mockUser);
+        setUser(parsed);
+        fetchUserProfile(parsed.id, parsed);
+        fetchUserOrders(parsed.id);
+        return;
+      } catch (e) {
+        console.error("Error parsing mock user on boot:", e);
+      }
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -459,6 +480,8 @@ function App() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Check again if mock user is present, if so do not override state
+      if (localStorage.getItem('kaldirev_mock_user')) return;
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchUserProfile(session.user.id, session.user);
@@ -526,7 +549,8 @@ function App() {
           name: prev.name || data.full_name || '',
           phone: prev.phone || data.phone || '',
           address: prev.address || data.address || '',
-          city: prev.city || data.city || 'Santa Cruz'
+          city: prev.city || data.city || 'Santa Cruz',
+          distributorCode: prev.distributorCode || data.distributor_code || ''
         }));
       }
     } catch (err) {
@@ -560,7 +584,8 @@ function App() {
         name: newLocal.full_name || prev.name || '',
         phone: newLocal.phone || prev.phone || '',
         address: newLocal.address || prev.address || '',
-        city: newLocal.city || prev.city || 'Santa Cruz'
+        city: newLocal.city || prev.city || 'Santa Cruz',
+        distributorCode: newLocal.distributor_code || prev.distributorCode || ''
       }));
 
       if (!error) {
@@ -874,6 +899,7 @@ function App() {
     });
   };
 
+
   // Google Sign-In helper
   const handleGoogleLogin = async () => {
     try {
@@ -955,13 +981,21 @@ function App() {
   // Sign-Out helper
   const handleLogout = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      localStorage.removeItem('kaldirev_mock_user');
+      await supabase.auth.signOut();
       setUser(null);
       setProfile(null);
       setIsGuestEntered(false);
+      setUserOrders([]);
+      setPointTransactions([]);
     } catch (err) {
       console.error("Error signing out:", err);
+      // Fallback clean
+      setUser(null);
+      setProfile(null);
+      setIsGuestEntered(false);
+      setUserOrders([]);
+      setPointTransactions([]);
     }
   };
 
@@ -1090,7 +1124,9 @@ function App() {
           ...p,
           image_url: imageUrl,
           price_bs: parseFloat(p.price_bs) || 0,
-          original_price_bs: parseFloat(p.original_price_bs) || 0
+          original_price_bs: parseFloat(p.original_price_bs) || 0,
+          price_distributor_bs: parseFloat(p.price_distributor_bs) || 0,
+          points: parseInt(p.points) || 0
         };
       });
       const finalProductsList = finalProducts.length > 0 ? finalProducts : DEFAULT_PRODUCTS;
@@ -1102,7 +1138,9 @@ function App() {
         return {
           ...c,
           price_bs: parseFloat(c.price_bs) || 0,
-          original_price_bs: parseFloat(c.original_price_bs) || 0
+          original_price_bs: parseFloat(c.original_price_bs) || 0,
+          price_distributor_bs: parseFloat(c.price_distributor_bs) || 0,
+          points: parseInt(c.points) || 0
         };
       });
       const finalCombosList = finalCombos.length > 0 ? finalCombos : DEFAULT_COMBOS;
@@ -1216,12 +1254,23 @@ function App() {
         .order('created_at', { ascending: false });
       if (error) throw error;
       setUserOrders(data || []);
+
+      // Load points transactions as well
+      const { data: txs, error: txsErr } = await supabase
+        .from('point_transactions')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (!txsErr) {
+        setPointTransactions(txs || []);
+      }
     } catch (err) {
       console.error("Error loading user orders:", err);
     } finally {
       setUserOrdersLoading(false);
     }
   };
+
 
   useEffect(() => {
     const initStore = async () => {
@@ -1497,7 +1546,10 @@ function App() {
   };
 
   const getCartCount = () => cart.reduce((acc, item) => acc + item.quantity, 0);
-  const getCartTotal = () => cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const getCartTotal = () => cart.reduce((acc, item) => {
+    const { price } = getEffectivePriceAndPoints(item, profile?.role);
+    return acc + (price * item.quantity);
+  }, 0);
   const getShippingCost = () => {
     return selectedBranch ? parseFloat(selectedBranch.shipping_cost_bs) : 15;
   };
@@ -1698,7 +1750,9 @@ function App() {
         tagline: editingCombo.tagline || null,
         image_url: editingCombo.image_url || null,
         pinned: !!editingCombo.pinned,
-        bg_color: editingCombo.bg_color || null
+        bg_color: editingCombo.bg_color || null,
+        price_distributor_bs: parseFloat(editingCombo.price_distributor_bs) || 0,
+        points: parseInt(editingCombo.points) || 0
       };
 
       if (editingCombo.id) {
@@ -1844,7 +1898,9 @@ function App() {
         preparation_mode: editingProduct.preparation_mode || null,
         atp_benefit: editingProduct.atp_benefit || null,
         cost_price_bs: parseFloat(editingProduct.cost_price_bs) || 0,
-        is_active: editingProduct.is_active !== undefined ? !!editingProduct.is_active : true
+        is_active: editingProduct.is_active !== undefined ? !!editingProduct.is_active : true,
+        price_distributor_bs: parseFloat(editingProduct.price_distributor_bs) || 0,
+        points: parseInt(editingProduct.points) || 0
       };
 
       let resId = editingProduct.id;
@@ -2755,11 +2811,65 @@ function App() {
   // Order status modification
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: newStatus })
-        .eq('id', orderId);
-      if (error) throw error;
+      if (newStatus === 'Completado') {
+        const { data: order, error: fetchErr } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('id', orderId)
+          .maybeSingle();
+
+        if (fetchErr) throw fetchErr;
+
+        if (order && order.user_id && order.points_earned > 0 && !order.points_credited) {
+          const { data: userProfile, error: profileErr } = await supabase
+            .from('profiles')
+            .select('points')
+            .eq('id', order.user_id)
+            .maybeSingle();
+
+          if (profileErr) throw profileErr;
+
+          const currentPoints = userProfile?.points || 0;
+          const newPointsTotal = currentPoints + order.points_earned;
+
+          const { error: updateProfileErr } = await supabase
+            .from('profiles')
+            .update({ points: newPointsTotal })
+            .eq('id', order.user_id);
+
+          if (updateProfileErr) throw updateProfileErr;
+
+          const { error: txErr } = await supabase
+            .from('point_transactions')
+            .insert([{
+              user_id: order.user_id,
+              order_id: orderId,
+              points: order.points_earned,
+              description: `Puntos acreditados por compra del pedido #${orderId.substring(0, 8).toUpperCase()}`
+            }]);
+
+          if (txErr) console.warn("Error registering point transaction:", txErr);
+
+          const { error: updateOrderErr } = await supabase
+            .from('orders')
+            .update({ status: newStatus, points_credited: true })
+            .eq('id', orderId);
+
+          if (updateOrderErr) throw updateOrderErr;
+        } else {
+          const { error } = await supabase
+            .from('orders')
+            .update({ status: newStatus })
+            .eq('id', orderId);
+          if (error) throw error;
+        }
+      } else {
+        const { error } = await supabase
+          .from('orders')
+          .update({ status: newStatus })
+          .eq('id', orderId);
+        if (error) throw error;
+      }
       fetchOrders();
     } catch (err) {
       alert("Error al actualizar estado: " + err.message);
@@ -2917,6 +3027,8 @@ ${qrModalOrder.gps_coordinates ? `- *Coordenadas GPS:* ${qrModalOrder.gps_coordi
     
     setIsSubmittingOrder(true);
     const subtotal = getCartTotal();
+    const isDist = false;
+    const totalPoints = 0;
 
     try {
       // 1. Deduct Stock immediately from default branch (Santa Cruz)
@@ -2930,19 +3042,24 @@ ${qrModalOrder.gps_coordinates ? `- *Coordenadas GPS:* ${qrModalOrder.gps_coordi
         city: profile?.city || "Coordinar por WhatsApp",
         payment_method: "WhatsApp",
         total_bs: parseFloat(subtotal),
-        items: cart.map(item => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity
-        })),
+        items: cart.map(item => {
+          const { price: itemPrice } = getEffectivePriceAndPoints(item, profile?.role);
+          return {
+            id: item.id,
+            name: item.name,
+            price: itemPrice,
+            quantity: item.quantity
+          };
+        }),
         user_id: user?.id || null,
         branch_id: 1, // Default main branch
         shipping_cost: 0,
         delivery_method: "WhatsApp",
-        gps_coordinates: null,
+        gps_coordinates: formData.gpsCoordinates || null,
         qr_payment_status: "No Aplica",
-        tracking_id: null
+        tracking_id: null,
+        points_earned: totalPoints,
+        points_credited: false
       };
 
       // 3. Insert order in Supabase so user can see it in "Mis Pedidos" and Admin dashboard
@@ -2954,12 +3071,24 @@ ${qrModalOrder.gps_coordinates ? `- *Coordenadas GPS:* ${qrModalOrder.gps_coordi
       if (orderErr) throw orderErr;
 
       // 4. Construct pre-filled WhatsApp message
-      const itemsText = cart.map(item => 
-        `• *${item.quantity}x ${item.name}* - Bs. ${(item.price * item.quantity).toFixed(1)}`
-      ).join("\n");
+      const itemsText = cart.map(item => {
+        const { price: itemPrice } = getEffectivePriceAndPoints(item, profile?.role);
+        return `• *${item.quantity}x ${item.name}* - Bs. ${(itemPrice * item.quantity).toFixed(1)}`;
+      }).join("\n");
+
+      let gpsLocationText = `- Ubicación GPS (Adjunta tu ubicación en este chat o escribe el link): [Adjunta tu ubicación de Google Maps aquí]`;
+      if (formData.gpsCoordinates) {
+        gpsLocationText = `- Ubicación GPS (Link): ${formData.gpsCoordinates}`;
+        const coordsMatch = formData.gpsCoordinates.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+        if (coordsMatch) {
+          const lat = coordsMatch[1];
+          const lon = coordsMatch[2];
+          gpsLocationText += `\n- Solicitar Envío (Yango): https://yango.go.link/route?end-lat=${lat}&end-lon=${lon}`;
+        }
+      }
 
       const message = `¡Hola Kaldirev! Deseo realizar un pedido de combos:
-
+ 
 Detalle del Pedido:
 ${itemsText}
 
@@ -2971,7 +3100,7 @@ Por favor, ayúdenme a coordinar el envío completando estos datos:
 - Teléfono / WhatsApp: ${profile?.phone || '[Escribe tu número de celular]'}
 - Ciudad de Entrega (ej. Santa Cruz/La Paz/Cochabamba): ${profile?.city || '[Escribe la ciudad]'}
 - Dirección de Entrega (calle, nro, zona): ${profile?.address || '[Escribe tu dirección]'}
-- Ubicación GPS (Adjunta tu ubicación en este chat o escribe el link): [Adjunta tu ubicación de Google Maps aquí]
+${gpsLocationText}
 - Método de Pago preferido (Contraentrega / QR / Transferencia): [Contraentrega]`;
 
       const encodedMessage = encodeURIComponent(message);
@@ -3108,6 +3237,9 @@ Por favor, ayúdenme a coordinar el envío completando estos datos:
       }
 
       // 2. Prepare order payload
+      const isDist = false;
+      const totalPoints = 0;
+
       const orderPayload = {
         customer_name: formData.name,
         phone: formData.phone,
@@ -3115,19 +3247,24 @@ Por favor, ayúdenme a coordinar el envío completando estos datos:
         city: formData.city,
         payment_method: formData.paymentMethod,
         total_bs: parseFloat(totalOrderAmount),
-        items: cart.map(item => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity
-        })),
+        items: cart.map(item => {
+          const { price: itemPrice } = getEffectivePriceAndPoints(item, profile?.role);
+          return {
+            id: item.id,
+            name: item.name,
+            price: itemPrice,
+            quantity: item.quantity
+          };
+        }),
         user_id: user?.id || null,
         branch_id: selectedBranchObj.id,
         shipping_cost: parseFloat(shippingCost),
         delivery_method: formData.deliveryMethod,
         gps_coordinates: formData.gpsCoordinates || null,
         qr_payment_status: formData.paymentMethod === 'Pago QR Directo' ? 'Pendiente' : 'No Aplica',
-        tracking_id: null
+        tracking_id: null,
+        points_earned: totalPoints,
+        points_credited: false
       };
 
       // 3. Insert order in Supabase
@@ -3150,9 +3287,21 @@ Por favor, ayúdenme a coordinar el envío completando estos datos:
       }
 
       // 5. Normal checkout (Contraentrega or Transferencia) -> WhatsApp Redirect
-      const itemsText = cart.map(item => 
-        `• *${item.quantity}x ${item.name}* - Bs. ${(item.price * item.quantity).toFixed(1)}`
-      ).join("\n");
+      const itemsText = cart.map(item => {
+        const { price: itemPrice } = getEffectivePriceAndPoints(item, profile?.role);
+        return `• *${item.quantity}x ${item.name}* - Bs. ${(itemPrice * item.quantity).toFixed(1)}`;
+      }).join("\n");
+
+      let gpsLines = '';
+      if (formData.gpsCoordinates) {
+        gpsLines += `- *Ubicación GPS (Link):* ${formData.gpsCoordinates}\n`;
+        const coordsMatch = formData.gpsCoordinates.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+        if (coordsMatch) {
+          const lat = coordsMatch[1];
+          const lon = coordsMatch[2];
+          gpsLines += `- *Solicitar Envío (Yango):* https://yango.go.link/route?end-lat=${lat}&end-lon=${lon}\n`;
+        }
+      }
 
       const message = `*¡HOLA KALDIREV BOLIVIA!* 🚀 Deseo confirmar mi pedido de combos:
 
@@ -3169,7 +3318,7 @@ _(Envío en bolsa Kraft eco-amigable con termosellado manual de seguridad)_
 - *Teléfono / WhatsApp:* ${formData.phone}
 - *Ciudad de Entrega:* ${formData.city}
 - *Dirección de Entrega:* ${formData.address}
-${formData.gpsCoordinates ? `- *Ubicación GPS (Link):* ${formData.gpsCoordinates}\n` : ''}- *Método de Pago:* *Pago QR Directo*
+${gpsLines}- *Método de Pago:* *${formData.paymentMethod}*
 
 Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas gracias!`;
 
@@ -3527,7 +3676,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
         <aside className="admin-sidebar">
           <div>
             <div className="sidebar-logo">
-              <div className="logo-mark">K</div>
+              <div className="logo-mark" style={{ width: '40px', height: '40px', overflow: 'hidden', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px' }}>
+                <img src="/isotipo-web.svg" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              </div>
               <div className="logo-text">
                 <span className="logo-title" style={{ color: 'white', fontSize: '1.25rem' }}>Kaldirev</span>
                 <span className="logo-subtitle" style={{ color: 'var(--accent-gold)' }}>Dark Store</span>
@@ -4095,6 +4246,30 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                         />
                                       </div>
                                     </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                      <div className="form-group">
+                                        <label className="form-label" style={{ fontWeight: 800 }}>Precio Distribuidor (Bs.)</label>
+                                        <input 
+                                          type="number" 
+                                          step="0.1" 
+                                          className="form-input" 
+                                          value={editingProduct.price_distributor_bs || ""}
+                                          onChange={(e) => setEditingProduct({...editingProduct, price_distributor_bs: e.target.value})}
+                                          placeholder="ej. 190.0"
+                                        />
+                                      </div>
+                                      <div className="form-group">
+                                        <label className="form-label" style={{ fontWeight: 800 }}>Puntos (PV) Tiens</label>
+                                        <input 
+                                          type="number" 
+                                          step="1" 
+                                          className="form-input" 
+                                          value={editingProduct.points || ""}
+                                          onChange={(e) => setEditingProduct({...editingProduct, points: e.target.value})}
+                                          placeholder="ej. 28"
+                                        />
+                                      </div>
+                                    </div>
 
                                     <div className="form-group">
                                       <label className="form-label" style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -4594,7 +4769,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                 package_detail: "",
                                 badge: "",
                                 pinned: false,
-                                bg_color: ""
+                                bg_color: "",
+                                price_distributor_bs: 0,
+                                points: 0
                               });
                             }}
                           >
@@ -4832,6 +5009,30 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                           placeholder="Ej. 220"
                                           value={editingCombo.original_price_bs}
                                           onChange={(e) => setEditingCombo({...editingCombo, original_price_bs: e.target.value})}
+                                        />
+                                      </div>
+                                    </div>
+                                    <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                      <div className="form-group">
+                                        <label className="form-label" style={{ fontWeight: 800 }}>Precio Distribuidor del Pack (Bs.)</label>
+                                        <input 
+                                          type="number" 
+                                          step="0.1"
+                                          className="form-input"
+                                          placeholder="Ej. 140"
+                                          value={editingCombo.price_distributor_bs || ""}
+                                          onChange={(e) => setEditingCombo({...editingCombo, price_distributor_bs: e.target.value})}
+                                        />
+                                      </div>
+                                      <div className="form-group">
+                                        <label className="form-label" style={{ fontWeight: 800 }}>Puntos (PV) del Pack</label>
+                                        <input 
+                                          type="number" 
+                                          step="1"
+                                          className="form-input"
+                                          placeholder="Ej. 15"
+                                          value={editingCombo.points || ""}
+                                          onChange={(e) => setEditingCombo({...editingCombo, points: e.target.value})}
                                         />
                                       </div>
                                     </div>
@@ -5298,7 +5499,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                 badge: "",
                                 tagline: "",
                                 image_url: "",
-                                pinned: false
+                                pinned: false,
+                                price_distributor_bs: 0,
+                                points: 0
                               });
                             }}
                           >
@@ -6653,8 +6856,8 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
       {/* HEADER SECTION */}
       <header>
         <div className="logo-container" onClick={() => { setActiveCategory("Todos"); setSearchTerm(""); closeComboDetails(); setView("catalog"); }}>
-          <div className="logo-mark" style={{ width: '48px', height: '48px', borderRadius: '12px' }}>
-            <span className="logo-title" style={{ fontSize: '2.1rem', color: 'white', fontWeight: 900 }}>K</span>
+          <div className="logo-mark" style={{ width: '48px', height: '48px', borderRadius: '12px', overflow: 'hidden', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <img src="/isotipo-web.svg" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
           <div className="logo-text">
             <span className="logo-title" style={{ fontSize: '1.45rem', fontWeight: 900 }}>Kaldirev</span>
@@ -7146,9 +7349,16 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
 
                             <div className="product-price-row-container" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                               <div className="product-price-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid rgba(235, 220, 201, 0.2)' }}>
-                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                                  <span className="price-original">Bs. {parseFloat(combo.original_price_bs).toFixed(1)}</span>
-                                  <span className="price-current">Bs. {parseFloat(combo.price_bs).toFixed(1)}</span>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {(() => {
+                                    const { price } = getEffectivePriceAndPoints(combo);
+                                    return (
+                                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                        <span className="price-original">Bs. {parseFloat(combo.original_price_bs).toFixed(1)}</span>
+                                        <span className="price-current">Bs. {price.toFixed(1)}</span>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                                 
                                 <div className="mobile-add-action">
@@ -7299,9 +7509,16 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
 
                             <div className="product-price-row-container" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                               <div className="product-price-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid rgba(235, 220, 201, 0.2)' }}>
-                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                                  <span className="price-original">Bs. {parseFloat(product.original_price_bs).toFixed(1)}</span>
-                                  <span className="price-current">Bs. {parseFloat(product.price_bs).toFixed(1)}</span>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {(() => {
+                                    const { price } = getEffectivePriceAndPoints(product);
+                                    return (
+                                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                        <span className="price-original">Bs. {parseFloat(product.original_price_bs).toFixed(1)}</span>
+                                        <span className="price-current">Bs. {price.toFixed(1)}</span>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                                 
                                 <div className="mobile-add-action">
@@ -7433,9 +7650,16 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
 
                             <div className="product-price-row-container" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                               <div className="product-price-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid rgba(235, 220, 201, 0.2)' }}>
-                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                                  <span className="price-original">Bs. {parseFloat(combo.original_price_bs).toFixed(1)}</span>
-                                  <span className="price-current">Bs. {parseFloat(combo.price_bs).toFixed(1)}</span>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {(() => {
+                                    const { price } = getEffectivePriceAndPoints(combo);
+                                    return (
+                                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                        <span className="price-original">Bs. {parseFloat(combo.original_price_bs).toFixed(1)}</span>
+                                        <span className="price-current">Bs. {price.toFixed(1)}</span>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                                 
                                 <div className="mobile-add-action">
@@ -8061,12 +8285,20 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     </div>
                   </div>
 
-                  {/* Price and Cart Buttons */}
                   <div className="details-price-card" style={{ padding: '1.5rem', borderRadius: '12px' }}>
-                    <div>
-                      <span style={{ display: 'block', textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '0.95rem' }}>Regular: Bs. {parseFloat(selectedCombo.original_price_bs).toFixed(1)}</span>
-                      <span style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--primary-green)' }}>Bs. {parseFloat(selectedCombo.price_bs).toFixed(1)}</span>
-                    </div>
+                     {(() => {
+                       const { price } = getEffectivePriceAndPoints(selectedCombo);
+                       return (
+                         <div>
+                           <span style={{ display: 'block', textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '0.95rem' }}>Regular: Bs. {parseFloat(selectedCombo.original_price_bs).toFixed(1)}</span>
+                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                             <span style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--primary-green)' }}>
+                               Bs. {price.toFixed(1)}
+                             </span>
+                           </div>
+                         </div>
+                       );
+                     })()}
                     
                     <div className="details-action-buttons">
                       <button 
@@ -8690,6 +8922,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 'bold' }}>Total Pedidos</span>
                     <strong style={{ fontSize: '1.6rem', color: 'var(--primary-green)', fontWeight: 900 }}>{userOrders.length}</strong>
                   </div>
+
                   <div className="profile-stat-box">
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 'bold' }}>Ciudad Local</span>
                     <strong style={{ fontSize: '1.2rem', color: 'var(--primary-green)', fontWeight: 900, display: 'block', marginTop: '6px' }}>{formData.city}</strong>
@@ -8710,6 +8943,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                   </p>
 
                   <form className="premium-input-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
                       <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 'bold' }}>Nombre de Contacto</label>
@@ -8775,7 +9009,8 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                             full_name: formData.name,
                             phone: formData.phone,
                             address: formData.address,
-                            city: formData.city
+                            city: formData.city,
+                            distributor_code: formData.distributorCode
                           };
                           const { error } = await supabase.from('profiles').upsert(updatedProfile);
                           if (error) throw error;
@@ -8789,13 +9024,18 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           });
                         } catch (err) {
                           console.warn("Could not save profile directly, fallback to local storage:", err);
-                          localStorage.setItem(`kaldirev_local_profile_${user.id}`, JSON.stringify({
+                          const fallbackProfile = {
                             id: user.id,
                             full_name: formData.name,
                             phone: formData.phone,
                             address: formData.address,
-                            city: formData.city
-                          }));
+                            city: formData.city,
+                            distributor_code: formData.distributorCode,
+                            role: profile?.role || 'publico',
+                            points: profile?.points || 0
+                          };
+                          setProfile(fallbackProfile);
+                          localStorage.setItem(`kaldirev_local_profile_${user.id}`, JSON.stringify(fallbackProfile));
                           window.Swal.fire({
                             title: '¡Guardado Local!',
                             text: 'Datos guardados en este dispositivo (RLS activo).',
@@ -8810,6 +9050,8 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     </button>
                   </form>
                 </div>
+
+
               </div>
 
             </div>
@@ -9051,7 +9293,14 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           <span className="qty-val">{item.quantity}</span>
                           <button className="btn-qty" onClick={() => updateQuantity(item.cartItemId, 1)}>+</button>
                         </div>
-                        <span className="cart-item-price" style={{ fontSize: '1.1rem' }}>Bs. {(item.price * item.quantity).toFixed(1)}</span>
+                        {(() => {
+                          const { price } = getEffectivePriceAndPoints(item, profile?.role);
+                          return (
+                            <span className="cart-item-price" style={{ fontSize: '1.1rem' }}>
+                              Bs. {(price * item.quantity).toFixed(1)}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -9062,6 +9311,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
 
           {cart.length > 0 && (
             <div className="cart-drawer-footer">
+
               <div className="summary-row" style={{ fontSize: '1.05rem' }}>
                 <span>Subtotal:</span>
                 <span>Bs. {getCartTotal().toFixed(1)}</span>
