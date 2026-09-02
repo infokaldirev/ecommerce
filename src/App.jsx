@@ -7000,6 +7000,8 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             </div>
             <input 
               type="text" 
+              id="search-input-desktop"
+              name="search_desktop"
               className="search-input" 
               placeholder="Buscar kit o combo (ej. Energía, Calcio)..." 
               value={searchTerm}
@@ -7009,52 +7011,8 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
           </div>
         </div>
 
-        {/* PWA INSTALL TOP BANNER */}
-        {showPwaBanner && (
-          <div style={{ background: 'linear-gradient(90deg, #103d2e 0%, #175743 100%)', color: 'white', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', position: 'relative', zIndex: 100 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <img src="/isotipo-192.png" alt="App" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'contain', background: 'white', padding: '2px' }} />
-              <div>
-                <strong style={{ fontSize: '0.88rem', display: 'block', color: 'var(--accent-gold)' }}>📲 Instala la App de Kaldirev</strong>
-                <span style={{ fontSize: '0.78rem', opacity: 0.9 }}>Compra más rápido, recibe avisos de envíos y navega sin gastar megas.</span>
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button
-                type="button"
-                onClick={handleInstallPwa}
-                style={{ background: 'var(--accent-gold)', color: '#103d2e', border: 'none', padding: '6px 14px', borderRadius: '20px', fontWeight: 800, fontSize: '0.82rem', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}
-              >
-                Instalar Gratis
-              </button>
-              <button
-                type="button"
-                onClick={handleDismissPwa}
-                style={{ background: 'transparent', color: 'white', border: 'none', fontSize: '1.2rem', cursor: 'pointer', padding: '0 6px', opacity: 0.7 }}
-                aria-label="Cerrar aviso"
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* AUTHENTICATION / ACCESS CONTROLS */}
         <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          {/* PWA Install Button */}
-          <button
-            type="button"
-            className="btn-install-pwa-header"
-            onClick={handleInstallPwa}
-            title="Instalar App Kaldirev"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.5rem 0.8rem', borderRadius: '8px', border: '1px solid var(--accent-gold)', background: 'rgba(197, 160, 89, 0.1)', color: 'var(--primary-green)', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
-              <line x1="12" y1="18" x2="12.01" y2="18"></line>
-            </svg>
-            <span className="desktop-only">Instalar App</span>
-          </button>
           {user ? (
             <div className="user-badge-container" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div 
@@ -7350,6 +7308,8 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
               </div>
               <input 
                 type="text" 
+                id="search-input-main"
+                name="search_main"
                 className="search-input" 
                 style={{ width: '100%', padding: '1.1rem 1rem 1.1rem 3rem', fontSize: '1.05rem', border: '1px solid var(--border-color)', borderRadius: '12px', background: 'white' }}
                 placeholder="Buscar kit o combo (ej. Energía, Calcio, Huesos, Antojo)..." 
@@ -9287,6 +9247,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     <input 
                       type="text" 
                       id="chk-name" 
+                      name="customer_name"
                       required
                       className="form-input" 
                       placeholder="Tu nombre" 
@@ -9301,6 +9262,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     <input 
                       type="tel" 
                       id="chk-phone" 
+                      name="customer_phone"
                       required
                       className="form-input" 
                       placeholder="Celular" 
@@ -9319,6 +9281,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     <label className="form-label" htmlFor="chk-city" style={{ fontSize: '0.82rem' }}>Ciudad *</label>
                     <select 
                       id="chk-city" 
+                      name="customer_city"
                       className="form-select" 
                       value={formData.city} 
                       onChange={(e) => handleCityChange(e.target.value)}
@@ -9372,6 +9335,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                   <input 
                     type="text" 
                     id="chk-address" 
+                    name="customer_address"
                     required
                     className="form-input" 
                     placeholder="Ej. Av. Bush, Calle 4, Nro 125" 
@@ -9387,6 +9351,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                   <label className="form-label" htmlFor="chk-payment" style={{ fontSize: '0.82rem' }}>Método de Pago *</label>
                   <select 
                     id="chk-payment" 
+                    name="payment_method"
                     className="form-select" 
                     value={formData.paymentMethod} 
                     onChange={(e) => setFormData(prev => ({ ...prev, paymentMethod: e.target.value }))}

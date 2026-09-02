@@ -2056,20 +2056,12 @@ footer {
   border-color: var(--accent-gold);
 }
 
-.btn-install-pwa-header:hover {
-  background: rgba(197, 160, 89, 0.2) !important;
-  transform: translateY(-1px);
-}
-
 /* ==========================================================================
    MOBILE-SPECIFIC RESPONSIVE OVERRIDES (ADDED BY ANTIGRAVITY)
    ========================================================================== */
 @media (max-width: 639px) {
   .desktop-only {
     display: none !important;
-  }
-  .btn-install-pwa-header {
-    padding: 0.5rem !important;
   }
   header {
     padding: 0.75rem 1rem !important;
