@@ -1,13 +1,31 @@
-<?xml version="1.0" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 20010904//EN"
- "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
-<svg version="1.0" xmlns="http://www.w3.org/2000/svg"
- width="1240.000000pt" height="1038.000000pt" viewBox="0 0 1240.000000 1038.000000"
- preserveAspectRatio="xMidYMid meet">
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#08231a"/>
+      <stop offset="50%" stop-color="#0f3d2e"/>
+      <stop offset="100%" stop-color="#195a44"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFDF0"/>
+      <stop offset="25%" stop-color="#F7DF8D"/>
+      <stop offset="65%" stop-color="#C5A059"/>
+      <stop offset="100%" stop-color="#916E27"/>
+    </linearGradient>
+    <filter id="goldShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="5" stdDeviation="6" flood-color="#000000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
 
-<g transform="translate(0.000000,1038.000000) scale(0.100000,-0.100000)"
-fill="#000000" stroke="none">
-<path d="M7760 9537 c-301 -153 -566 -339 -792 -555 -130 -124 -112 -117 -323
+  <!-- Full bleed luxury background -->
+  <rect width="512" height="512" rx="100" fill="url(#bgGrad)"/>
+  
+  <!-- Subtle inner golden ring border for premium look -->
+  <rect x="18" y="18" width="476" height="476" rx="90" fill="none" stroke="url(#goldGrad)" stroke-width="3.5" opacity="0.35"/>
+
+  <!-- Official Kaldirev Horse Emblem centered with gold gradient and shadow -->
+  <g transform="translate(68, 442) scale(0.0375, -0.0375)" fill="url(#goldGrad)" filter="url(#goldShadow)">
+    <path d="M7760 9537 c-301 -153 -566 -339 -792 -555 -130 -124 -112 -117 -323
 -127 -226 -11 -598 -69 -830 -130 -607 -159 -1190 -475 -1623 -878 -111 -103
 -259 -264 -345 -376 -74 -95 -75 -111 -7 -69 63 38 302 156 425 208 190 82
 509 190 560 190 14 0 15 -3 5 -15 -7 -8 -17 -15 -22 -15 -20 0 -284 -164 -407
@@ -53,5 +71,5 @@ c228 -117 573 -334 662 -416 50 -47 69 -74 110 -161 27 -58 65 -152 84 -210
 426 0 11 9 37 19 57 43 85 123 362 174 607 50 235 53 265 33 265 -19 0 -144
 -93 -298 -222 -65 -54 -120 -98 -124 -98 -4 0 -4 37 -1 83 5 74 14 145 47 372
 6 39 11 79 13 90 4 33 -24 27 -133 -28z"/>
-</g>
+  </g>
 </svg>
