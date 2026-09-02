@@ -150,42 +150,170 @@ const DEFAULT_PRODUCT_IMAGES = [
 const DEFAULT_COMBOS = [
   {
     id: 1,
-    name: "Kit Energía Diaria",
-    price_bs: 55,
-    original_price_bs: 75,
-    description: "El pack ideal para comenzar tus mañanas con enfoque total. Incluye 2 sobres de café gourmet Cordycafe y 3 sobres del digestivo Té Tianshi.",
-    badge: "Más Vendido",
-    tagline: "Energía y enfoque natural al instante",
-    pinned: true
+    name: "Kit Energía Diaria (Salud Ósea, Articular e Inmunológica)",
+    slug: "kit-energia-diaria",
+    price_bs: 751.4,
+    original_price_bs: 865.0,
+    cost_price_bs: 580.0,
+    description: "Trilogía sinérgica para la regeneración del cartílago, remineralización ósea profunda y fortalecimiento inmune celular integral.",
+    badge: "Combo Especial",
+    tagline: "Huesos fuertes, articulaciones flexibles y defensas al máximo",
+    category: "Bienestar",
+    bullets: [
+      "Regenera cartílagos y tejido conectivo con Glucosamina",
+      "Alta absorción ósea con Calcio Nutritivo patentado",
+      "Equilibrio hormonal e inmunológico con Zinc orgánico",
+      "Tratamiento completo mensual"
+    ],
+    dosage: "Tomar según indicación diaria de cada suplemento.",
+    package_detail: "Pack completo de frascos y cajas originales selladas.",
+    pinned: true,
+    image_url: "products/kit_energia_diaria.jpg"
   },
   {
     id: 2,
-    name: "Kit Bienestar & Huesos",
-    price_bs: 85,
-    original_price_bs: 110,
-    description: "Combina el poder de absorción del Calcio Nutritivo de Tiens con la vitalidad y calor del hongo Cordycafe. Incluye 1 sobre de Calcio y 2 sobres de Cordycafe.",
-    badge: "Recomendado",
-    tagline: "Huesos fuertes y vitalidad física diaria",
-    pinned: true
+    name: "Kit Bienestar & Huesos (Trilogía Familiar de Calcio Tiens)",
+    slug: "kit-bienestar-huesos",
+    price_bs: 861.9,
+    original_price_bs: 990.1,
+    cost_price_bs: 680.0,
+    description: "Solución integral de calcio para cada etapa familiar: adultos, niños en crecimiento y personas que requieren control glucémico.",
+    badge: "Combo Especial",
+    tagline: "Nutrición ósea y metabólica integral para toda la familia",
+    category: "Saludable",
+    bullets: [
+      "Calcio Adultos de alta absorción (95%)",
+      "Calcio Infantil con taurina y lecitina para el desarrollo cerebral",
+      "Calcio Dietético especial con polvo de calabaza",
+      "Cuidado integral para toda la familia"
+    ],
+    dosage: "1 sobre al día según edad antes de dormir o por la mañana.",
+    package_detail: "Trilogía de cajas originales selladas de fábrica.",
+    pinned: true,
+    image_url: "products/kit_bienestar_huesos.jpg"
   },
   {
     id: 3,
-    name: "Kit Antojo Saludable",
-    price_bs: 50,
-    original_price_bs: 65,
-    description: "Una forma exquisita de cuidar tus ojos del cansancio de pantallas. Bolsa kraft sellada herméticamente conteniendo 10 tabletas masticables de Luteína.",
-    badge: "Exclusivo",
-    tagline: "Protección visual con delicioso sabor natural",
-    pinned: false
+    name: "Kit Antojo Saludable (Digestión, Control de Grasas y Flora Intestinal)",
+    slug: "kit-antojo-saludable",
+    price_bs: 1406.6,
+    original_price_bs: 1620.0,
+    cost_price_bs: 1100.0,
+    description: "Tratamiento intensivo de depuración gástrica, absorción selectiva de lípidos y restauración prebiótica de la microbiota intestinal.",
+    badge: "Combo Especial",
+    tagline: "Digestión ligera, bloqueo de grasas y regeneración de la flora intestinal",
+    category: "Energía",
+    bullets: [
+      "Chitosa para atrapar y eliminar grasas ingeridas",
+      "Jarabe FOS para alimentar y regenerar la flora intestinal",
+      "Té Tianshi desintoxicante y antioxidante",
+      "Efecto vientre plano y digestión óptima"
+    ],
+    dosage: "Té en ayunas, Jarabe FOS a media tarde y Chitosa antes de comidas principales.",
+    package_detail: "Pack completo de suplementos en presentación original.",
+    pinned: true,
+    image_url: "products/kit_antojo_saludable.jpg"
+  },
+  {
+    id: 4,
+    name: "Reto Detox 7 Días",
+    slug: "reto-detox-7-dias",
+    price_bs: 55,
+    original_price_bs: 75,
+    cost_price_bs: 35,
+    description: "Desinflama el abdomen, elimina toxinas acumuladas y combate el tránsito lento desde el primer día sin causar dolor ni cólicos.",
+    badge: "Más Vendido",
+    tagline: "Limpieza digestiva y colon • 7 Sobres de Té",
+    category: "Bienestar",
+    bullets: [
+      "Alivia la pesadez y acidez después de comidas pesadas.",
+      "Regula la digestión de forma 100% natural.",
+      "Rinde para 7 litros de infusión herbal.",
+      "Incluye 7 sobres individuales sellados herméticamente."
+    ],
+    dosage: "1 sobre diario infusionado en 1 litro de agua tibia, tomado a lo largo de la mañana o en ayunas.",
+    package_detail: "Empaque Kraft ecológico termosellado con 7 sobres individuales de Té Tiens.",
+    pinned: false,
+    image_url: "products/kit_antojo_saludable.jpg"
+  },
+  {
+    id: 5,
+    name: "Pack Energía & Rendimiento 5 Días",
+    slug: "pack-energia-5-dias",
+    price_bs: 95,
+    original_price_bs: 125,
+    cost_price_bs: 60.4,
+    description: "Energía natural sostenida para jornadas largas de trabajo o estudio, sin taquicardia ni irritación estomacal.",
+    badge: "Energía Total",
+    tagline: "CordyCafé sin gastritis • 5 Sobres",
+    category: "Energía",
+    bullets: [
+      "Contiene extracto de Cordyceps para aumentar rendimiento físico y mental.",
+      "Cero acidez (ideal para personas con gastritis).",
+      "Reemplaza el café común con un tónico revitalizante.",
+      "Incluye 5 sobres individuales de CordyCafé gourmet."
+    ],
+    dosage: "1 sobre disuelto en una taza de agua caliente a media mañana o al inicio de la jornada laboral.",
+    package_detail: "Empaque Kraft ecológico termosellado con 5 sobres individuales de CordyCafé Tiens.",
+    pinned: false,
+    image_url: "products/kit_energia_diaria.jpg"
+  },
+  {
+    id: 6,
+    name: "Kit Calcio Nutritivo 5 Días",
+    slug: "kit-calcio-5-dias",
+    price_bs: 145,
+    original_price_bs: 180,
+    cost_price_bs: 100,
+    description: "Fórmula de calcio de alta absorción (95%) para aliviar dolores de rodillas, espalda, calambres y desgaste articular.",
+    badge: "Alta Absorción",
+    tagline: "Huesos fuertes y cero dolor articular • 5 Sobres",
+    category: "Bienestar",
+    bullets: [
+      "Tasa de absorción del 95% patentada sin generar cálculos renales.",
+      "Fortalece masa ósea y alivia contracturas musculares.",
+      "Ideal para personas con alta exigencia física o adultos mayores.",
+      "Incluye 5 sobres individuales de Calcio Nutritivo Tiens."
+    ],
+    dosage: "1 sobre diario disuelto en agua tibia (nunca hirviendo) antes de dormir o con el desayuno.",
+    package_detail: "Empaque Kraft ecológico termosellado con 5 sobres individuales de Calcio Nutritivo Tiens.",
+    pinned: false,
+    image_url: "products/kit_bienestar_huesos.jpg"
+  },
+  {
+    id: 7,
+    name: "Combo Doble Acción 5 Días",
+    slug: "combo-doble-accion-5-dias",
+    price_bs: 135,
+    original_price_bs: 160,
+    cost_price_bs: 85.4,
+    description: "El tratamiento combinado para limpiar el organismo por la mañana y mantener el rendimiento al máximo durante todo el día.",
+    badge: "Mayor Ahorro",
+    tagline: "Digestión limpia + Energía total • 10 Sobres",
+    category: "Saludable",
+    bullets: [
+      "5 sobres de Té Digestivo + 5 sobres de CordyCafé.",
+      "Ahorras 15 Bs comprándolos juntos en lugar de individuales.",
+      "Doble beneficio: Digestión ligera por la mañana y energía prolongada por la tarde.",
+      "Total 10 sobres fraccionados termosellados."
+    ],
+    dosage: "Té herbal durante la mañana + CordyCafé después del almuerzo.",
+    package_detail: "Empaque Kraft ecológico con 5 sobres de Té Tianshi y 5 sobres de CordyCafé.",
+    pinned: false,
+    image_url: "products/kit_energia_diaria.jpg"
   }
 ];
 
 const DEFAULT_COMBO_PRODUCTS = [
-  { combo_id: 1, product_id: 1, quantity: 2 },
-  { combo_id: 1, product_id: 3, quantity: 3 },
+  { combo_id: 1, product_id: 2, quantity: 1 },
   { combo_id: 2, product_id: 2, quantity: 1 },
-  { combo_id: 2, product_id: 1, quantity: 2 },
-  { combo_id: 3, product_id: 4, quantity: 1 }
+  { combo_id: 2, product_id: 4, quantity: 1 },
+  { combo_id: 3, product_id: 3, quantity: 1 },
+  { combo_id: 4, product_id: 3, quantity: 7 },
+  { combo_id: 5, product_id: 1, quantity: 5 },
+  { combo_id: 6, product_id: 2, quantity: 5 },
+  { combo_id: 7, product_id: 3, quantity: 5 },
+  { combo_id: 7, product_id: 1, quantity: 5 }
 ];
 
 const DEFAULT_SOCIAL_POSTS = [
@@ -338,6 +466,7 @@ function App() {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [activeCategory, setActiveCategory] = useState("Todos");
   const [activeSocialFilter, setActiveSocialFilter] = useState("Todos");
+  const [showAllSocial, setShowAllSocial] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   
@@ -701,6 +830,10 @@ function App() {
     if (comboId === 1) return "products/kit_energia_diaria.jpg";
     if (comboId === 2) return "products/kit_bienestar_huesos.jpg";
     if (comboId === 3) return "products/kit_antojo_saludable.jpg";
+    if (comboId === 4) return "products/kit_antojo_saludable.jpg";
+    if (comboId === 5) return "products/kit_energia_diaria.jpg";
+    if (comboId === 6) return "products/kit_bienestar_huesos.jpg";
+    if (comboId === 7) return "products/kit_energia_diaria.jpg";
     return "";
   };
 
@@ -736,7 +869,7 @@ function App() {
 
   // One-time database sync trigger for new products, Cloudinary images, videos, and stock levels (Added by Antigravity)
   const syncDatabaseItemsOnce = async () => {
-    const hasSynced = localStorage.getItem('db_cloudinary_synced_v6');
+    const hasSynced = localStorage.getItem('db_cloudinary_synced_v9');
     if (hasSynced) return;
     
     console.log("[Antigravity] Starting dynamic DB sync for Cloudinary assets...");
@@ -875,8 +1008,30 @@ function App() {
       });
       await supabase.from('product_stock').upsert(stockList);
 
-      localStorage.setItem('db_cloudinary_synced_v6', 'true');
-      console.log("[Antigravity] Database synced with Cloudinary assets successfully!");
+      // 5. Combos / Packs de arranque
+      const combosList = DEFAULT_COMBOS.map(c => ({
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        price_bs: c.price_bs,
+        original_price_bs: c.original_price_bs,
+        cost_price_bs: c.cost_price_bs || 0,
+        description: c.description,
+        badge: c.badge,
+        tagline: c.tagline,
+        category: c.category,
+        bullets: c.bullets,
+        dosage: c.dosage,
+        package_detail: c.package_detail,
+        pinned: c.pinned,
+        image_url: c.image_url,
+        is_active: true
+      }));
+      await supabase.from('combos').upsert(combosList);
+      await supabase.from('combo_products').upsert(DEFAULT_COMBO_PRODUCTS);
+
+      localStorage.setItem('db_cloudinary_synced_v9', 'true');
+      console.log("[Antigravity] Database synced with all 7 Kits and Cloudinary assets successfully!");
     } catch (e) {
       console.error("[Antigravity] Failed to sync database items on startup:", e);
     }
@@ -7596,7 +7751,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--offer-orange)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                         <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
                       </svg>
-                      <h2 className="section-title" style={{ fontSize: '1.7rem', fontWeight: 800, margin: 0 }}>Otros Combos en Oferta</h2>
+                      <h2 className="section-title" style={{ fontSize: '1.7rem', fontWeight: 800, margin: 0 }}>Kits Semanales & Packs de Arranque</h2>
                     </div>
                     <div className="products-grid" style={{ marginTop: '1rem' }}>
                       {otherCombos.map(combo => (
@@ -7774,8 +7929,8 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
           )}
 
           {/* SECCIÓN DE REDES SOCIALES (SOCIAL MEDIA HUB) */}
-          <section className="social-hub-section animate-fade-in" style={{ padding: '3.5rem 1.5rem', background: '#ffffff', borderRadius: '24px', margin: '2rem 1.5rem', boxShadow: 'var(--shadow-md)' }}>
-            <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+          <section className="social-hub-section animate-fade-in">
+            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
               <span className="eco-badge" style={{ background: 'var(--accent-gold-light)', color: '#7c581a', fontWeight: 'bold', fontSize: '0.85rem', padding: '4px 12px', borderRadius: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                 Nuestra Comunidad
               </span>
@@ -7846,110 +8001,145 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             </div>
 
             {/* Cuadrícula de Publicaciones */}
-            <div className="social-posts-grid">
-              {socialPosts
-                .filter(post => activeSocialFilter === 'Todos' || post.platform.toLowerCase() === activeSocialFilter.toLowerCase())
-                .map(post => {
-                  let platformColor = '#a81747'; // Darker pink for Instagram text contrast
-                  let badgeBgColor = '#fdf2f4';   // Solid background color with high contrast
-                  let platformName = 'Instagram';
-                  if (post.platform === 'tiktok') {
-                    platformColor = '#1a1a1a';
-                    badgeBgColor = '#f5f5f5';
-                    platformName = 'TikTok';
-                  }
-                  if (post.platform === 'facebook') {
-                    platformColor = '#0f60c4';
-                    badgeBgColor = '#edf5ff';
-                    platformName = 'Facebook';
-                  }
-                  if (post.platform === 'youtube') {
-                    platformColor = '#c41c1c';
-                    badgeBgColor = '#fff5f5';
-                    platformName = 'YouTube';
-                  }
-                  
-                  const embedUrl = getEmbedUrl(post.post_url, post.platform);
-                  const useEmbed = post.use_native_embed !== false && (post.use_native_embed || !post.image_url || !post.image_url.startsWith('http'));
+            {(() => {
+              const filteredSocialPosts = socialPosts.filter(
+                post => activeSocialFilter === 'Todos' || post.platform.toLowerCase() === activeSocialFilter.toLowerCase()
+              );
+              const displayedSocialPosts = showAllSocial ? filteredSocialPosts : filteredSocialPosts.slice(0, 6);
 
-                  if (useEmbed && embedUrl) {
-                    let iframeHeight = '480px';
-                    if (post.platform === 'tiktok') iframeHeight = '580px';
-                    if (post.platform === 'youtube') iframeHeight = '315px';
-                    if (post.platform === 'facebook') iframeHeight = '500px';
-
-                    return (
-                      <div className="social-post-card native-embed-card animate-fade-in" key={post.id} style={{ border: 'none', background: 'transparent', boxShadow: 'none' }}>
-                        <iframe
-                          src={embedUrl}
-                          width="100%"
-                          height={iframeHeight}
-                          style={{ border: '1px solid var(--border-color)', borderRadius: '16px', background: '#fff', overflow: 'hidden' }}
-                          scrolling="no"
-                          frameBorder="0"
-                          allowFullScreen={true}
-                          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-                          title={`Social Embed ${post.id}`}
-                        ></iframe>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div className="social-post-card animate-fade-in" key={post.id}>
-                      <div className="post-header">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div className="post-avatar" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary-green)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-                            K
-                          </div>
-                          <div>
-                            <span style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary-green)' }}>kaldirev</span>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{post.date}</span>
-                          </div>
-                        </div>
-                        <span className="post-platform-badge" style={{ fontSize: '0.75rem', fontWeight: 'bold', padding: '2px 8px', borderRadius: '12px', backgroundColor: badgeBgColor, color: platformColor }}>
-                          {platformName}
-                        </span>
-                      </div>
+              return (
+                <>
+                  <div className="social-posts-grid">
+                    {displayedSocialPosts.map(post => {
+                      let platformColor = '#a81747';
+                      let badgeBgColor = '#fdf2f4';
+                      let platformName = 'Instagram';
+                      if (post.platform === 'tiktok') {
+                        platformColor = '#1a1a1a';
+                        badgeBgColor = '#f5f5f5';
+                        platformName = 'TikTok';
+                      }
+                      if (post.platform === 'facebook') {
+                        platformColor = '#0f60c4';
+                        badgeBgColor = '#edf5ff';
+                        platformName = 'Facebook';
+                      }
+                      if (post.platform === 'youtube') {
+                        platformColor = '#c41c1c';
+                        badgeBgColor = '#fff5f5';
+                        platformName = 'YouTube';
+                      }
                       
-                      <div className="post-image-container">
-                        <img src={post.image_url} alt={post.caption} className="post-img" loading="lazy" />
-                        <div className="post-overlay">
-                          <div style={{ display: 'flex', gap: '20px', color: 'white', fontWeight: 'bold', marginBottom: '15px' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                              </svg>
-                              {post.likes || 0}
-                            </span>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/>
-                              </svg>
-                              {post.comments || 0}
+                      const embedUrl = getEmbedUrl(post.post_url, post.platform);
+                      const useEmbed = post.use_native_embed !== false && (post.use_native_embed || !post.image_url || !post.image_url.startsWith('http'));
+
+                      if (useEmbed && embedUrl) {
+                        let iframeHeight = '480px';
+                        if (post.platform === 'tiktok') iframeHeight = '580px';
+                        if (post.platform === 'youtube') iframeHeight = '315px';
+                        if (post.platform === 'facebook') iframeHeight = '500px';
+
+                        return (
+                          <div className="social-post-card native-embed-card animate-fade-in" key={post.id} style={{ border: 'none', background: 'transparent', boxShadow: 'none' }}>
+                            <iframe
+                              src={embedUrl}
+                              width="100%"
+                              height={iframeHeight}
+                              style={{ border: '1px solid var(--border-color)', borderRadius: '16px', background: '#fff', overflow: 'hidden' }}
+                              scrolling="no"
+                              frameBorder="0"
+                              allowFullScreen={true}
+                              allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                              title={`Social Embed ${post.id}`}
+                            ></iframe>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="social-post-card animate-fade-in" key={post.id}>
+                          <div className="post-header">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div className="post-avatar" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary-green)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                                K
+                              </div>
+                              <div>
+                                <span style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary-green)' }}>kaldirev</span>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{post.date}</span>
+                              </div>
+                            </div>
+                            <span className="post-platform-badge" style={{ fontSize: '0.75rem', fontWeight: 'bold', padding: '2px 8px', borderRadius: '12px', backgroundColor: badgeBgColor, color: platformColor }}>
+                              {platformName}
                             </span>
                           </div>
-                          <a 
-                            href={post.post_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="post-action-btn"
-                            aria-label={`Ver publicación de ${platformName} del ${post.date}`}
-                          >
-                            Ver en {platformName}
-                          </a>
+                          
+                          <div className="post-image-container">
+                            <img src={post.image_url} alt={post.caption} className="post-img" loading="lazy" />
+                            <div className="post-overlay">
+                              <div style={{ display: 'flex', gap: '20px', color: 'white', fontWeight: 'bold', marginBottom: '15px' }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                                  </svg>
+                                  {post.likes || 0}
+                                </span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/>
+                                  </svg>
+                                  {post.comments || 0}
+                                </span>
+                              </div>
+                              <a 
+                                href={post.post_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="post-action-btn"
+                                aria-label={`Ver publicación de ${platformName} del ${post.date}`}
+                              >
+                                Ver en {platformName}
+                              </a>
+                            </div>
+                          </div>
+                          
+                          <div className="post-caption-container">
+                            <p className="post-caption">
+                              {post.caption}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      
-                      <div className="post-caption-container">
-                        <p className="post-caption">
-                          {post.caption}
-                        </p>
-                      </div>
+                      );
+                    })}
+                  </div>
+
+                  {filteredSocialPosts.length > 6 && (
+                    <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowAllSocial(!showAllSocial)}
+                        style={{
+                          background: '#ffffff',
+                          border: '2px solid var(--accent-gold)',
+                          color: 'var(--primary-green)',
+                          padding: '0.75rem 2rem',
+                          borderRadius: '30px',
+                          fontWeight: 800,
+                          fontSize: '0.92rem',
+                          cursor: 'pointer',
+                          boxShadow: 'var(--shadow-sm)',
+                          transition: 'all 0.2s ease',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        {showAllSocial ? '▲ Ver menos publicaciones' : `▼ Ver más publicaciones (${filteredSocialPosts.length - 6} más)`}
+                      </button>
                     </div>
-                  );
-                })}
-            </div>
+                  )}
+                </>
+              );
+            })()}
             
             {/* CTA para Seguir en todas */}
             <div style={{ textAlign: 'center', marginTop: '3rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem' }}>
@@ -8107,12 +8297,6 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     </ul>
                   </div>
 
-                  <div>
-                    <h4 className="details-box-title">¿Qué incluye este pack?</h4>
-                    <div className="details-box" style={{ padding: '1rem' }}>
-                      <p style={{ fontSize: '0.95rem' }}>{selectedCombo.includes}</p>
-                    </div>
-                  </div>
 
                   <div>
                     <h4 className="details-box-title">Presentación del empaque</h4>

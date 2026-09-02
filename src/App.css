@@ -1793,7 +1793,9 @@ footer {
 
 @media (min-width: 1024px) {
   .recommended-container {
-    grid-template-columns: repeat(3, 1fr) !important;
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) !important;
+    gap: 1.5rem !important;
   }
 }
 
@@ -2839,6 +2841,15 @@ footer {
   box-shadow: 0 4px 12px rgba(14, 62, 47, 0.25);
 }
 
+.social-hub-section {
+  padding: 3rem 1.5rem;
+  background: #ffffff;
+  border-radius: 24px;
+  margin: 2rem 0;
+  box-shadow: var(--shadow-md);
+  box-sizing: border-box;
+}
+
 .social-posts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -2962,11 +2973,10 @@ footer {
   .social-posts-grid {
     grid-template-columns: 1fr;
     gap: 1.25rem;
-    padding: 0 0.25rem;
   }
   .social-hub-section {
-    padding: 2.2rem 1rem !important;
-    margin: 1.5rem 0.75rem !important;
+    padding: 2rem 1rem !important;
+    margin: 1.5rem 0.5rem !important;
     border-radius: 18px !important;
   }
 }
