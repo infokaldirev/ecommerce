@@ -469,6 +469,8 @@ function App() {
   const [showAllSocial, setShowAllSocial] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [pwaPrompt, setPwaPrompt] = useState(null);
+  const [showPwaBanner, setShowPwaBanner] = useState(false);
   
   // UI Interactive states
   const [activeFaqIndex, setActiveFaqIndex] = useState(null);
@@ -1498,81 +1500,48 @@ function App() {
     document.head.appendChild(fontLink);
   }, []);
 
-  // Auto-compress local images on developer machine (Added by Antigravity)
+  // PWA Install Prompt Listener (Added by Antigravity)
   useEffect(() => {
-    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') return;
-    
-    const targetImages = [
-      'belleza_antienvejecimiento.png',
-      'detox_peso.png',
-      'inmunidad_defensas.png',
-      'kit_antojo_saludable.jpg',
-      'kit_bienestar_huesos.jpg',
-      'kit_energia_diaria.jpg',
-      'salud_osea.png'
-    ];
-
-    const optimize = async () => {
-      console.log("[Image Optimizer] Starting auto-optimization of assets...");
-      for (const imgName of targetImages) {
-        try {
-          const imgUrl = `/products/${imgName}`;
-          const res = await fetch(imgUrl);
-          if (!res.ok) continue;
-          
-          const blob = await res.blob();
-          const img = new Image();
-          img.src = URL.createObjectURL(blob);
-          
-          await new Promise((resolve, reject) => {
-            img.onload = async () => {
-              try {
-                const canvas = document.createElement('canvas');
-                const maxDim = 800; // Resize to a max width/height of 800px (perfect for product details/cards)
-                let width = img.width;
-                let height = img.height;
-                if (width > maxDim || height > maxDim) {
-                  if (width > height) {
-                    height = Math.round((height * maxDim) / width);
-                    width = maxDim;
-                  } else {
-                    width = Math.round((width * maxDim) / height);
-                    height = maxDim;
-                  }
-                }
-                canvas.width = width;
-                canvas.height = height;
-                
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                
-                // Compress as high-performance webp data and write it back under the original file name
-                const compressedBase64 = canvas.toDataURL('image/webp', 0.75);
-                
-                const saveRes = await fetch('/api/save-optimized-image', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ filename: imgName, base64: compressedBase64 })
-                });
-                const result = await saveRes.json();
-                console.log(`[Image Optimizer] Optimized ${imgName} -> ${result.bytes} bytes`);
-                resolve();
-              } catch (e) {
-                reject(e);
-              }
-            };
-            img.onerror = reject;
-          });
-        } catch (err) {
-          console.error(`[Image Optimizer] Failed to optimize ${imgName}:`, err);
-        }
+    const handleBeforeInstall = (e) => {
+      e.preventDefault();
+      setPwaPrompt(e);
+      const dismissed = localStorage.getItem('kaldirev_pwa_dismissed');
+      if (!dismissed) {
+        setShowPwaBanner(true);
       }
-      console.log("[Image Optimizer] Optimization run finished!");
     };
-    
-    const timer = setTimeout(optimize, 2000);
-    return () => clearTimeout(timer);
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
   }, []);
+
+  const handleInstallPwa = async () => {
+    if (!pwaPrompt) {
+      window.Swal.fire({
+        title: '📲 Instalar App Kaldirev',
+        html: `
+          <div style="text-align: left; font-size: 0.9rem; line-height: 1.5;">
+            <p><strong>En iPhone / iPad (Safari):</strong><br>1. Toca el botón <strong>Compartir</strong> (ícono de flecha hacia arriba 📤).<br>2. Selecciona <strong>"Añadir a pantalla de inicio"</strong>.</p>
+            <p style="margin-top: 10px;"><strong>En Android / Chrome:</strong><br>Toca los 3 puntos ⋮ arriba a la derecha y selecciona <strong>"Instalar aplicación"</strong> o <strong>"Añadir a pantalla principal"</strong>.</p>
+          </div>
+        `,
+        icon: 'info',
+        confirmButtonColor: 'var(--primary-green)',
+        confirmButtonText: '¡Entendido!'
+      });
+      return;
+    }
+    pwaPrompt.prompt();
+    const { outcome } = await pwaPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setShowPwaBanner(false);
+      setPwaPrompt(null);
+    }
+  };
+
+  const handleDismissPwa = () => {
+    setShowPwaBanner(false);
+    localStorage.setItem('kaldirev_pwa_dismissed', 'true');
+  };
 
   // Handle auto-opening product/combo from hash routing (e.g. #product-12 or #combo-5) for shared links (Added by Antigravity)
   useEffect(() => {
@@ -7040,8 +7009,52 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
           </div>
         </div>
 
+        {/* PWA INSTALL TOP BANNER */}
+        {showPwaBanner && (
+          <div style={{ background: 'linear-gradient(90deg, #103d2e 0%, #175743 100%)', color: 'white', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', position: 'relative', zIndex: 100 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <img src="/isotipo-192.png" alt="App" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'contain', background: 'white', padding: '2px' }} />
+              <div>
+                <strong style={{ fontSize: '0.88rem', display: 'block', color: 'var(--accent-gold)' }}>📲 Instala la App de Kaldirev</strong>
+                <span style={{ fontSize: '0.78rem', opacity: 0.9 }}>Compra más rápido, recibe avisos de envíos y navega sin gastar megas.</span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={handleInstallPwa}
+                style={{ background: 'var(--accent-gold)', color: '#103d2e', border: 'none', padding: '6px 14px', borderRadius: '20px', fontWeight: 800, fontSize: '0.82rem', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}
+              >
+                Instalar Gratis
+              </button>
+              <button
+                type="button"
+                onClick={handleDismissPwa}
+                style={{ background: 'transparent', color: 'white', border: 'none', fontSize: '1.2rem', cursor: 'pointer', padding: '0 6px', opacity: 0.7 }}
+                aria-label="Cerrar aviso"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* AUTHENTICATION / ACCESS CONTROLS */}
-        <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {/* PWA Install Button */}
+          <button
+            type="button"
+            className="btn-install-pwa-header"
+            onClick={handleInstallPwa}
+            title="Instalar App Kaldirev"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.5rem 0.8rem', borderRadius: '8px', border: '1px solid var(--accent-gold)', background: 'rgba(197, 160, 89, 0.1)', color: 'var(--primary-green)', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+              <line x1="12" y1="18" x2="12.01" y2="18"></line>
+            </svg>
+            <span className="desktop-only">Instalar App</span>
+          </button>
           {user ? (
             <div className="user-badge-container" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div 
@@ -9383,6 +9396,20 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     <option value="Pago QR Directo">Pago QR Inmediato (Pasarela Libélula)</option>
                     <option value="Transferencia Bancaria">Transferencia Bancaria Directa</option>
                   </select>
+                </div>
+
+                {/* Trust & Guarantee Badges for Guest Buyers */}
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px', marginTop: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    <strong style={{ fontSize: '0.85rem', color: 'var(--primary-green)' }}>Garantía & Compra 100% Segura</strong>
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.78rem', color: 'var(--text-dark)', lineHeight: '1.45' }}>
+                    <li><strong>Sin Registro Obligatorio:</strong> Puedes comprar directo como invitado en 30 segundos.</li>
+                    <li><strong>Pagas al Recibir:</strong> Aceptamos efectivo o QR al momento de la entrega.</li>
+                    <li><strong>Sellado de Seguridad:</strong> Todo el paquete se entrega termosellado de fábrica.</li>
+                    <li><strong>Atención Personalizada:</strong> Seguimiento inmediato de tu pedido por WhatsApp.</li>
+                  </ul>
                 </div>
 
                 {/* Stock Warning inside checkout form */}

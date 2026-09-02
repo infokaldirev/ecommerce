@@ -1,10 +1,11 @@
-const CACHE_NAME = 'kaldirev-cache-v2';
+const CACHE_NAME = 'kaldirev-cache-v3';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/favicon.svg',
-  '/logo.svg',
-  '/icons.svg'
+  './',
+  './index.html',
+  './isotipo-web.svg',
+  './isotipo-192.png',
+  './isotipo-512.png',
+  './manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
