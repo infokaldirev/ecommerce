@@ -1,17 +1,29 @@
 {
   "name": "Kaldirev Bolivia",
   "short_name": "Kaldirev",
-  "description": "Suplementos Tiens en Empaques Ecológicos",
+  "description": "Bienestar, Energía y Suplementos Naturales",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#0f3d2e",
-  "theme_color": "#0f3d2e",
+  "background_color": "#0e2f23",
+  "theme_color": "#0e2f23",
   "orientation": "portrait-primary",
   "icons": [
     {
       "src": "isotipo-web.svg",
       "sizes": "192x192 512x512 1024x1024",
       "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "isotipo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "isotipo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {

@@ -1500,34 +1500,51 @@ function App() {
     document.head.appendChild(fontLink);
   }, []);
 
-  // PWA Install Prompt Listener (Added by Antigravity)
+  // PWA Install Prompt Listener (Shopify-style floating card after 10 seconds)
   useEffect(() => {
+    // If running in standalone (already installed), don't show
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+      return;
+    }
+
+    const dismissed = localStorage.getItem('kaldirev_pwa_dismissed');
+    const dismissedTime = dismissed ? parseInt(dismissed) : 0;
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+
+    const timer = setTimeout(() => {
+      if (!dismissedTime || (Date.now() - dismissedTime > sevenDays)) {
+        setShowPwaBanner(true);
+      }
+    }, 10000); // Shows gracefully after 10 seconds of browsing
+
     const handleBeforeInstall = (e) => {
       e.preventDefault();
       setPwaPrompt(e);
-      const dismissed = localStorage.getItem('kaldirev_pwa_dismissed');
-      if (!dismissed) {
-        setShowPwaBanner(true);
-      }
     };
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    };
   }, []);
 
   const handleInstallPwa = async () => {
     if (!pwaPrompt) {
-      window.Swal.fire({
-        title: '📲 Instalar App Kaldirev',
-        html: `
-          <div style="text-align: left; font-size: 0.9rem; line-height: 1.5;">
-            <p><strong>En iPhone / iPad (Safari):</strong><br>1. Toca el botón <strong>Compartir</strong> (ícono de flecha hacia arriba 📤).<br>2. Selecciona <strong>"Añadir a pantalla de inicio"</strong>.</p>
-            <p style="margin-top: 10px;"><strong>En Android / Chrome:</strong><br>Toca los 3 puntos ⋮ arriba a la derecha y selecciona <strong>"Instalar aplicación"</strong> o <strong>"Añadir a pantalla principal"</strong>.</p>
-          </div>
-        `,
-        icon: 'info',
-        confirmButtonColor: 'var(--primary-green)',
-        confirmButtonText: '¡Entendido!'
-      });
+      if (window.Swal) {
+        window.Swal.fire({
+          title: 'Instalar App Kaldirev',
+          html: `
+            <div style="text-align: left; font-size: 0.9rem; line-height: 1.5;">
+              <p><strong>En iPhone / iPad (Safari):</strong><br>1. Toca el botón <strong>Compartir</strong> (flecha hacia arriba 📤).<br>2. Selecciona <strong>"Añadir a pantalla de inicio"</strong>.</p>
+              <p style="margin-top: 10px;"><strong>En Android / Chrome:</strong><br>Toca los 3 puntos ⋮ arriba a la derecha y selecciona <strong>"Instalar aplicación"</strong>.</p>
+            </div>
+          `,
+          icon: 'info',
+          confirmButtonColor: 'var(--primary-green)',
+          confirmButtonText: 'Entendido'
+        });
+      }
       return;
     }
     pwaPrompt.prompt();
@@ -1540,7 +1557,7 @@ function App() {
 
   const handleDismissPwa = () => {
     setShowPwaBanner(false);
-    localStorage.setItem('kaldirev_pwa_dismissed', 'true');
+    localStorage.setItem('kaldirev_pwa_dismissed', Date.now().toString());
   };
 
   // Handle auto-opening product/combo from hash routing (e.g. #product-12 or #combo-5) for shared links (Added by Antigravity)
@@ -4183,28 +4200,28 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                       className={`admin-subtab-btn ${configSubTab === 'products' ? 'active' : ''}`}
                       onClick={() => setConfigSubTab('products')}
                     >
-                      📦 Productos Individuales
+                      Productos Individuales
                     </button>
                     <button
                       type="button"
                       className={`admin-subtab-btn ${configSubTab === 'combos' ? 'active' : ''}`}
                       onClick={() => setConfigSubTab('combos')}
                     >
-                      🧪 Combos y Recetas
+                      Combos y Packs
                     </button>
                     <button
                       type="button"
                       className={`admin-subtab-btn ${configSubTab === 'categories' ? 'active' : ''}`}
                       onClick={() => setConfigSubTab('categories')}
                     >
-                      📂 Categorías
+                      Categorías
                     </button>
                     <button
                       type="button"
                       className={`admin-subtab-btn ${configSubTab === 'settings' ? 'active' : ''}`}
                       onClick={() => setConfigSubTab('settings')}
                     >
-                      ⚙️ Ajustes de Tienda
+                      Ajustes de Tienda
                     </button>
                   </div>
                 )}
@@ -4219,7 +4236,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           <div>
                             <span className="admin-dash-subtitle" style={{ display: 'block' }}>Edición de Producto</span>
                             <h3 style={{ fontSize: '1.5rem', color: 'var(--primary-green)', margin: 0, fontWeight: 900 }}>
-                              {editingProduct.id ? `✏️ Modificar Producto: ${editingProduct.name}` : "✨ Registrar Nuevo Producto"}
+                              {editingProduct.id ? `Modificar Producto: ${editingProduct.name}` : "Registrar Nuevo Producto"}
                             </h3>
                           </div>
                           <button 
@@ -4370,48 +4387,56 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                         />
                                       </div>
                                     </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                      <div className="form-group">
-                                        <label className="form-label" style={{ fontWeight: 800 }}>Precio Distribuidor (Bs.)</label>
-                                        <input 
-                                          type="number" 
-                                          step="0.1" 
-                                          className="form-input" 
-                                          value={editingProduct.price_distributor_bs || ""}
-                                          onChange={(e) => setEditingProduct({...editingProduct, price_distributor_bs: e.target.value})}
-                                          placeholder="ej. 190.0"
-                                        />
-                                      </div>
-                                      <div className="form-group">
-                                        <label className="form-label" style={{ fontWeight: 800 }}>Puntos (PV) Tiens</label>
-                                        <input 
-                                          type="number" 
-                                          step="1" 
-                                          className="form-input" 
-                                          value={editingProduct.points || ""}
-                                          onChange={(e) => setEditingProduct({...editingProduct, points: e.target.value})}
-                                          placeholder="ej. 28"
-                                        />
-                                      </div>
-                                    </div>
+                                    <details style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '12px', background: '#f8fafc', margin: '0.25rem 0' }}>
+                                      <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                                        Opciones Avanzadas (Opcional: Distribuidores, Puntos y Color de Fondo)
+                                      </summary>
+                                      <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                          <div className="form-group">
+                                            <label className="form-label" style={{ fontWeight: 800 }}>Precio Distribuidor (Bs.)</label>
+                                            <input 
+                                              type="number" 
+                                              step="0.1" 
+                                              className="form-input" 
+                                              value={editingProduct.price_distributor_bs || ""}
+                                              onChange={(e) => setEditingProduct({...editingProduct, price_distributor_bs: e.target.value})}
+                                              placeholder="ej. 190.0"
+                                            />
+                                          </div>
+                                          <div className="form-group">
+                                            <label className="form-label" style={{ fontWeight: 800 }}>Puntos (PV) Tiens</label>
+                                            <input 
+                                              type="number" 
+                                              step="1" 
+                                              className="form-input" 
+                                              value={editingProduct.points || ""}
+                                              onChange={(e) => setEditingProduct({...editingProduct, points: e.target.value})}
+                                              placeholder="ej. 28"
+                                            />
+                                          </div>
+                                        </div>
 
-                                    <div className="form-group">
-                                      <label className="form-label" style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        🎨 Color de Fondo del Producto (Recomendado para PNGs transparentes)
-                                      </label>
-                                      <select 
-                                        className="form-input" 
-                                        value={editingProduct.bg_color || ""}
-                                        onChange={(e) => setEditingProduct({...editingProduct, bg_color: e.target.value})}
-                                        style={{ fontWeight: 'bold' }}
-                                      >
-                                        {MARKETING_COLORS.map(c => (
-                                          <option key={c.value} value={c.value} style={{ background: c.value || 'white', color: '#333', fontWeight: 'bold' }}>
-                                            {c.name} {c.value ? `(${c.value})` : ""}
-                                          </option>
-                                        ))}
-                                      </select>
-                                    </div>
+                                        <div className="form-group">
+                                          <label className="form-label" style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            Color de Fondo del Producto (Para fotos PNG transparentes)
+                                          </label>
+                                          <select 
+                                            className="form-input" 
+                                            value={editingProduct.bg_color || ""}
+                                            onChange={(e) => setEditingProduct({...editingProduct, bg_color: e.target.value})}
+                                            style={{ fontWeight: 'bold' }}
+                                          >
+                                            {MARKETING_COLORS.map(c => (
+                                              <option key={c.value} value={c.value} style={{ background: c.value || 'white', color: '#333', fontWeight: 'bold' }}>
+                                                {c.name} {c.value ? `(${c.value})` : ""}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        </div>
+                                      </div>
+                                    </details>
 
                                     {/* SECCIÓN DE IMÁGENES */}
                                     <div style={{ padding: '1.25rem', border: '1px solid rgba(15, 61, 46, 0.08)', borderRadius: '12px', background: '#faf9f6' }}>
@@ -4636,86 +4661,42 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
 
                               {productFormStep === 3 && (
                                 <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                  <div className="form-group">
+                                    <label className="form-label" style={{ fontWeight: 800 }}>Beneficios Clave (Uno por línea) *</label>
+                                    <textarea 
+                                      className="form-input" 
+                                      rows="3" 
+                                      placeholder="ej. Mejora la digestión&#10;Aporta energía natural sin taquicardia&#10;100% extracto de hierbas"
+                                      value={Array.isArray(editingProduct.bullets) ? editingProduct.bullets.join('\n') : editingProduct.bullets || ""}
+                                      onChange={(e) => setEditingProduct({...editingProduct, bullets: e.target.value})}
+                                    ></textarea>
+                                  </div>
+
                                   <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                     <div className="form-group">
                                       <label className="form-label" style={{ fontWeight: 800 }}>Dosis Sugerida</label>
                                       <input 
                                         type="text" 
                                         className="form-input" 
-                                        placeholder="ej. Tomar 1 cápsula 2 veces al día"
+                                        placeholder="ej. 1 sobre al día disuelto en agua tibia"
                                         value={editingProduct.dosage || ""}
                                         onChange={(e) => setEditingProduct({...editingProduct, dosage: e.target.value})}
                                       />
                                     </div>
                                     <div className="form-group">
-                                      <label className="form-label" style={{ fontWeight: 800 }}>Modo de Preparación Especial</label>
+                                      <label className="form-label" style={{ fontWeight: 800 }}>Detalle de Empaque / Contenido</label>
                                       <input 
                                         type="text" 
                                         className="form-input" 
-                                        placeholder="ej. Disolver 1 sobre en 150ml de agua caliente"
-                                        value={editingProduct.preparation_mode || ""}
-                                        onChange={(e) => setEditingProduct({...editingProduct, preparation_mode: e.target.value})}
-                                      />
-                                    </div>
-                                  </div>
-
-                                  <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                    <div className="form-group">
-                                      <label className="form-label" style={{ fontWeight: 800 }}>Detalle de Empaque / Contenido Neto</label>
-                                      <input 
-                                        type="text" 
-                                        className="form-input" 
-                                        placeholder="ej. Caja con 12 sobres de 15g"
+                                        placeholder="ej. Caja original con 12 sobres de 15g"
                                         value={editingProduct.package_detail || ""}
                                         onChange={(e) => setEditingProduct({...editingProduct, package_detail: e.target.value})}
                                       />
                                     </div>
-                                    <div className="form-group">
-                                      <label className="form-label" style={{ fontWeight: 800 }}>Beneficio ATP / Energía Celular</label>
-                                      <input 
-                                        type="text" 
-                                        className="form-input" 
-                                        placeholder="ej. Aumenta niveles de ATP para mayor rendimiento"
-                                        value={editingProduct.atp_benefit || ""}
-                                        onChange={(e) => setEditingProduct({...editingProduct, atp_benefit: e.target.value})}
-                                      />
-                                    </div>
                                   </div>
 
-                                  <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                    <div className="form-group">
-                                      <label className="form-label" style={{ fontWeight: 800 }}>Información de Alérgenos</label>
-                                      <input 
-                                        type="text" 
-                                        className="form-input" 
-                                        placeholder="ej. Contiene derivados de crustáceos y leche"
-                                        value={editingProduct.allergen_info || ""}
-                                        onChange={(e) => setEditingProduct({...editingProduct, allergen_info: e.target.value})}
-                                      />
-                                    </div>
-                                    <div className="form-group">
-                                      <label className="form-label" style={{ fontWeight: 800 }}>Precauciones / Contraindicaciones</label>
-                                      <input 
-                                        type="text" 
-                                        className="form-input" 
-                                        placeholder="ej. Evitar en niños y embarazadas"
-                                        value={editingProduct.precautions || ""}
-                                        onChange={(e) => setEditingProduct({...editingProduct, precautions: e.target.value})}
-                                      />
-                                    </div>
-                                  </div>
-
-                                  <div className="form-row-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', alignItems: 'center' }}>
-                                    <div className="form-group">
-                                      <label className="form-label" style={{ fontWeight: 800 }}>Etiqueta Destacada (ej. Más Vendido, Popular)</label>
-                                      <input 
-                                        type="text" 
-                                        className="form-input" 
-                                        value={editingProduct.badge || ""}
-                                        onChange={(e) => setEditingProduct({...editingProduct, badge: e.target.value})}
-                                      />
-                                    </div>
-                                    <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '1.5rem' }}>
+                                  <div style={{ display: 'flex', gap: '20px', alignItems: 'center', background: '#f8fafc', padding: '10px 14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                       <input 
                                         type="checkbox" 
                                         id="prodPinned"
@@ -4723,9 +4704,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                         onChange={(e) => setEditingProduct({...editingProduct, pinned: e.target.checked})}
                                         style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                                       />
-                                      <label htmlFor="prodPinned" style={{ fontWeight: 800, cursor: 'pointer' }}>Destacar en Inicio</label>
+                                      <label htmlFor="prodPinned" style={{ fontWeight: 800, cursor: 'pointer', fontSize: '0.9rem' }}>Destacar en Inicio</label>
                                     </div>
-                                    <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '1.5rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                       <input 
                                         type="checkbox" 
                                         id="prodActive"
@@ -4733,20 +4714,75 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                         onChange={(e) => setEditingProduct({...editingProduct, is_active: e.target.checked})}
                                         style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                                       />
-                                      <label htmlFor="prodActive" style={{ fontWeight: 800, cursor: 'pointer' }}>Producto Activo / Visible</label>
+                                      <label htmlFor="prodActive" style={{ fontWeight: 800, cursor: 'pointer', fontSize: '0.9rem' }}>Producto Activo / Visible en Tienda</label>
                                     </div>
                                   </div>
 
-                                  <div className="form-group">
-                                    <label className="form-label" style={{ fontWeight: 800 }}>Beneficios (Uno por línea)</label>
-                                    <textarea 
-                                      className="form-input" 
-                                      rows="3" 
-                                      placeholder="ej. Mejora la digestión\nAumenta los niveles de calcio"
-                                      value={Array.isArray(editingProduct.bullets) ? editingProduct.bullets.join('\n') : editingProduct.bullets || ""}
-                                      onChange={(e) => setEditingProduct({...editingProduct, bullets: e.target.value})}
-                                    ></textarea>
-                                  </div>
+                                  {/* FICHA TÉCNICA AVANZADA (OPCIONAL) */}
+                                  <details style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '12px', background: '#f8fafc' }}>
+                                    <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                                      Ficha Técnica Avanzada (Opcional: Alérgenos, Precauciones, ATP y Etiqueta)
+                                    </summary>
+                                    <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                      <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div className="form-group">
+                                          <label className="form-label" style={{ fontWeight: 800 }}>Etiqueta Destacada (Badge)</label>
+                                          <input 
+                                            type="text" 
+                                            className="form-input" 
+                                            placeholder="ej. Más Vendido, Popular"
+                                            value={editingProduct.badge || ""}
+                                            onChange={(e) => setEditingProduct({...editingProduct, badge: e.target.value})}
+                                          />
+                                        </div>
+                                        <div className="form-group">
+                                          <label className="form-label" style={{ fontWeight: 800 }}>Modo de Preparación Especial</label>
+                                          <input 
+                                            type="text" 
+                                            className="form-input" 
+                                            placeholder="ej. Disolver 1 sobre en 150ml de agua caliente"
+                                            value={editingProduct.preparation_mode || ""}
+                                            onChange={(e) => setEditingProduct({...editingProduct, preparation_mode: e.target.value})}
+                                          />
+                                        </div>
+                                      </div>
+
+                                      <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div className="form-group">
+                                          <label className="form-label" style={{ fontWeight: 800 }}>Información de Alérgenos</label>
+                                          <input 
+                                            type="text" 
+                                            className="form-input" 
+                                            placeholder="ej. Contiene derivados de crustáceos y leche"
+                                            value={editingProduct.allergen_info || ""}
+                                            onChange={(e) => setEditingProduct({...editingProduct, allergen_info: e.target.value})}
+                                          />
+                                        </div>
+                                        <div className="form-group">
+                                          <label className="form-label" style={{ fontWeight: 800 }}>Precauciones / Contraindicaciones</label>
+                                          <input 
+                                            type="text" 
+                                            className="form-input" 
+                                            placeholder="ej. Evitar en niños y embarazadas"
+                                            value={editingProduct.precautions || ""}
+                                            onChange={(e) => setEditingProduct({...editingProduct, precautions: e.target.value})}
+                                          />
+                                        </div>
+                                      </div>
+
+                                      <div className="form-group">
+                                        <label className="form-label" style={{ fontWeight: 800 }}>Beneficio ATP / Bioquímico</label>
+                                        <input 
+                                          type="text" 
+                                          className="form-input" 
+                                          placeholder="ej. Estimula la fosforilación oxidativa a nivel mitocondrial"
+                                          value={editingProduct.atp_benefit || ""}
+                                          onChange={(e) => setEditingProduct({...editingProduct, atp_benefit: e.target.value})}
+                                        />
+                                      </div>
+                                    </div>
+                                  </details>
                                 </div>
                               )}
 
@@ -4797,7 +4833,10 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           {/* Live Preview Panel */}
                           <div className="live-preview-card-pane dash-panel-card" style={{ padding: '2rem', background: '#faf9f6', position: 'sticky', top: '20px', border: '1px solid rgba(15, 61, 46, 0.08)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                             <h4 style={{ margin: 0, color: 'var(--accent-gold)', fontSize: '1rem', fontWeight: 800, textTransform: 'uppercase', borderBottom: '1px solid rgba(15, 61, 46, 0.08)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span>👁️ Vista Previa en Vivo</span>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                Vista Previa en Vivo
+                              </span>
                               <span style={{ fontSize: '0.7rem', textTransform: 'none', color: 'var(--text-muted)', background: '#e2ebd5', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold' }}>Solo Laptop/PC</span>
                             </h4>
                             <div className="product-card" style={{ width: '100%', maxWidth: '320px', margin: '0 auto', background: 'white', cursor: 'default', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', borderRadius: '16px', overflow: 'hidden', pointerEvents: 'none' }}>
@@ -4944,13 +4983,49 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                       <td style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Bs. {parseFloat(prod.original_price_bs).toFixed(1)}</td>
                                       <td>
                                         {prod.pinned ? (
-                                          <span className="badge-highlight" style={{ fontSize: '0.7rem' }}>⭐ Destacado</span>
+                                          <span className="badge-highlight" style={{ fontSize: '0.7rem' }}>Destacado</span>
                                         ) : (
                                           <span className="badge-normal" style={{ fontSize: '0.7rem' }}>Básico</span>
                                         )}
                                       </td>
                                       <td style={{ textAlign: 'right' }}>
-                                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                                          <button 
+                                            type="button" 
+                                            className="btn-admin-edit"
+                                            style={{ background: '#f0fdf4', borderColor: '#bbf7d0', color: '#166534', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                            title="Duplicar este producto para crear uno nuevo rápidamente"
+                                            onClick={async () => {
+                                              let mediaUrls = "";
+                                              const { data: imgList } = await supabase.from('product_images').select('url').eq('product_id', prod.id).order('position', { ascending: true });
+                                              if (imgList && imgList.length > 0) {
+                                                const uniqueUrls = [...new Set(imgList.map(i => i.url.trim()).filter(Boolean))];
+                                                mediaUrls = uniqueUrls.join('\n');
+                                              }
+                                              const { id, created_at, ...rest } = prod;
+                                              setProductFormStep(1);
+                                              setEditingProduct({
+                                                ...rest,
+                                                name: `${prod.name} (Copia)`,
+                                                sku: `${prod.sku ? prod.sku + '-COP' : ''}`,
+                                                slug: "",
+                                                media_urls: mediaUrls
+                                              });
+                                              if (window.Swal) {
+                                                window.Swal.fire({
+                                                  toast: true,
+                                                  position: 'top-end',
+                                                  icon: 'success',
+                                                  title: 'Producto duplicado. Ajusta el nombre/precio y guarda.',
+                                                  showConfirmButton: false,
+                                                  timer: 2500
+                                                });
+                                              }
+                                            }}
+                                          >
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                            Duplicar
+                                          </button>
                                           <button 
                                             type="button" 
                                             className="btn-admin-edit"
@@ -5000,9 +5075,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid var(--border-color)', paddingBottom: '10px' }}>
                           <div>
-                            <span className="admin-dash-subtitle" style={{ display: 'block' }}>Edición de Producto</span>
+                            <span className="admin-dash-subtitle" style={{ display: 'block' }}>Edición de Pack / Combo</span>
                             <h3 style={{ fontSize: '1.5rem', color: 'var(--primary-green)', margin: 0, fontWeight: 900 }}>
-                              {editingCombo.id ? `✏️ Modificar Pack: ${editingCombo.name}` : "✨ Registrar Nuevo Pack / Combo"}
+                              {editingCombo.id ? `Modificar Pack: ${editingCombo.name}` : "Registrar Nuevo Pack / Combo"}
                             </h3>
                           </div>
                           <button 
@@ -5138,54 +5213,11 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                     </div>
                                     <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                       <div className="form-group">
-                                        <label className="form-label" style={{ fontWeight: 800 }}>Precio Distribuidor del Pack (Bs.)</label>
-                                        <input 
-                                          type="number" 
-                                          step="0.1"
-                                          className="form-input"
-                                          placeholder="Ej. 140"
-                                          value={editingCombo.price_distributor_bs || ""}
-                                          onChange={(e) => setEditingCombo({...editingCombo, price_distributor_bs: e.target.value})}
-                                        />
-                                      </div>
-                                      <div className="form-group">
-                                        <label className="form-label" style={{ fontWeight: 800 }}>Puntos (PV) del Pack</label>
-                                        <input 
-                                          type="number" 
-                                          step="1"
-                                          className="form-input"
-                                          placeholder="Ej. 15"
-                                          value={editingCombo.points || ""}
-                                          onChange={(e) => setEditingCombo({...editingCombo, points: e.target.value})}
-                                        />
-                                      </div>
-                                    </div>
-
-                                    <div className="form-group">
-                                      <label className="form-label" style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        🎨 Color de Fondo del Combo (Recomendado para PNGs transparentes)
-                                      </label>
-                                      <select 
-                                        className="form-input" 
-                                        value={editingCombo.bg_color || ""}
-                                        onChange={(e) => setEditingCombo({...editingCombo, bg_color: e.target.value})}
-                                        style={{ fontWeight: 'bold' }}
-                                      >
-                                        {MARKETING_COLORS.map(c => (
-                                          <option key={c.value} value={c.value} style={{ background: c.value || 'white', color: '#333', fontWeight: 'bold' }}>
-                                            {c.name} {c.value ? `(${c.value})` : ""}
-                                          </option>
-                                        ))}
-                                      </select>
-                                    </div>
-
-                                    <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                      <div className="form-group">
                                         <label className="form-label" style={{ fontWeight: 800 }}>Lista de Productos Incluidos (ej: 1x Cordycafe, 1x Calcio) *</label>
                                         <input 
                                           type="text" 
                                           required
-                                          className="form-input"
+                                          className="form-input" 
                                           placeholder="Ej. 1x Cordycafe Tiens, 1x Calcio Nutritivo"
                                           value={editingCombo.includes}
                                           onChange={(e) => setEditingCombo({...editingCombo, includes: e.target.value})}
@@ -5195,7 +5227,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                         <label className="form-label" style={{ fontWeight: 800 }}>Presentación del Combo (Envase)</label>
                                         <input 
                                           type="text" 
-                                          className="form-input"
+                                          className="form-input" 
                                           placeholder="Ej. Caja original de cartón + Doypack kraft"
                                           value={editingCombo.package_detail}
                                           onChange={(e) => setEditingCombo({...editingCombo, package_detail: e.target.value})}
@@ -5203,10 +5235,63 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                       </div>
                                     </div>
 
+                                    {/* OPCIONES AVANZADAS (OPCIONAL) */}
+                                    <details style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '12px', background: '#f8fafc', margin: '0.25rem 0' }}>
+                                      <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                                        Opciones Avanzadas (Opcional: Distribuidores, Puntos y Color de Fondo)
+                                      </summary>
+                                      <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                          <div className="form-group">
+                                            <label className="form-label" style={{ fontWeight: 800 }}>Precio Distribuidor del Pack (Bs.)</label>
+                                            <input 
+                                              type="number" 
+                                              step="0.1"
+                                              className="form-input"
+                                              placeholder="Ej. 140"
+                                              value={editingCombo.price_distributor_bs || ""}
+                                              onChange={(e) => setEditingCombo({...editingCombo, price_distributor_bs: e.target.value})}
+                                            />
+                                          </div>
+                                          <div className="form-group">
+                                            <label className="form-label" style={{ fontWeight: 800 }}>Puntos (PV) del Pack</label>
+                                            <input 
+                                              type="number" 
+                                              step="1"
+                                              className="form-input"
+                                              placeholder="Ej. 15"
+                                              value={editingCombo.points || ""}
+                                              onChange={(e) => setEditingCombo({...editingCombo, points: e.target.value})}
+                                            />
+                                          </div>
+                                        </div>
+
+                                        <div className="form-group">
+                                          <label className="form-label" style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            Color de Fondo del Combo (Para fotos PNG transparentes)
+                                          </label>
+                                          <select 
+                                            className="form-input" 
+                                            value={editingCombo.bg_color || ""}
+                                            onChange={(e) => setEditingCombo({...editingCombo, bg_color: e.target.value})}
+                                            style={{ fontWeight: 'bold' }}
+                                          >
+                                            {MARKETING_COLORS.map(c => (
+                                              <option key={c.value} value={c.value} style={{ background: c.value || 'white', color: '#333', fontWeight: 'bold' }}>
+                                                {c.name} {c.value ? `(${c.value})` : ""}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        </div>
+                                      </div>
+                                    </details>
+
                                     {/* SECCIÓN DE IMÁGENES */}
                                     <div style={{ padding: '1.25rem', border: '1px solid rgba(15, 61, 46, 0.08)', borderRadius: '12px', background: '#faf9f6' }}>
                                       <h4 style={{ margin: '0 0 10px 0', color: 'var(--primary-green)', fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        📷 Imágenes del Combo / Kit
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                        Imágenes del Combo / Kit
                                       </h4>
                                       
                                       {/* Lista de Imágenes */}
@@ -5305,7 +5390,8 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                             style={{ display: 'none' }}
                                           />
                                           <label htmlFor="combo-image-file-input" className="btn-admin-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', borderRadius: '6px', fontWeight: 'bold', color: 'white', background: '#0e4a36' }}>
-                                            📥 Subir Foto
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '5px' }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                            Subir Foto
                                           </label>
                                         </div>
                                       </div>
@@ -5314,7 +5400,8 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                     {/* SECCIÓN DE VIDEOS */}
                                     <div style={{ padding: '1.25rem', border: '1px solid rgba(15, 61, 46, 0.08)', borderRadius: '12px', background: '#faf9f6', marginTop: '1rem' }}>
                                       <h4 style={{ margin: '0 0 10px 0', color: 'var(--primary-green)', fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        🎥 Videos Promocionales del Combo / Kit
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                                        Videos del Combo / Kit
                                       </h4>
                                       
                                       {/* Lista de Videos */}
@@ -5413,7 +5500,8 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                             style={{ display: 'none' }}
                                           />
                                           <label htmlFor="combo-video-file-input" className="btn-admin-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', borderRadius: '6px', fontWeight: 'bold', color: 'white', background: '#0e4a36' }}>
-                                            📥 Subir Video
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '5px' }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                            Subir Video
                                           </label>
                                         </div>
                                       </div>
@@ -5421,7 +5509,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
 
                                     {uploadingImage && (
                                       <span style={{ fontSize: '0.85rem', color: 'var(--offer-orange)', fontWeight: 'bold', display: 'block', marginTop: '4px' }}>
-                                        ⏳ Subiendo archivo... por favor espere...
+                                        Subiendo archivo... por favor espere...
                                       </span>
                                     )}
                                   </div>
@@ -5528,7 +5616,10 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           {/* Live Preview Panel for Combo */}
                           <div className="live-preview-card-pane dash-panel-card" style={{ padding: '2rem', background: '#faf9f6', position: 'sticky', top: '20px', border: '1px solid rgba(15, 61, 46, 0.08)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                             <h4 style={{ margin: 0, color: 'var(--accent-gold)', fontSize: '1rem', fontWeight: 800, textTransform: 'uppercase', borderBottom: '1px solid rgba(15, 61, 46, 0.08)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span>👁️ Vista Previa en Vivo</span>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                Vista Previa en Vivo
+                              </span>
                               <span style={{ fontSize: '0.7rem', textTransform: 'none', color: 'var(--text-muted)', background: '#e2ebd5', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold' }}>Solo Laptop/PC</span>
                             </h4>
                             <div className="product-card" style={{ width: '100%', maxWidth: '320px', margin: '0 auto', background: 'white', cursor: 'default', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', borderRadius: '16px', overflow: 'hidden', pointerEvents: 'none' }}>
@@ -5672,13 +5763,41 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                     <td style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Bs. {parseFloat(combo.original_price_bs).toFixed(1)}</td>
                                     <td>
                                       {combo.pinned ? (
-                                        <span className="badge-highlight" style={{ fontSize: '0.7rem' }}>⭐ Destacado</span>
+                                        <span className="badge-highlight" style={{ fontSize: '0.7rem' }}>Destacado</span>
                                       ) : (
                                         <span className="badge-normal" style={{ fontSize: '0.7rem' }}>Básico</span>
                                       )}
                                     </td>
                                     <td style={{ textAlign: 'right' }}>
-                                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                                        <button 
+                                          type="button" 
+                                          className="btn-admin-edit"
+                                          style={{ background: '#f0fdf4', borderColor: '#bbf7d0', color: '#166534', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                          title="Duplicar este pack para crear uno nuevo rápidamente"
+                                          onClick={() => {
+                                            const { id, created_at, ...rest } = combo;
+                                            setFormStep(1);
+                                            setEditingCombo({
+                                              ...rest,
+                                              name: `${combo.name} (Copia)`,
+                                              slug: ""
+                                            });
+                                            if (window.Swal) {
+                                              window.Swal.fire({
+                                                toast: true,
+                                                position: 'top-end',
+                                                icon: 'success',
+                                                title: 'Pack duplicado. Ajusta el nombre/precio y guarda.',
+                                                showConfirmButton: false,
+                                                timer: 2500
+                                              });
+                                            }
+                                          }}
+                                        >
+                                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                          Duplicar
+                                        </button>
                                         <button 
                                           type="button" 
                                           className="btn-admin-edit" 
@@ -10148,6 +10267,89 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
               <button className="btn-add-cart" style={{ width: 'auto', padding: '0.5rem 1.5rem', background: 'var(--primary-green)', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => setIsInfoModalOpen(false)}>Entendido</button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* SHOPIFY-STYLE DISCREET FLOATING INSTALL CARD */}
+      {showPwaBanner && (
+        <div 
+          className="shopify-pwa-floating-card animate-fade-in"
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 9999,
+            width: 'calc(100% - 32px)',
+            maxWidth: '430px',
+            background: 'linear-gradient(135deg, rgba(14, 45, 34, 0.96) 0%, rgba(8, 26, 19, 0.98) 100%)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid rgba(82, 217, 160, 0.3)',
+            boxShadow: '0 12px 36px rgba(0, 0, 0, 0.5), 0 0 20px rgba(82, 217, 160, 0.12)',
+            borderRadius: '16px',
+            padding: '12px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            color: 'white',
+            boxSizing: 'border-box'
+          }}
+        >
+          <img 
+            src="/isotipo-web.svg" 
+            alt="Kaldirev" 
+            style={{ width: '42px', height: '42px', borderRadius: '10px', objectFit: 'contain', flexShrink: 0 }}
+          />
+          <div style={{ flexGrow: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontWeight: 800, fontSize: '0.92rem', color: '#82f5c7', letterSpacing: '0.3px' }}>
+                App Kaldirev
+              </span>
+              <span style={{ fontSize: '0.65rem', background: 'rgba(82, 217, 160, 0.2)', color: '#82f5c7', padding: '1px 6px', borderRadius: '10px', fontWeight: 700 }}>
+                Gratis
+              </span>
+            </div>
+            <p style={{ margin: '2px 0 0 0', fontSize: '0.74rem', color: 'rgba(255,255,255,0.78)', lineHeight: 1.25 }}>
+              Instala en 1 clic para rastrear envíos y recibir ofertas exclusivas.
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={handleInstallPwa}
+              style={{
+                background: 'linear-gradient(135deg, #52d9a0 0%, #22c55e 100%)',
+                color: '#062318',
+                border: 'none',
+                padding: '7px 14px',
+                borderRadius: '20px',
+                fontWeight: 800,
+                fontSize: '0.78rem',
+                cursor: 'pointer',
+                boxShadow: '0 2px 10px rgba(34, 197, 94, 0.35)',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Instalar
+            </button>
+            <button
+              type="button"
+              onClick={handleDismissPwa}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'rgba(255,255,255,0.5)',
+                fontSize: '1.2rem',
+                cursor: 'pointer',
+                padding: '2px 4px',
+                lineHeight: 1
+              }}
+              title="Cerrar"
+            >
+              ×
+            </button>
           </div>
         </div>
       )}
