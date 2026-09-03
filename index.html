@@ -70,37 +70,18 @@
       OneSignalDeferred.push(async function(OneSignal) {
         await OneSignal.init({
           appId: "606cbbbb-fc9f-4d94-8ee2-ab97a5a6760c",
-          safari_web_id: "",
+          allowLocalhostAsSecureOrigin: true,
           notifyButton: {
             enable: true,
-            size: 'medium',
-            position: 'bottom-left',
-            colors: {
-              'circle.background': '#0e2f23',
-              'circle.foreground': 'white',
-              'badge.background': '#52d9a0',
-              'badge.foreground': '#0e2f23',
-              'badge.bordercolor': '#0e2f23',
-              'pulse.color': '#52d9a0',
-              'dialog.button.background.hovering': '#154534',
-              'dialog.button.background.active': '#0e2f23',
-              'dialog.button.background': '#0e2f23',
-              'dialog.button.foreground': 'white'
-            },
-            text: {
-              'tip.state.unsubscribed': 'Suscríbete a ofertas de Kaldirev',
-              'tip.state.subscribed': 'Estás suscrito a las alertas de Kaldirev',
-              'tip.state.blocked': 'Has bloqueado las notificaciones',
-              'message.prenotify': 'Toca para recibir ofertas y avisos de envíos',
-              'message.action.subscribed': '¡Gracias por suscribirte!',
-              'message.action.resubscribed': 'Estás suscrito a las alertas de Kaldirev',
-              'message.action.unsubscribed': 'No recibirás más notificaciones',
-              'dialog.main.title': 'Notificaciones Kaldirev',
-              'dialog.main.button.subscribe': 'ACTIVAR ALERTAS',
-              'dialog.main.button.unsubscribe': 'CANCELAR'
-            }
           },
         });
+        try {
+          if (OneSignal.Slidedown) {
+            await OneSignal.Slidedown.promptPush();
+          }
+        } catch (err) {
+          console.log("OneSignal Slidedown prompt info:", err);
+        }
       });
     </script>
   </head>
