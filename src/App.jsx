@@ -812,12 +812,13 @@ function App() {
     return `${base.endsWith('/') ? base : base + '/'}${cleanUrl}`;
   };
 
-  // Helper to get the main image of a combo dynamically (Added by Antigravity)
+  // Helper to get the main image of a combo dynamically (respects user edits)
   const getComboImage = (comboId) => {
     const comboObj = combos.find(c => String(c.id) === String(comboId));
-    if (comboObj && comboObj.image_url) {
+    if (comboObj && comboObj.image_url !== undefined && comboObj.image_url !== null) {
       const urls = comboObj.image_url.split(',').map(u => u.trim()).filter(Boolean);
       if (urls.length > 0) return urls[0];
+      return "";
     }
 
     const linked = comboProducts.filter(cp => String(cp.combo_id) === String(comboId));
@@ -826,16 +827,9 @@ function App() {
       if (prod) {
         const img = productImages.find(i => String(i.product_id) === String(prod.id) && !i.is_video);
         if (img) return img.url;
-        return prod.image_url;
+        return prod.image_url || "";
       }
     }
-    if (comboId === 1) return "products/kit_energia_diaria.jpg";
-    if (comboId === 2) return "products/kit_bienestar_huesos.jpg";
-    if (comboId === 3) return "products/kit_antojo_saludable.jpg";
-    if (comboId === 4) return "products/kit_antojo_saludable.jpg";
-    if (comboId === 5) return "products/kit_energia_diaria.jpg";
-    if (comboId === 6) return "products/kit_bienestar_huesos.jpg";
-    if (comboId === 7) return "products/kit_energia_diaria.jpg";
     return "";
   };
 
@@ -869,174 +863,9 @@ function App() {
     }
   }, [products, combos, productImages]);
 
-  // One-time database sync trigger for new products, Cloudinary images, videos, and stock levels (Added by Antigravity)
+  // Database auto-seed disabled in production so Admin edits in Supabase are permanent and never overwritten
   const syncDatabaseItemsOnce = async () => {
-    const hasSynced = localStorage.getItem('db_cloudinary_synced_v9');
-    if (hasSynced) return;
-    
-    console.log("[Antigravity] Starting dynamic DB sync for Cloudinary assets...");
-    try {
-      // 1. Categories
-      await supabase.from('categories').upsert([
-        { id: 1, name: "Energía", slug: "energia" },
-        { id: 2, name: "Bienestar", slug: "bienestar" },
-        { id: 3, name: "Saludable", slug: "saludable" },
-        { id: 4, name: "Café", slug: "cafe" },
-        { id: 5, name: 'Belleza', slug: 'belleza', description: 'Cuidado corporal y rejuvenecimiento de la piel' }
-      ]);
-      
-      // 2. Products
-      const productsList = [
-        {
-          id: 1,
-          name: 'Cordycafe Tiens',
-          sku: 'TIENS-A75',
-          slug: 'cordycafe-tiens',
-          price_bs: 188.5,
-          original_price_bs: 220,
-          category_id: 4,
-          description: 'Café instantáneo gourmet elaborado con granos seleccionados y adicionado con polvo de micelio de hongo Cordyceps Sinensis.',
-          bullets: ['Energía natural de larga duración sin nerviosismo', 'Fortalece la función pulmonar y renal', 'Apoya al sistema inmune y rendimiento físico'],
-          dosage: 'Disolver 1 sobre en una taza de agua caliente por la mañana.',
-          package_detail: 'Caja conteniendo 12 sobres de 15g cada uno.',
-          badge: 'Popular',
-          tagline: 'Tu café con energía natural y salud',
-          pinned: true
-        },
-        {
-          id: 2,
-          name: 'Calcio Nutritivo Tiens',
-          sku: 'TIENS-A01',
-          slug: 'calcio-nutritivo',
-          price_bs: 260,
-          original_price_bs: 300,
-          category_id: 2,
-          description: 'Suplemento dietario de calcio en polvo de alta absorción biológica, enriquecido con vitaminas, minerales y aminoácidos.',
-          bullets: ['Tasa de absorción superior al 95% patentada', 'Fortalece la estructura ósea y dientes', 'Previene calambres y dolores articulares'],
-          dosage: 'Disolver 1 sobre en media taza de agua tibia antes de acostarse.',
-          package_detail: 'Caja con sobres individuales sellados herméticamente de 10g cada uno.',
-          badge: 'Más Vendido',
-          tagline: 'Huesos fuertes y vitalidad diaria',
-          pinned: true
-        },
-        {
-          id: 3,
-          name: 'Té Tianshi',
-          sku: 'TIENS-A05',
-          slug: 'te-tianshi',
-          price_bs: 260,
-          original_price_bs: 300,
-          category_id: 1,
-          description: 'Té herbal tradicional formulado con hojas de té verde y extractos naturales para la desintoxicación celular.',
-          bullets: ['Potente antioxidante y desintoxicador natural', 'Ayuda a regular el colesterol y triglicéridos', 'Promueve una digestión saludable'],
-          dosage: 'Hervir 1 sobre en un litro de agua y tomar como agua de tiempo.',
-          package_detail: 'Caja conteniendo sobres filtrantes con doble empaque sellado.',
-          badge: 'Detox',
-          tagline: 'Limpia, desintoxica y renueva tu cuerpo',
-          pinned: false
-        },
-        {
-          id: 4,
-          name: 'Calcio para Niños',
-          sku: 'TIENS-A03',
-          slug: 'calcio-ninos',
-          price_bs: 260,
-          original_price_bs: 300,
-          category_id: 2,
-          description: 'Fórmula de calcio en polvo enriquecida para apoyar el sano desarrollo óseo e intelectual de los niños.',
-          bullets: ['Apoya el desarrollo físico y el crecimiento óseo', 'Enriquecido con taurina, lecitina y vitaminas esenciales', 'Apoya al desarrollo intelectual y memoria infantil'],
-          dosage: 'Disolver 1 sobre en media taza de agua tibia antes de dormir.',
-          package_detail: 'Caja conteniendo 10 sobres de 10g cada uno.',
-          badge: 'Infantil',
-          tagline: 'Crecimiento fuerte y desarrollo inteligente',
-          pinned: false
-        },
-        {
-          id: 5,
-          name: 'Spakare Aceite Corporal',
-          sku: 'TIENS-C63',
-          slug: 'spakare-aceite-corporal',
-          price_bs: 249.6,
-          original_price_bs: 290,
-          category_id: 5,
-          description: 'Aceite corporal nutritivo con extractos de hierbas y aceites esenciales para la suavidad de la piel.',
-          bullets: ['Hidratación profunda sin efecto grasoso', 'Ideal para masajes y alivio de tensión muscular', 'Combate la resequedad de la piel'],
-          dosage: 'Aplicar sobre la piel limpia y masajear suavemente hasta absorber.',
-          package_detail: 'Botella dispensadora premium sellada de fábrica.',
-          badge: 'Cuidado Piel',
-          tagline: 'Suavidad e hidratación profunda',
-          pinned: true
-        },
-        {
-          id: 6,
-          name: 'Gel Rejuvenecedor Tiens',
-          sku: 'TIENS-C64',
-          slug: 'gel-rejuvenecedor',
-          price_bs: 313.3,
-          original_price_bs: 360,
-          category_id: 5,
-          description: 'Gel facial tensor enriquecido con extractos de plantas naturales para una piel más firme y radiante.',
-          bullets: ['Efecto tensor inmediato que disminuye líneas', 'Estimula la producción de colágeno', 'Fórmula refrescante e hidratante'],
-          dosage: 'Aplicar unas gotas sobre el rostro limpio por la mañana y noche.',
-          package_detail: 'Frasco premium con dosificador sellado.',
-          badge: 'Antiedad',
-          tagline: 'Juventud y firmeza en tu rostro',
-          pinned: true
-        }
-      ];
-      await supabase.from('products').upsert(productsList);
-      
-      // 3. Product Images & Videos
-      const productImagesList = [
-        { id: 1, product_id: 1, url: 'https://res.cloudinary.com/dv6d41ect/image/upload/v1758840055/A75_vzmmrq.png', position: 0, is_video: false },
-        { id: 2, product_id: 1, url: 'https://res.cloudinary.com/dv6d41ect/video/upload/v1774966537/video-1005263159337962_zpdaac.mp4', position: 1, is_video: true },
-        { id: 3, product_id: 2, url: 'https://res.cloudinary.com/dv6d41ect/image/upload/v1758840051/A01_zf5hc8.png', position: 0, is_video: false },
-        { id: 4, product_id: 2, url: 'https://res.cloudinary.com/dv6d41ect/video/upload/v1775017763/create-a-hyper-realistic-video-of-a-nutritional-ca_uienjb.mp4', position: 1, is_video: true },
-        { id: 5, product_id: 3, url: 'https://res.cloudinary.com/dv6d41ect/image/upload/v1758840052/A05_eazlgz.png', position: 0, is_video: false },
-        { id: 6, product_id: 3, url: 'https://res.cloudinary.com/dv6d41ect/video/upload/v1775064602/quiero-que-las-imagenes-dentro-del-producto-se-mue_b3bqjw.mp4', position: 1, is_video: true },
-        { id: 7, product_id: 4, url: 'https://res.cloudinary.com/dv6d41ect/image/upload/v1758840051/A03_huuq0n.png', position: 0, is_video: false },
-        { id: 8, product_id: 4, url: 'https://res.cloudinary.com/dv6d41ect/video/upload/v1775017763/video-1055317540999190_ian3cg.mp4', position: 1, is_video: true },
-        { id: 9, product_id: 5, url: 'products/belleza_antienvejecimiento.png', position: 0, is_video: false },
-        { id: 10, product_id: 6, url: 'products/belleza_antienvejecimiento.png', position: 0, is_video: false }
-      ];
-      await supabase.from('product_images').upsert(productImagesList);
-      
-      // 4. Product Stocks per branch (Santa Cruz: 50, La Paz: 30, Cochabamba: 20)
-      const stockList = [];
-      productsList.forEach(p => {
-        [1, 2, 3].forEach(b => {
-          stockList.push({ product_id: p.id, branch_id: b, stock: b === 1 ? 50 : (b === 2 ? 30 : 20) });
-        });
-      });
-      await supabase.from('product_stock').upsert(stockList);
-
-      // 5. Combos / Packs de arranque
-      const combosList = DEFAULT_COMBOS.map(c => ({
-        id: c.id,
-        name: c.name,
-        slug: c.slug,
-        price_bs: c.price_bs,
-        original_price_bs: c.original_price_bs,
-        cost_price_bs: c.cost_price_bs || 0,
-        description: c.description,
-        badge: c.badge,
-        tagline: c.tagline,
-        category: c.category,
-        bullets: c.bullets,
-        dosage: c.dosage,
-        package_detail: c.package_detail,
-        pinned: c.pinned,
-        image_url: c.image_url,
-        is_active: true
-      }));
-      await supabase.from('combos').upsert(combosList);
-      await supabase.from('combo_products').upsert(DEFAULT_COMBO_PRODUCTS);
-
-      localStorage.setItem('db_cloudinary_synced_v9', 'true');
-      console.log("[Antigravity] Database synced with all 7 Kits and Cloudinary assets successfully!");
-    } catch (e) {
-      console.error("[Antigravity] Failed to sync database items on startup:", e);
-    }
+    return;
   };
 
   // Helper to check if any item in cart is low stock or out of stock in selected branch
