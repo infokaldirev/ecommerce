@@ -2,6 +2,7 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="./favicon.png" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="google-site-verification" content="t0dwx4zKOiLFFAvODg5SWv6xRwBW5_fw9cseQ_pFGRA" />
@@ -10,16 +11,41 @@
     <meta name="keywords" content="Tiens, Tiens Bolivia, Kaldirev, Cordycafe, Calcio Tiens, Suplementos Bolivia, Santa Cruz, Comprar Tiens, Nutrición" />
     <meta name="robots" content="index, follow" />
     
+    <link rel="canonical" href="https://infokaldirev.github.io/ecommerce/" />
+    
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://infokaldirev.github.io/ecommerce/" />
     <meta property="og:title" content="Kaldirev | Suplementos Tiens en Empaques Ecológicos" />
     <meta property="og:description" content="Kaldirev ofrece los mejores combos y packs de suplementos de salud y belleza de la marca Tiens. Envíos ecológicos en Bolivia." />
-    <meta property="og:image" content="./logo.svg" />
+    <meta property="og:image" content="https://infokaldirev.github.io/ecommerce/isotipo-512.png" />
     
     <!-- PWA Settings -->
     <link rel="manifest" href="./manifest.json" />
-    <meta name="theme-color" content="#0f3d2e" />
-    <link rel="apple-touch-icon" href="./favicon.svg" />
+    <meta name="theme-color" content="#0e2f23" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    
+    <!-- JSON-LD Structured Data for Google Search Rich Results -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Store",
+      "name": "Kaldirev Bolivia",
+      "url": "https://infokaldirev.github.io/ecommerce/",
+      "logo": "https://infokaldirev.github.io/ecommerce/isotipo-512.png",
+      "description": "Tienda online oficial de combos y suplementos nutricionales Tiens en Bolivia con empaques ecológicos y entrega rápida.",
+      "telephone": "+59163488086",
+      "priceRange": "$$",
+      "currenciesAccepted": "BOB",
+      "paymentAccepted": "Cash, QR Simple, Bank Transfer",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Santa Cruz de la Sierra",
+        "addressRegion": "Santa Cruz",
+        "addressCountry": "BO"
+      }
+    }
+    </script>
     <script>
       if ('serviceWorker' in navigator) {
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -38,16 +64,37 @@
       }
     </script>
 
-    <script type="module" crossorigin src="./assets/index-CXzUBHB5.js"></script>
+    <!-- OneSignal Web Push Notifications SDK -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      OneSignalDeferred.push(async function(OneSignal) {
+        try {
+          await OneSignal.init({
+            appId: "606cbbbb-fc9f-4d94-8ee2-ab97a5a6760c",
+            allowLocalhostAsSecureOrigin: true,
+            notifyButton: {
+              enable: false,
+            },
+          });
+          if (OneSignal.Slidedown) {
+            await OneSignal.Slidedown.promptPush();
+          }
+        } catch (err) {
+          console.debug("OneSignal init info (graceful fallback):", err);
+        }
+      });
+    </script>
+    <script type="module" crossorigin src="./assets/index-D0ZkbK5W.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/rolldown-runtime-Bh1tDfsg.js">
     <link rel="modulepreload" crossorigin href="./assets/vendor-core-7xWNLR5g.js">
     <link rel="modulepreload" crossorigin href="./assets/vendor-react-ChM3vhK7.js">
     <link rel="modulepreload" crossorigin href="./assets/vendor-supabase-CEx1MyzJ.js">
-    <link rel="stylesheet" crossorigin href="./assets/index-CYP_f-K3.css">
+    <link rel="stylesheet" crossorigin href="./assets/index-DTAFnT-5.css">
   </head>
   <body>
     <div id="root"></div>
     <!-- SweetAlert2 (Deferred loading at body bottom to prevent render blocking) -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
   </body>
 </html>

@@ -1,10 +1,13 @@
-const CACHE_NAME = 'kaldirev-cache-v2';
+const CACHE_NAME = 'kaldirev-cache-v5';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/favicon.svg',
-  '/logo.svg',
-  '/icons.svg'
+  './',
+  './index.html',
+  './isotipo-512.png',
+  './isotipo-192.png',
+  './apple-touch-icon.png',
+  './favicon.png',
+  './favicon.svg',
+  './manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -13,6 +16,7 @@ self.addEventListener('install', (event) => {
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -27,6 +31,7 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
+  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
@@ -53,6 +58,59 @@ self.addEventListener('fetch', (event) => {
       }).catch(() => {
         // Fallback offline behavior
       });
+    })
+  );
+});
+
+// ==========================================
+// WEB PUSH NOTIFICATIONS EVENT HANDLERS
+// ==========================================
+self.addEventListener('push', (event) => {
+  let data = { 
+    title: 'Kaldirev Bienestar', 
+    body: '¡Novedades y ofertas exclusivas disponibles en tu tienda!', 
+    icon: './isotipo-192.png', 
+    url: './' 
+  };
+  
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: data.icon || './isotipo-192.png',
+    badge: './favicon.png',
+    vibrate: [200, 100, 200],
+    data: { url: data.url || './' },
+    actions: [
+      { action: 'open_url', title: 'Ver en la Tienda' }
+    ]
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Kaldirev', options)
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url || './';
+  
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      for (let client of windowClients) {
+        if (client.url === targetUrl && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
     })
   );
 });
