@@ -2,6 +2,7 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="./favicon.png" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="google-site-verification" content="t0dwx4zKOiLFFAvODg5SWv6xRwBW5_fw9cseQ_pFGRA" />
@@ -17,12 +18,12 @@
     <meta property="og:url" content="https://infokaldirev.github.io/ecommerce/" />
     <meta property="og:title" content="Kaldirev | Suplementos Tiens en Empaques Ecológicos" />
     <meta property="og:description" content="Kaldirev ofrece los mejores combos y packs de suplementos de salud y belleza de la marca Tiens. Envíos ecológicos en Bolivia." />
-    <meta property="og:image" content="https://infokaldirev.github.io/ecommerce/isotipo-web.svg" />
+    <meta property="og:image" content="https://infokaldirev.github.io/ecommerce/isotipo-512.png" />
     
     <!-- PWA Settings -->
     <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#0e2f23" />
-    <link rel="apple-touch-icon" href="./isotipo-web.svg" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     
     <!-- JSON-LD Structured Data for Google Search Rich Results -->
     <script type="application/ld+json">
@@ -30,8 +31,8 @@
       "@context": "https://schema.org",
       "@type": "Store",
       "name": "Kaldirev Bolivia",
-      "url": "https://kaldirev.onrender.com/",
-      "logo": "https://kaldirev.onrender.com/isotipo-512.png",
+      "url": "https://infokaldirev.github.io/ecommerce/",
+      "logo": "https://infokaldirev.github.io/ecommerce/isotipo-512.png",
       "description": "Tienda online oficial de combos y suplementos nutricionales Tiens en Bolivia con empaques ecológicos y entrega rápida.",
       "telephone": "+59163488086",
       "priceRange": "$$",
@@ -68,19 +69,19 @@
     <script>
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       OneSignalDeferred.push(async function(OneSignal) {
-        await OneSignal.init({
-          appId: "606cbbbb-fc9f-4d94-8ee2-ab97a5a6760c",
-          allowLocalhostAsSecureOrigin: true,
-          notifyButton: {
-            enable: false,
-          },
-        });
         try {
+          await OneSignal.init({
+            appId: "606cbbbb-fc9f-4d94-8ee2-ab97a5a6760c",
+            allowLocalhostAsSecureOrigin: true,
+            notifyButton: {
+              enable: false,
+            },
+          });
           if (OneSignal.Slidedown) {
             await OneSignal.Slidedown.promptPush();
           }
         } catch (err) {
-          console.log("OneSignal Slidedown prompt info:", err);
+          console.debug("OneSignal init info (graceful fallback):", err);
         }
       });
     </script>

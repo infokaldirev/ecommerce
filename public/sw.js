@@ -1,8 +1,11 @@
-const CACHE_NAME = 'kaldirev-cache-v4';
+const CACHE_NAME = 'kaldirev-cache-v5';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './isotipo-web.svg',
+  './isotipo-512.png',
+  './isotipo-192.png',
+  './apple-touch-icon.png',
+  './favicon.png',
   './favicon.svg',
   './manifest.json'
 ];
@@ -66,7 +69,7 @@ self.addEventListener('push', (event) => {
   let data = { 
     title: 'Kaldirev Bienestar', 
     body: '¡Novedades y ofertas exclusivas disponibles en tu tienda!', 
-    icon: './isotipo-web.svg', 
+    icon: './isotipo-192.png', 
     url: './' 
   };
   
@@ -80,8 +83,8 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body,
-    icon: data.icon || './isotipo-web.svg',
-    badge: './isotipo-web.svg',
+    icon: data.icon || './isotipo-192.png',
+    badge: './favicon.png',
     vibrate: [200, 100, 200],
     data: { url: data.url || './' },
     actions: [

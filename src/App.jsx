@@ -504,6 +504,77 @@ function App() {
   // User Personal Orders History
   const [userOrders, setUserOrders] = useState([]);
   const [userOrdersLoading, setUserOrdersLoading] = useState(false);
+  const [userOrdersFilter, setUserOrdersFilter] = useState("todos"); // "todos", "pendientes", "en_camino", "completados"
+  const [selectedOrderForDetail, setSelectedOrderForDetail] = useState(null);
+  const [ordersSearchQuery, setOrdersSearchQuery] = useState("");
+  const [copiedCodeOrder, setCopiedCodeOrder] = useState(null);
+  const [expandedOrders, setExpandedOrders] = useState({}); // { [orderId]: boolean }
+  const [notificationStatus, setNotificationStatus] = useState(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      return Notification.permission;
+    }
+    return 'default';
+  });
+  const [profileSubView, setProfileSubView] = useState('main'); // 'main' | 'personal' | 'address' | 'payment' | 'security' | 'login'
+  const [userAddresses, setUserAddresses] = useState(() => {
+    try {
+      const saved = localStorage.getItem('kaldirev_user_addresses');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn("Addresses load error:", e);
+    }
+    return [
+      {
+        id: 'addr-1',
+        recipient: 'Ana García',
+        street: 'Av. San Martín 123',
+        suite: 'Edificio El Laurel, 4A',
+        city: 'Santa Cruz de la Sierra',
+        postalCode: '07300',
+        country: 'Bolivia',
+        isDefault: true
+      },
+      {
+        id: 'addr-2',
+        recipient: 'Ana García (Casa)',
+        street: 'Calle Los Pinos #45',
+        suite: '',
+        city: 'Montero',
+        postalCode: '',
+        country: 'Bolivia',
+        isDefault: false
+      }
+    ];
+  });
+  const [editingAddressId, setEditingAddressId] = useState(null); // null | 'new' | string id
+  const [addressForm, setAddressForm] = useState({
+    recipient: '',
+    street: '',
+    suite: '',
+    city: 'Santa Cruz de la Sierra',
+    postalCode: '07300',
+    country: 'Bolivia'
+  });
+  const [personalData, setPersonalData] = useState(() => {
+    const fullName = (typeof window !== 'undefined' && localStorage.getItem('kaldirev_saved_name')) || 'Ana García';
+    const parts = fullName.trim().split(' ');
+    const firstName = (typeof window !== 'undefined' && localStorage.getItem('kaldirev_profile_fname')) || parts[0] || 'Ana';
+    const lastName = (typeof window !== 'undefined' && localStorage.getItem('kaldirev_profile_lname')) || parts.slice(1).join(' ') || 'García';
+    return {
+      firstName,
+      lastName,
+      email: (typeof window !== 'undefined' && localStorage.getItem('kaldirev_profile_email')) || 'contacto@ana.com',
+      phone: (typeof window !== 'undefined' && localStorage.getItem('kaldirev_saved_phone')) || '78945612',
+      birthDate: (typeof window !== 'undefined' && localStorage.getItem('kaldirev_profile_bdate')) || '1995-08-15',
+      membershipYear: '2021',
+      renewalYear: '2024'
+    };
+  });
+  const [securityForm, setSecurityForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
   const [isMyOrdersOpen, setIsMyOrdersOpen] = useState(false);
   const [pointTransactions, setPointTransactions] = useState([]);
   const preloadedUrls = useRef(new Set());
@@ -831,6 +902,32 @@ function App() {
       }
     }
     return "";
+  };
+
+  // Helper to get image for an order item (product or combo)
+  const getOrderItemThumbnail = (item) => {
+    if (!item) return resolveAssetUrl('isotipo-512.png');
+    if (item.image) return resolveAssetUrl(item.image);
+    if (item.image_url) return resolveAssetUrl(item.image_url);
+    if (item.id) {
+      const pImg = getProductImage(item.id);
+      if (pImg) return resolveAssetUrl(pImg);
+      const cImg = getComboImage(item.id);
+      if (cImg) return resolveAssetUrl(cImg);
+    }
+    if (item.name) {
+      const matchedProd = products.find(p => p.name && p.name.toLowerCase() === item.name.toLowerCase());
+      if (matchedProd) {
+        const pImg = getProductImage(matchedProd.id) || matchedProd.image_url;
+        if (pImg) return resolveAssetUrl(pImg);
+      }
+      const matchedCombo = combos.find(c => c.name && c.name.toLowerCase() === item.name.toLowerCase());
+      if (matchedCombo) {
+        const cImg = getComboImage(matchedCombo.id) || matchedCombo.image_url;
+        if (cImg) return resolveAssetUrl(cImg);
+      }
+    }
+    return resolveAssetUrl('isotipo-512.png');
   };
 
   // Dynamic Image Preloading Algorithm to speed up image rendering (Added by Antigravity)
@@ -1228,27 +1325,51 @@ function App() {
 
 
 
-  // Fetch personal orders from Supabase (User view)
+  // Fetch personal orders from Supabase (User view or Guest recent orders)
   const fetchUserOrders = async (userId) => {
-    if (!userId) return;
     setUserOrdersLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      setUserOrders(data || []);
+      if (userId) {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        setUserOrders(data || []);
 
-      // Load points transactions as well
-      const { data: txs, error: txsErr } = await supabase
-        .from('point_transactions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-      if (!txsErr) {
-        setPointTransactions(txs || []);
+        // Load points transactions as well
+        const { data: txs, error: txsErr } = await supabase
+          .from('point_transactions')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
+        if (!txsErr) {
+          setPointTransactions(txs || []);
+        }
+      } else {
+        // Guest user: check if there are recent order IDs stored locally
+        let recentIds = [];
+        try {
+          recentIds = JSON.parse(localStorage.getItem('kaldirev_recent_orders') || '[]');
+        } catch (e) {
+          recentIds = [];
+        }
+
+        if (recentIds.length > 0) {
+          const { data, error } = await supabase
+            .from('orders')
+            .select('*')
+            .in('id', recentIds)
+            .order('created_at', { ascending: false });
+          if (!error && data) {
+            setUserOrders(data);
+          } else {
+            setUserOrders([]);
+          }
+        } else {
+          setUserOrders([]);
+        }
       }
     } catch (err) {
       console.error("Error loading user orders:", err);
@@ -1329,10 +1450,10 @@ function App() {
     document.head.appendChild(fontLink);
   }, []);
 
-  // PWA Install Prompt Listener (Shopify-style floating card after 10 seconds)
+  // PWA Install Prompt Listener (Smart App Top Banner)
   useEffect(() => {
     // If running in standalone (already installed), don't show
-    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+    if ((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator?.standalone === true) {
       return;
     }
 
@@ -1340,20 +1461,20 @@ function App() {
     const dismissedTime = dismissed ? parseInt(dismissed) : 0;
     const sevenDays = 7 * 24 * 60 * 60 * 1000;
 
-    const timer = setTimeout(() => {
-      if (!dismissedTime || (Date.now() - dismissedTime > sevenDays)) {
-        setShowPwaBanner(true);
-      }
-    }, 10000); // Shows gracefully after 10 seconds of browsing
+    if (!dismissedTime || (Date.now() - dismissedTime > sevenDays)) {
+      setShowPwaBanner(true);
+    }
 
     const handleBeforeInstall = (e) => {
       e.preventDefault();
       setPwaPrompt(e);
+      if (!dismissedTime || (Date.now() - dismissedTime > sevenDays)) {
+        setShowPwaBanner(true);
+      }
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
     return () => {
-      clearTimeout(timer);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
     };
   }, []);
@@ -1363,13 +1484,16 @@ function App() {
       if (window.Swal) {
         window.Swal.fire({
           title: 'Instalar App Kaldirev',
+          imageUrl: resolveAssetUrl('isotipo-512.png'),
+          imageWidth: 64,
+          imageHeight: 64,
+          imageAlt: 'App Kaldirev',
           html: `
-            <div style="text-align: left; font-size: 0.9rem; line-height: 1.5;">
+            <div style="text-align: left; font-size: 0.9rem; line-height: 1.5; margin-top: 10px;">
               <p><strong>En iPhone / iPad (Safari):</strong><br>1. Toca el botón <strong>Compartir</strong> (flecha hacia arriba 📤).<br>2. Selecciona <strong>"Añadir a pantalla de inicio"</strong>.</p>
               <p style="margin-top: 10px;"><strong>En Android / Chrome:</strong><br>Toca los 3 puntos ⋮ arriba a la derecha y selecciona <strong>"Instalar aplicación"</strong>.</p>
             </div>
           `,
-          icon: 'info',
           confirmButtonColor: 'var(--primary-green)',
           confirmButtonText: 'Entendido'
         });
@@ -1387,6 +1511,375 @@ function App() {
   const handleDismissPwa = () => {
     setShowPwaBanner(false);
     localStorage.setItem('kaldirev_pwa_dismissed', Date.now().toString());
+  };
+
+  // Push notifications interactive toggle with full feedback and device detection
+  const handleNotificationToggle = async () => {
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator?.standalone === true;
+
+    if (isIos && !isStandalone) {
+      if (window.Swal) {
+        window.Swal.fire({
+          title: 'Notificaciones en iPhone / iPad',
+          imageUrl: resolveAssetUrl('isotipo-512.png'),
+          imageWidth: 64,
+          imageHeight: 64,
+          html: `
+            <div style="text-align: left; font-size: 0.88rem; line-height: 1.5; margin-top: 10px;">
+              <p>Apple requiere que agregues <strong>Kaldirev</strong> a tu pantalla de inicio para recibir alertas:</p>
+              <ol style="padding-left: 18px; margin: 8px 0;">
+                <li>Toca el botón <strong>Compartir</strong> (📤 abajo en Safari).</li>
+                <li>Selecciona <strong>"Añadir a pantalla de inicio"</strong>.</li>
+                <li>Abre la app desde tu pantalla de inicio y toca la campanita para activar alertas.</li>
+              </ol>
+            </div>
+          `,
+          confirmButtonColor: 'var(--primary-green)',
+          confirmButtonText: 'Entendido'
+        });
+      }
+      return;
+    }
+
+    if (!('Notification' in window)) {
+      if (window.Swal) {
+        window.Swal.fire({
+          title: 'Navegador no compatible',
+          text: 'Tu navegador actual no admite notificaciones push automáticas. Te recomendamos abrir la web en Google Chrome.',
+          icon: 'info',
+          confirmButtonColor: 'var(--primary-green)'
+        });
+      }
+      return;
+    }
+
+    if (Notification.permission === 'granted') {
+      if (window.Swal) {
+        const res = await window.Swal.fire({
+          title: '¡Notificaciones Activas! 🔔',
+          text: 'Ya tienes activadas las alertas de ofertas relámpago y estados de tus pedidos en Kaldirev.',
+          imageUrl: resolveAssetUrl('isotipo-512.png'),
+          imageWidth: 60,
+          imageHeight: 60,
+          showCancelButton: true,
+          confirmButtonColor: 'var(--primary-green)',
+          cancelButtonColor: '#888',
+          confirmButtonText: '🔔 Probar alerta en mi pantalla',
+          cancelButtonText: 'Listo'
+        });
+
+        if (res.isConfirmed) {
+          try {
+            new Notification('Kaldirev Bienestar 🌿', {
+              body: '¡Excelente! Las notificaciones de tu tienda están funcionando al 100%.',
+              icon: resolveAssetUrl('isotipo-512.png')
+            });
+          } catch (e) {
+            console.log("Error sending test notification:", e);
+          }
+        }
+      }
+      return;
+    }
+
+    if (Notification.permission === 'denied') {
+      if (window.Swal) {
+        window.Swal.fire({
+          title: 'Notificaciones Bloqueadas 🔒',
+          html: `
+            <div style="text-align: left; font-size: 0.88rem; line-height: 1.5; margin-top: 10px;">
+              <p>Tu navegador tiene las alertas bloqueadas para esta web.</p>
+              <p><strong>Para activarlas:</strong><br>1. Toca el candado o icono de ajustes 🔒 en la barra de direcciones de tu navegador.<br>2. Cambia <strong>Notificaciones</strong> a <strong>Permitir</strong>.<br>3. Recarga la página y presiona la campanita de nuevo.</p>
+            </div>
+          `,
+          icon: 'warning',
+          confirmButtonColor: 'var(--primary-green)'
+        });
+      }
+      return;
+    }
+
+    // Default state: request permission
+    try {
+      if (window.OneSignalDeferred) {
+        window.OneSignalDeferred.push(async function(OneSignal) {
+          try {
+            await OneSignal.Notifications.requestPermission();
+          } catch (e) {
+            console.log("OneSignal permission info:", e);
+          }
+        });
+      }
+
+      const permissionResult = await Notification.requestPermission();
+      setNotificationStatus(permissionResult);
+
+      if (permissionResult === 'granted') {
+        if (window.Swal) {
+          window.Swal.fire({
+            title: '¡Notificaciones Activadas! 🎉',
+            text: 'Te avisaremos de ofertas exclusivas en combos Tiens y cuando despachemos pedidos.',
+            icon: 'success',
+            confirmButtonColor: 'var(--primary-green)'
+          });
+        }
+        try {
+          new Notification('¡Bienvenido a Kaldirev! 🌿', {
+            body: 'Notificaciones activadas con éxito. Recibirás avisos de ofertas y envíos en Bolivia.',
+            icon: resolveAssetUrl('isotipo-512.png')
+          });
+        } catch (e) {
+          console.log("Welcome notification error:", e);
+        }
+      } else if (permissionResult === 'denied') {
+        if (window.Swal) {
+          window.Swal.fire({
+            title: 'Permiso no otorgado',
+            text: 'Has cancelado el permiso. Puedes activarlo cuando gustes desde la campanita.',
+            icon: 'info',
+            confirmButtonColor: 'var(--primary-green)'
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Error solicitando permisos de notificación:", err);
+    }
+  };
+
+  // Profile subviews handlers: Addresses, Personal Data & Security (Antigravity)
+  const handleSetDefaultAddress = (addressId) => {
+    const updated = userAddresses.map(addr => ({
+      ...addr,
+      isDefault: addr.id === addressId
+    }));
+    setUserAddresses(updated);
+    localStorage.setItem('kaldirev_user_addresses', JSON.stringify(updated));
+    const def = updated.find(a => a.id === addressId);
+    if (def) {
+      const fullAddr = `${def.street}${def.suite ? `, ${def.suite}` : ''}`;
+      setFormData(prev => ({
+        ...prev,
+        address: fullAddr,
+        city: def.city
+      }));
+      localStorage.setItem('kaldirev_saved_address', fullAddr);
+      localStorage.setItem('kaldirev_saved_city', def.city);
+    }
+  };
+
+  const handleDeleteAddress = (addressId) => {
+    if (userAddresses.length <= 1) {
+      if (window.Swal) {
+        window.Swal.fire({
+          title: 'Dirección Requerida',
+          text: 'Debes mantener al menos una dirección registrada para tus entregas de bienestar.',
+          icon: 'info',
+          confirmButtonColor: 'var(--primary-green)'
+        });
+      }
+      return;
+    }
+    const updated = userAddresses.filter(a => a.id !== addressId);
+    if (!updated.some(a => a.isDefault) && updated.length > 0) {
+      updated[0].isDefault = true;
+    }
+    setUserAddresses(updated);
+    localStorage.setItem('kaldirev_user_addresses', JSON.stringify(updated));
+    const def = updated.find(a => a.isDefault) || updated[0];
+    if (def) {
+      const fullAddr = `${def.street}${def.suite ? `, ${def.suite}` : ''}`;
+      setFormData(prev => ({
+        ...prev,
+        address: fullAddr,
+        city: def.city
+      }));
+    }
+  };
+
+  const handleOpenEditAddress = (address) => {
+    if (address) {
+      setEditingAddressId(address.id);
+      setAddressForm({
+        recipient: address.recipient || '',
+        street: address.street || '',
+        suite: address.suite || '',
+        city: address.city || 'Santa Cruz de la Sierra',
+        postalCode: address.postalCode || '',
+        country: address.country || 'Bolivia'
+      });
+    } else {
+      setEditingAddressId('new');
+      setAddressForm({
+        recipient: personalData.firstName ? `${personalData.firstName} ${personalData.lastName}` : (formData.name || 'Ana García'),
+        street: '',
+        suite: '',
+        city: formData.city || 'Santa Cruz de la Sierra',
+        postalCode: '07300',
+        country: 'Bolivia'
+      });
+    }
+  };
+
+  const handleSaveAddressForm = (e) => {
+    e.preventDefault();
+    if (!addressForm.recipient.trim() || !addressForm.street.trim()) {
+      if (window.Swal) {
+        window.Swal.fire({
+          title: 'Campos Incompletos',
+          text: 'Por favor ingresa el destinatario y la dirección de la calle.',
+          icon: 'warning',
+          confirmButtonColor: 'var(--primary-green)'
+        });
+      }
+      return;
+    }
+
+    let updated;
+    if (editingAddressId === 'new') {
+      const newAddr = {
+        id: 'addr-' + Date.now(),
+        recipient: addressForm.recipient.trim(),
+        street: addressForm.street.trim(),
+        suite: addressForm.suite.trim(),
+        city: addressForm.city,
+        postalCode: addressForm.postalCode.trim() || '07300',
+        country: addressForm.country || 'Bolivia',
+        isDefault: userAddresses.length === 0
+      };
+      updated = [newAddr, ...userAddresses];
+    } else {
+      updated = userAddresses.map(addr => {
+        if (addr.id === editingAddressId) {
+          return {
+            ...addr,
+            recipient: addressForm.recipient.trim(),
+            street: addressForm.street.trim(),
+            suite: addressForm.suite.trim(),
+            city: addressForm.city,
+            postalCode: addressForm.postalCode.trim(),
+            country: addressForm.country || 'Bolivia'
+          };
+        }
+        return addr;
+      });
+    }
+
+    setUserAddresses(updated);
+    localStorage.setItem('kaldirev_user_addresses', JSON.stringify(updated));
+    setEditingAddressId(null);
+
+    const def = updated.find(a => a.isDefault) || updated[0];
+    if (def) {
+      const fullAddr = `${def.street}${def.suite ? `, ${def.suite}` : ''}`;
+      setFormData(prev => ({
+        ...prev,
+        address: fullAddr,
+        city: def.city
+      }));
+      localStorage.setItem('kaldirev_saved_address', fullAddr);
+      localStorage.setItem('kaldirev_saved_city', def.city);
+    }
+
+    if (window.Swal) {
+      window.Swal.fire({
+        title: '¡Dirección Guardada!',
+        text: 'La dirección se ha registrado correctamente en tu cuenta.',
+        icon: 'success',
+        confirmButtonColor: 'var(--primary-green)',
+        timer: 1600,
+        showConfirmButton: false
+      });
+    }
+  };
+
+  const handleSavePersonalData = async (e) => {
+    e.preventDefault();
+    const fullName = `${personalData.firstName.trim()} ${personalData.lastName.trim()}`.trim();
+    setFormData(prev => ({
+      ...prev,
+      name: fullName,
+      phone: personalData.phone.trim()
+    }));
+    localStorage.setItem('kaldirev_saved_name', fullName);
+    localStorage.setItem('kaldirev_saved_phone', personalData.phone.trim());
+    localStorage.setItem('kaldirev_profile_fname', personalData.firstName.trim());
+    localStorage.setItem('kaldirev_profile_lname', personalData.lastName.trim());
+    localStorage.setItem('kaldirev_profile_bdate', personalData.birthDate);
+
+    if (user) {
+      try {
+        const updated = { ...profile, full_name: fullName, phone: personalData.phone.trim() };
+        await supabase.from('profiles').upsert(updated);
+        setProfile(updated);
+        localStorage.setItem(`kaldirev_local_profile_${user.id}`, JSON.stringify(updated));
+      } catch (err) {
+        console.warn("Save profile err:", err);
+      }
+    }
+
+    if (window.Swal) {
+      window.Swal.fire({
+        title: '¡Cambios Guardados!',
+        text: 'Tus datos personales se han actualizado correctamente.',
+        icon: 'success',
+        confirmButtonColor: 'var(--primary-green)',
+        timer: 1600,
+        showConfirmButton: false
+      });
+    }
+  };
+
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    if (!securityForm.newPassword || securityForm.newPassword.length < 6) {
+      if (window.Swal) {
+        window.Swal.fire({
+          title: 'Contraseña Muy Corta',
+          text: 'La nueva contraseña debe tener al menos 6 caracteres.',
+          icon: 'warning',
+          confirmButtonColor: 'var(--primary-green)'
+        });
+      }
+      return;
+    }
+    if (securityForm.newPassword !== securityForm.confirmPassword) {
+      if (window.Swal) {
+        window.Swal.fire({
+          title: 'No Coinciden',
+          text: 'La nueva contraseña y su confirmación no coinciden.',
+          icon: 'warning',
+          confirmButtonColor: 'var(--primary-green)'
+        });
+      }
+      return;
+    }
+
+    try {
+      if (user) {
+        const { error } = await supabase.auth.updateUser({ password: securityForm.newPassword });
+        if (error) throw error;
+      }
+      setSecurityForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      if (window.Swal) {
+        window.Swal.fire({
+          title: '¡Contraseña Actualizada!',
+          text: 'Tu contraseña de acceso ha sido modificada con éxito.',
+          icon: 'success',
+          confirmButtonColor: 'var(--primary-green)'
+        });
+      }
+      setProfileSubView('main');
+    } catch (err) {
+      if (window.Swal) {
+        window.Swal.fire({
+          title: 'Error de Actualización',
+          text: err.message || 'No se pudo cambiar la contraseña. Inicia sesión nuevamente.',
+          icon: 'error',
+          confirmButtonColor: 'var(--primary-green)'
+        });
+      }
+    }
   };
 
   // Handle auto-opening product/combo from hash routing (e.g. #product-12 or #combo-5) for shared links (Added by Antigravity)
@@ -2590,192 +3083,448 @@ function App() {
   };
 
   const handlePublicSearchOrder = async (e) => {
-    e.preventDefault();
-    if (!publicSearchId.trim()) return;
-
-    let cleanId = publicSearchId.trim().toUpperCase();
-    if (cleanId.startsWith('#KLR-')) {
-      cleanId = cleanId.replace('#KLR-', '');
-    }
+    if (e && e.preventDefault) e.preventDefault();
+    const query = publicSearchId.trim();
+    if (!query) return;
 
     setPublicSearchLoading(true);
     setPublicSearchError('');
     setPublicOrderResult(null);
 
+    let cleanId = query.toUpperCase();
+    if (cleanId.startsWith('#KLR-')) {
+      cleanId = cleanId.replace('#KLR-', '').trim();
+    }
+
     try {
-      const { data, error } = await supabase
+      // 1. First try by ID prefix
+      let { data, error } = await supabase
         .from('orders')
         .select('*')
-        .ilike('id', `${cleanId.toLowerCase()}%`);
+        .ilike('id', `${cleanId.toLowerCase()}%`)
+        .limit(1);
+
+      // 2. If not found, try searching by phone number (very helpful for Bolivian customers)
+      const digitsOnly = query.replace(/\D/g, '');
+      if ((!data || data.length === 0) && digitsOnly.length >= 7) {
+        const { data: phoneData, error: phoneErr } = await supabase
+          .from('orders')
+          .select('*')
+          .ilike('phone', `%${digitsOnly}%`)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (!phoneErr && phoneData && phoneData.length > 0) {
+          data = phoneData;
+        }
+      }
 
       if (error) throw error;
 
-      if (data && data.length > 0) {
-        setPublicOrderResult(data[0]);
+      if (!data || data.length === 0) {
+        setPublicSearchError('No encontramos ningún pedido con ese código o número de teléfono. Verifica los datos o escríbenos a WhatsApp para ayudarte.');
       } else {
-        setPublicSearchError('No se encontró ningún pedido con ese código de rastreo. Verifica el código e intenta de nuevo.');
+        setPublicOrderResult(data[0]);
+        setSelectedOrderForDetail(data[0]);
       }
     } catch (err) {
-      setPublicSearchError('Error al consultar el pedido: ' + err.message);
+      console.error('Error buscando pedido:', err);
+      setPublicSearchError('No se pudo completar la búsqueda en este momento. Por favor revisa tu conexión.');
     } finally {
       setPublicSearchLoading(false);
     }
   };
 
-  const renderSingleOrderDetails = (order) => {
-    let currentStep = 1;
-    if (order.status === 'Completado') currentStep = 4;
-    else if (order.status === 'En Camino') currentStep = 3;
-    else if (order.status === 'Pendiente') currentStep = 2;
+  const toggleOrderExpand = (orderId) => {
+    setExpandedOrders(prev => ({
+      ...prev,
+      [orderId]: !prev[orderId]
+    }));
+  };
 
+  const renderKlrOrderCard = (order) => {
     const formattedDate = new Date(order.created_at).toLocaleDateString('es-BO', {
       day: 'numeric',
-      month: 'long',
+      month: 'short',
+      year: 'numeric'
+    });
+
+    let badgeClass = 'klr-badge-en-proceso';
+    let statusLabel = 'En Proceso';
+    if (order.status === 'Completado') {
+      badgeClass = 'klr-badge-entregado';
+      statusLabel = 'Entregado';
+    } else if (order.status === 'En Camino') {
+      badgeClass = 'klr-badge-en-camino';
+      statusLabel = 'Enviado';
+    } else if (order.status === 'Cancelado') {
+      badgeClass = 'klr-badge-cancelado';
+      statusLabel = 'Cancelado';
+    }
+
+    const itemsCount = order.items?.reduce((sum, it) => sum + (it.quantity || 1), 0) || 0;
+    const orderCode = `#KLR-${order.id.substring(0, 8).toUpperCase()}`;
+
+    // Grab up to 4 items for thumbnails strip
+    const displayItems = order.items?.slice(0, 4) || [];
+    const remainingCount = (order.items?.length || 0) - displayItems.length;
+
+    return (
+      <div key={order.id} className="klr-order-card animate-fade-in">
+        {/* Card Header Row */}
+        <div className="klr-card-header-row">
+          <span className="klr-card-code-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+              <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+            <span>{orderCode} - {statusLabel}</span>
+          </span>
+          <button 
+            type="button" 
+            className="klr-card-action-link"
+            onClick={() => setSelectedOrderForDetail(order)}
+          >
+            <span>Ver Detalles</span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '4px' }}><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+        </div>
+
+        {/* Card Main Grid */}
+        <div className="klr-card-main-grid">
+          <div className="klr-card-info-col">
+            <span className={`klr-status-badge ${badgeClass}`}>
+              {statusLabel}
+            </span>
+            <span className="klr-card-date-txt">{formattedDate}</span>
+          </div>
+
+          <div className="klr-card-info-col" style={{ flexGrow: 1, padding: '0 8px' }}>
+            <span className="klr-card-client-name">{order.customer_name || 'Cliente Kaldirev'}</span>
+            <span className="klr-card-total-badge">
+              <strong>Bs. {parseFloat(order.total_bs).toFixed(1)}</strong> / {itemsCount} {itemsCount === 1 ? 'artículo' : 'artículos'}
+            </span>
+          </div>
+        </div>
+
+        {/* Card Bottom Row: Ver Detalles button + Product Thumbnails Strip */}
+        <div className="klr-card-bottom-row">
+          <button 
+            type="button" 
+            className="klr-btn-track klr-btn-details"
+            onClick={() => setSelectedOrderForDetail(order)}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <span>Ver Detalles</span>
+          </button>
+
+          <div className="klr-thumbnails-strip">
+            {displayItems.map((item, idx) => (
+              <div key={idx} className="klr-thumb-box" title={`${item.name} (${item.quantity}x)`}>
+                <img src={getOrderItemThumbnail(item)} alt={item.name} loading="lazy" />
+              </div>
+            ))}
+            {remainingCount > 0 && (
+              <div className="klr-thumb-more" title={`${remainingCount} artículos más`}>
+                +{remainingCount}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderKlrOrderDetailScreen = (order) => {
+    const formattedDate = new Date(order.created_at).toLocaleDateString('es-BO', {
+      day: 'numeric',
+      month: 'short',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     });
 
-    let statusBadgeClass = 'badge-pending';
-    if (order.status === 'Completado') statusBadgeClass = 'badge-completed';
-    else if (order.status === 'En Camino') statusBadgeClass = 'badge-shipped';
-    else if (order.status === 'Cancelado') statusBadgeClass = 'badge-canceled';
+    const orderCode = `#KLR-${order.id.substring(0, 8).toUpperCase()}`;
+
+    // Tracker steps calculation
+    let currentStep = 1;
+    let statusBannerText = `Pedido ${orderCode} - En Proceso`;
+    let statusBannerBg = 'linear-gradient(135deg, #0e3e2f 0%, #164e3f 100%)';
+
+    if (order.status === 'Completado') {
+      currentStep = 4;
+      statusBannerText = `Pedido ${orderCode} - Entregado`;
+      statusBannerBg = 'linear-gradient(135deg, #047857 0%, #065f46 100%)';
+    } else if (order.status === 'En Camino') {
+      currentStep = 3;
+      statusBannerText = `Pedido ${orderCode} - Enviado`;
+      statusBannerBg = 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)';
+    } else if (order.status === 'Cancelado') {
+      currentStep = 0;
+      statusBannerText = `Pedido ${orderCode} - Cancelado`;
+      statusBannerBg = 'linear-gradient(135deg, #b91c1c 0%, #991b1b 100%)';
+    } else {
+      currentStep = 2;
+    }
+
+    const itemsCount = order.items?.reduce((sum, it) => sum + (it.quantity || 1), 0) || 0;
+    const trackingMsg = `Hola Kaldirev Bolivia, deseo consultar la entrega de mi pedido:\n- Código: ${orderCode}\n- Cliente: ${order.customer_name}\n- Total: Bs. ${parseFloat(order.total_bs).toFixed(1)}\n- Estado: ${order.status}`;
+    const waUrl = `https://api.whatsapp.com/send?phone=${config.whatsappNumber || '59163488086'}&text=${encodeURIComponent(trackingMsg)}`;
+
+    const handleCopyCode = () => {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(orderCode);
+        setCopiedCodeOrder(order.id);
+        setTimeout(() => setCopiedCodeOrder(null), 2500);
+      }
+    };
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'left' }}>
-        {/* ID, Date & Badge */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+      <div className="klr-detail-wrapper animate-fade-in">
+        {/* Navigation Back Bar */}
+        <div className="klr-detail-nav-bar">
+          <button 
+            type="button" 
+            className="klr-back-btn"
+            onClick={() => setSelectedOrderForDetail(null)}
+            title="Volver a Mis Pedidos"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          </button>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <span style={{ fontFamily: 'monospace', fontSize: '1.1rem', fontWeight: 900, color: 'var(--primary-green)' }}>
-                #KLR-{order.id.substring(0,8).toUpperCase()}
-              </span>
-              <span className={`badge-premium ${statusBadgeClass}`}>
-                {order.status}
-              </span>
-            </div>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
-              Realizado el {formattedDate}
-            </span>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <span style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--primary-green)', display: 'block' }}>
-              Bs. {parseFloat(order.total_bs).toFixed(1)}
-            </span>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-              Método: <strong>{order.payment_method}</strong>
-            </span>
+            <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Seguimiento en Bolivia</span>
+            <h2 className="klr-detail-page-title">Pedido {orderCode} - Detalles</h2>
           </div>
         </div>
 
-        {/* Dynamic Timeline Stepper */}
-        <div className="tracker-timeline-bar">
-          <div className="tracker-timeline-line"></div>
-          <div className="tracker-timeline-progress" style={{ width: `${((currentStep - 1) / 3) * 100}%` }}></div>
-
-          <div className={`tracker-node ${currentStep >= 1 ? 'completed' : ''} ${currentStep === 1 ? 'active' : ''}`}>
-            <div className="tracker-circle">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            </div>
-            <span className="tracker-label">Confirmado</span>
-          </div>
-
-          <div className={`tracker-node ${currentStep >= 2 ? 'completed' : ''} ${currentStep === 2 ? 'active' : ''}`}>
-            <div className="tracker-circle">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-            </div>
-            <span className="tracker-label">En Almacén</span>
-          </div>
-
-          <div className={`tracker-node ${currentStep >= 3 ? 'completed' : ''} ${currentStep === 3 ? 'active' : ''}`}>
-            <div className="tracker-circle">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-            </div>
-            <span className="tracker-label">En Ruta</span>
-          </div>
-
-          <div className={`tracker-node delivered ${currentStep >= 4 ? 'active completed' : ''}`}>
-            <div className="tracker-circle">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-            </div>
-            <span className="tracker-label">Entregado</span>
-          </div>
+        {/* Status Header Banner */}
+        <div className="klr-detail-status-banner" style={{ background: statusBannerBg }}>
+          <span>{statusBannerText}</span>
+          <span style={{ fontSize: '0.82rem', background: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: '20px' }}>
+            Bolivia
+          </span>
         </div>
 
-        {/* Delivery Details */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', background: '#faf9f6', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
-          <div>
-            <strong style={{ color: 'var(--primary-green)', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '4px' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-              </svg>
-              Dirección de Envío:
-            </strong>
-            <span style={{ color: 'var(--text-dark)' }}>
-              {order.customer_name}<br />
-              {order.address}, {order.city}<br />
-              Telf: {order.phone}
-            </span>
-          </div>
-          <div>
-            <strong style={{ color: 'var(--primary-green)', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '4px' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <rect x="1" y="3" width="15" height="13"></rect>
-                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
-                <circle cx="5.5" cy="18.5" r="2.5"></circle>
-                <circle cx="18.5" cy="18.5" r="2.5"></circle>
-              </svg>
-              Método de Entrega:
-            </strong>
-            <span style={{ color: 'var(--text-dark)' }}>
-              {order.delivery_method || 'Delivery Estándar'}<br />
-              Costo de envío: Bs. {parseFloat(order.shipping_cost_bs || 0).toFixed(1)}
-            </span>
-          </div>
-        </div>
-
-        {/* Articles Table */}
-        <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ background: '#f4f6f0', padding: '8px 14px', fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--primary-green)', display: 'flex', justifyContent: 'space-between' }}>
-            <span>Artículos Solicitados</span>
-            <span>Subtotal</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', background: 'white' }}>
-            {order.items && order.items.map((item, idx) => (
-              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', fontSize: '0.85rem', borderBottom: idx < order.items.length - 1 ? '1px solid var(--border-color)' : 'none' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ background: 'var(--primary-light)', color: 'var(--primary-green)', padding: '2px 8px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.75rem' }}>
-                    {item.quantity}x
-                  </span>
-                  <span style={{ fontWeight: 650, color: 'var(--text-dark)' }}>{item.name}</span>
+        {/* Vertical Delivery Tracker (Exact to Image 2) */}
+        <div className="klr-vertical-tracker-card">
+          <div className="klr-vertical-tracker">
+            {/* Step 1: Pedido Realizado */}
+            <div className={`klr-tracker-step ${currentStep >= 1 ? 'done' : ''}`}>
+              <div className="klr-step-icon-col">
+                <div className="klr-step-icon-circle">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </div>
-                <span style={{ fontWeight: 'bold', color: 'var(--text-dark)' }}>Bs. {(item.price * item.quantity).toFixed(1)}</span>
+                <div className="klr-step-line"></div>
+              </div>
+              <div className="klr-step-content">
+                <h4 className="klr-step-title">Pedido Realizado</h4>
+                <p className="klr-step-desc">{formattedDate} • Registrado en el sistema</p>
+              </div>
+            </div>
+
+            {/* Step 2: Pago Confirmado */}
+            <div className={`klr-tracker-step ${currentStep >= 2 ? 'done' : ''}`}>
+              <div className="klr-step-icon-col">
+                <div className="klr-step-icon-circle">
+                  {currentStep >= 2 ? (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  ) : (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                  )}
+                </div>
+                <div className="klr-step-line"></div>
+              </div>
+              <div className="klr-step-content">
+                <h4 className="klr-step-title">Pago Confirmado / Registrado</h4>
+                <p className="klr-step-desc">
+                  Método: <strong>{order.payment_method || 'Contraentrega'}</strong> (Efectivo o QR al recibir)
+                </p>
+              </div>
+            </div>
+
+            {/* Step 3: Pedido Preparado */}
+            <div className={`klr-tracker-step ${currentStep >= 3 ? 'done' : (currentStep === 2 ? 'active' : '')}`}>
+              <div className="klr-step-icon-col">
+                <div className="klr-step-icon-circle">
+                  {currentStep >= 3 ? (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  ) : (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                  )}
+                </div>
+                <div className="klr-step-line"></div>
+              </div>
+              <div className="klr-step-content">
+                <h4 className="klr-step-title">Pedido Preparado</h4>
+                <p className="klr-step-desc">
+                  Almacén Kaldirev: Empaque sellado con precintos de seguridad
+                </p>
+              </div>
+            </div>
+
+            {/* Step 4: Pedido Enviado / En Camino */}
+            <div className={`klr-tracker-step ${currentStep >= 4 ? 'done' : (currentStep === 3 ? 'active' : '')}`}>
+              <div className="klr-step-icon-col">
+                <div className="klr-step-icon-circle">
+                  {currentStep >= 4 ? (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  ) : (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                  )}
+                </div>
+                <div className="klr-step-line"></div>
+              </div>
+              <div className="klr-step-content">
+                <h4 className="klr-step-title">
+                  {currentStep === 3 ? 'Pedido Enviado (En Camino)' : 'Pedido Enviado'}
+                </h4>
+                <p className="klr-step-desc">
+                  {currentStep >= 3 
+                    ? `En ruta con Repartidor / Courier hacia tu dirección`
+                    : `Programando ruta de despacho`}
+                </p>
+              </div>
+            </div>
+
+            {/* Step 5: Entregado */}
+            <div className={`klr-tracker-step ${currentStep >= 4 ? 'done' : ''}`}>
+              <div className="klr-step-icon-col">
+                <div className="klr-step-icon-circle">
+                  {currentStep >= 4 ? (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  ) : (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                  )}
+                </div>
+              </div>
+              <div className="klr-step-content">
+                <h4 className="klr-step-title">Pedido Entregado</h4>
+                <p className="klr-step-desc">
+                  {currentStep >= 4 
+                    ? '¡Paquete entregado con éxito en mano! Que disfrutes tus productos.'
+                    : 'Confirmación al momento de la entrega.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Resumen de Artículos (Exact to Image 2) */}
+        <div className="klr-detail-items-card">
+          <div className="klr-detail-items-header">
+            <span>Resumen de Artículos ({itemsCount})</span>
+            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>{order.items?.length || 0} artículos</span>
+          </div>
+
+          <div className="klr-detail-items-list">
+            {order.items?.map((item, idx) => (
+              <div key={idx} className="klr-detail-item-row">
+                <div className="klr-detail-item-left">
+                  <div className="klr-detail-item-thumb">
+                    <img src={getOrderItemThumbnail(item)} alt={item.name} loading="lazy" />
+                  </div>
+                  <div>
+                    <div className="klr-detail-item-title">{item.name}</div>
+                    <div className="klr-detail-item-qty">Cantidad: {item.quantity}x</div>
+                  </div>
+                </div>
+                <div className="klr-detail-item-price">
+                  Bs. {(item.price * item.quantity).toFixed(1)}
+                </div>
               </div>
             ))}
           </div>
+
+          {/* Financial breakdown at bottom */}
+          <div className="klr-detail-totals-box">
+            <div className="klr-totals-line">
+              <span>Subtotal:</span>
+              <span>Bs. {parseFloat(order.total_bs).toFixed(1)}</span>
+            </div>
+            <div className="klr-totals-line">
+              <span>Envío:</span>
+              <span style={{ color: '#16a34a', fontWeight: 'bold' }}>Gratis (o Contraentrega)</span>
+            </div>
+            <div className="klr-totals-final">
+              <span>Total a Pagar:</span>
+              <span>Bs. {parseFloat(order.total_bs).toFixed(1)}</span>
+            </div>
+          </div>
         </div>
 
-        {/* WhatsApp Tracker Action */}
-        {order.status !== 'Cancelado' && (
-          <button
-            type="button"
-            className="btn-whatsapp-submit"
-            style={{ width: '100%', padding: '12px', background: '#25d366', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 10px rgba(37,211,102,0.15)', fontSize: '0.9rem' }}
-            onClick={() => {
-              const trackingMsg = `Hola Kaldirev Bolivia, quería consultar el despacho de mi pedido:\n- ID Pedido: #KLR-${order.id.substring(0,8).toUpperCase()}\n- Cliente: ${order.customer_name}\n- Total: Bs. ${parseFloat(order.total_bs).toFixed(1)}\n- Estado Actual: ${order.status}`;
-              const waUrl = `https://api.whatsapp.com/send?phone=${config.whatsappNumber}&text=${encodeURIComponent(trackingMsg)}`;
-              window.open(waUrl, '_blank');
-            }}
+        {/* Información del Cliente y Dirección de Envío (2 columns) */}
+        <div className="klr-info-grid">
+          <div className="klr-info-card">
+            <div className="klr-info-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <span>Información del Cliente</span>
+            </div>
+            <p className="klr-info-text">
+              <strong>{order.customer_name}</strong><br />
+              Teléfono: {order.phone}<br />
+              {order.city && `Ciudad: ${order.city}`}
+            </p>
+          </div>
+
+          <div className="klr-info-card">
+            <div className="klr-info-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+              <span>Dirección de Envío</span>
+            </div>
+            <p className="klr-info-text">
+              {order.address || 'Coordinar entrega directa'}<br />
+              {order.city || 'Santa Cruz'}, Bolivia<br />
+              <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Método: Entrega a Domicilio</span>
+            </p>
+          </div>
+        </div>
+
+        {/* Bottom Actions Bar (WhatsApp + Copy Code) */}
+        <div className="klr-detail-actions-bar">
+          <a 
+            href={waUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="klr-btn-wa-action"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.249 8.477 3.517 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.739-1.446L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.625 1.451 5.436 0 9.86-4.42 9.864-9.856.002-2.63-1.023-5.101-2.887-6.967C16.38 1.916 13.91 1.012 11.285 1.012 5.848 1.012 1.425 5.435 1.422 10.873c-.001 1.5.399 2.969 1.157 4.298l-.997 3.642 3.73-.978c-.001.002-.001.002-.001.002zm12.338-7.989c-.334-.168-1.977-.975-2.28-1.087-.302-.111-.522-.168-.742.168-.22.33-.852 1.079-1.044 1.302-.192.223-.385.253-.718.084-.334-.168-1.409-.52-2.684-1.657-1.002-.894-1.677-2.002-1.874-2.337-.197-.335-.021-.516.146-.682.151-.15.334-.385.501-.58.167-.192.222-.334.334-.56.111-.223.056-.417-.028-.585-.084-.168-.742-1.787-1.016-2.45-.269-.65-.539-.562-.742-.573-.191-.01-.41-.01-.628-.01-.22 0-.577.082-.88.411-.303.33-1.154 1.128-1.154 2.75 0 1.622 1.18 3.19 1.346 3.414.167.223 2.323 3.548 5.626 4.974.786.34 1.398.543 1.877.697.79.25 1.509.215 2.078.13.633-.095 1.977-.807 2.254-1.59.277-.783.277-1.456.195-1.59-.082-.134-.302-.253-.633-.421z"/>
             </svg>
-            Consultar despacho por WhatsApp
+            <span>Seguir Envío por WhatsApp</span>
+          </a>
+
+          <button 
+            type="button" 
+            className="klr-copy-code-btn"
+            onClick={handleCopyCode}
+          >
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+              {copiedCodeOrder === order.id ? (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>¡Copiado!</span>
+                </>
+              ) : (
+                orderCode
+              )}
+            </span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
           </button>
-        )}
+        </div>
       </div>
     );
+  };
+
+  const renderSingleOrderDetails = (order) => {
+    return renderKlrOrderDetailScreen(order);
+  };
+
+  const renderOrderCard = (order) => {
+    return renderKlrOrderCard(order);
   };
 
   // Order status modification
@@ -3246,6 +3995,15 @@ ${gpsLocationText}
 
       if (orderErr) throw orderErr;
 
+      // Save recent order ID locally for guest & user instant tracking
+      try {
+        const recent = JSON.parse(localStorage.getItem('kaldirev_recent_orders') || '[]');
+        const updated = [orderData.id, ...recent.filter(id => id !== orderData.id)].slice(0, 15);
+        localStorage.setItem('kaldirev_recent_orders', JSON.stringify(updated));
+      } catch (e) {
+        console.warn("Could not save recent order to localStorage", e);
+      }
+
       // 4. Handle QR Payment flow
       if (formData.paymentMethod === 'Pago QR Directo') {
         setQrModalOrder(orderData);
@@ -3253,6 +4011,7 @@ ${gpsLocationText}
         setIsCartOpen(false); // Close cart drawer
         setQrTimer(300); // 5 min timer
         setIsSubmittingOrder(false);
+        fetchUserOrders(user ? user.id : null);
         return;
       }
 
@@ -3303,10 +4062,8 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
       setIsCheckingOut(false);
       setShowSuccessModal(true);
 
-      // Refresh orders history if user logged in
-      if (user) {
-        fetchUserOrders(user.id);
-      }
+      // Refresh orders history
+      fetchUserOrders(user ? user.id : null);
 
     } catch (err) {
       console.error("Order creation failed:", err);
@@ -3646,8 +4403,8 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
         <aside className="admin-sidebar">
           <div>
             <div className="sidebar-logo">
-              <div className="logo-mark" style={{ width: '40px', height: '40px', overflow: 'hidden', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px' }}>
-                <img src="/isotipo-web.svg" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              <div className="logo-mark" style={{ width: '40px', height: '40px', overflow: 'hidden', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px', boxShadow: '0 3px 10px rgba(0,0,0,0.25)', flexShrink: 0 }}>
+                <img src={resolveAssetUrl('isotipo-512.png')} alt="Kaldirev" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '10px' }} />
               </div>
               <div className="logo-text">
                 <span className="logo-title" style={{ color: 'white', fontSize: '1.25rem' }}>Kaldirev</span>
@@ -6925,11 +7682,51 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
 
   return (
     <>
+      {/* SMART APP BANNER (Top of page - Clean, Native & Non-intrusive) */}
+      {showPwaBanner && (
+        <aside 
+          className="smart-pwa-top-banner"
+          role="banner"
+          aria-label="Instalar aplicación móvil Kaldirev"
+        >
+          <div className="smart-pwa-left">
+            <button 
+              type="button" 
+              onClick={handleDismissPwa} 
+              className="smart-pwa-close-btn"
+              title="Cerrar aviso de instalación"
+              aria-label="Cerrar aviso"
+            >
+              ✕
+            </button>
+            <img 
+              src={resolveAssetUrl('isotipo-512.png')} 
+              alt="App Kaldirev" 
+              className="smart-pwa-icon"
+            />
+            <div className="smart-pwa-text">
+              <div className="smart-pwa-title-row">
+                <span className="smart-pwa-title">App Kaldirev</span>
+                <span className="smart-pwa-badge">Gratis</span>
+              </div>
+              <span className="smart-pwa-desc">Compras en 1 clic y rastreo de envíos</span>
+            </div>
+          </div>
+          <button 
+            type="button" 
+            onClick={handleInstallPwa} 
+            className="smart-pwa-install-btn"
+          >
+            Instalar
+          </button>
+        </aside>
+      )}
+
       {/* HEADER SECTION */}
       <header>
         <div className="logo-container" onClick={() => { setActiveCategory("Todos"); setSearchTerm(""); closeComboDetails(); setView("catalog"); }}>
-          <div className="logo-mark" style={{ width: '48px', height: '48px', borderRadius: '12px', overflow: 'hidden', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <img src="/isotipo-web.svg" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <div className="logo-mark" style={{ width: '48px', height: '48px', borderRadius: '12px', overflow: 'hidden', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.18)', flexShrink: 0 }}>
+            <img src={resolveAssetUrl('isotipo-512.png')} alt="Kaldirev" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} />
           </div>
           <div className="logo-text">
             <span className="logo-title" style={{ fontSize: '1.45rem', fontWeight: 900 }}>Kaldirev</span>
@@ -6965,7 +7762,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             <div className="user-badge-container" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div 
                 style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                onClick={() => { setView("pedidos"); fetchUserOrders(user.id); }}
+                onClick={() => { setSelectedOrderForDetail(null); setView("pedidos"); fetchUserOrders(user.id); }}
                 title="Ver mis pedidos"
               >
                 {profile?.avatar_url ? (
@@ -6979,13 +7776,13 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
               <div className="user-info-text-desktop" style={{ fontSize: '0.85rem' }}>
                 <span 
                   style={{ display: 'block', fontWeight: 700, color: 'var(--primary-green)', cursor: 'pointer' }}
-                  onClick={() => { setView("pedidos"); fetchUserOrders(user.id); }}
+                  onClick={() => { setSelectedOrderForDetail(null); setView("pedidos"); fetchUserOrders(user.id); }}
                 >
                   {profile?.full_name || "Cliente"}
                 </span>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button 
-                    onClick={() => { setView("pedidos"); fetchUserOrders(user.id); }} 
+                    onClick={() => { setSelectedOrderForDetail(null); setView("pedidos"); fetchUserOrders(user.id); }} 
                     style={{ background: 'none', border: 'none', color: 'var(--accent-gold)', cursor: 'pointer', padding: 0, textDecoration: 'underline', fontSize: '0.75rem', fontWeight: 600 }}
                   >
                     Mis Pedidos
@@ -6998,7 +7795,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
           ) : (
             <button 
               className="btn-google-login" 
-              onClick={() => { setView("perfil"); setAuthError(""); }}
+              onClick={() => { setView("perfil"); setProfileSubView('main'); setAuthError(""); }}
               title="Iniciar sesión / Registrarse"
               style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0.5rem 0.8rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'white', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}
             >
@@ -7010,41 +7807,43 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             </button>
           )}
 
-          {/* BOTÓN DE NOTIFICACIONES PUSH ONESIGNAL */}
+          {/* BOTÓN DE NOTIFICACIONES PUSH ONESIGNAL / NATIVAS */}
           <button 
             type="button"
             className="btn-notification-trigger" 
-            onClick={async () => {
-              if (window.OneSignalDeferred) {
-                window.OneSignalDeferred.push(async function(OneSignal) {
-                  try {
-                    await OneSignal.Notifications.requestPermission();
-                  } catch (e) {
-                    console.log("Error solicitando permiso OneSignal:", e);
-                  }
-                });
-              } else if (window.Notification) {
-                window.Notification.requestPermission();
-              }
-            }}
-            title="Activar notificaciones de ofertas y envíos"
+            onClick={handleNotificationToggle}
+            title={notificationStatus === 'granted' ? "Notificaciones activadas (clic para probar)" : "Activar alertas de ofertas y envíos"}
             aria-label="Activar notificaciones"
             style={{ 
+              position: 'relative',
               padding: '0.6rem', 
-              border: '1px solid var(--border-color)', 
+              border: `1.5px solid ${notificationStatus === 'granted' ? 'var(--primary-green)' : 'var(--border-color)'}`, 
               borderRadius: '50%', 
-              background: 'white', 
+              background: notificationStatus === 'granted' ? '#f0fdf4' : 'white', 
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center',
               cursor: 'pointer',
-              color: 'var(--primary-green)'
+              color: 'var(--primary-green)',
+              transition: 'all 0.25s ease'
             }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill={notificationStatus === 'granted' ? 'var(--primary-green)' : 'none'} stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
               <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
             </svg>
+            {notificationStatus === 'granted' && (
+              <span style={{
+                position: 'absolute',
+                top: '4px',
+                right: '4px',
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: '#22c55e',
+                boxShadow: '0 0 0 2px white'
+              }}></span>
+            )}
           </button>
 
           <button 
@@ -7094,13 +7893,8 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 type="button" 
                 className={`sidebar-nav-item ${view === 'pedidos' ? 'active' : ''}`}
                 onClick={() => {
-                  if (user) {
-                    setView("pedidos");
-                    fetchUserOrders(user.id);
-                  } else {
-                    setView("perfil");
-                    setAuthError("Inicia sesión para ver tu historial de pedidos.");
-                  }
+                  setView("pedidos");
+                  fetchUserOrders(user ? user.id : null);
                 }}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', verticalAlign: 'middle' }}>
@@ -7125,7 +7919,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
               <button 
                 type="button" 
                 className={`sidebar-nav-item ${view === 'perfil' ? 'active' : ''}`}
-                onClick={() => { setView("perfil"); setAuthError(""); }}
+                onClick={() => { setView("perfil"); setProfileSubView('main'); setAuthError(""); }}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', verticalAlign: 'middle' }}>
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -8467,238 +9261,187 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
       )}
 
 
-      {/* ==================== VIEW 4: DEDICATED ORDERS & PROFILE DASHBOARD PAGE ==================== */}
+      {/* ==================== VIEW 4: DEDICATED ORDERS & TRACKING PAGE ==================== */}
       {view === "pedidos" && (() => {
+        // 1. If customer clicked on an order to see its details (Image 2)
+        if (selectedOrderForDetail) {
+          return (
+            <main className="orders-page-wrapper animate-fade-in" style={{ minHeight: '75vh', paddingBottom: '3.5rem' }}>
+              {renderKlrOrderDetailScreen(selectedOrderForDetail)}
+            </main>
+          );
+        }
+
+        // 2. Otherwise render the Main Orders Screen (Image 1)
+        const inProcessOrders = userOrders.filter(o => o.status === 'Pendiente' || o.status === 'En Proceso');
+        const shippedOrders = userOrders.filter(o => o.status === 'En Camino' || o.status === 'Enviado');
+        const completedOrders = userOrders.filter(o => o.status === 'Completado' || o.status === 'Entregado');
+
+        // Apply Tab Filter
+        let tabFiltered = userOrders.filter(order => {
+          if (userOrdersFilter === 'pendientes') return order.status === 'Pendiente' || order.status === 'En Proceso';
+          if (userOrdersFilter === 'en_camino') return order.status === 'En Camino' || order.status === 'Enviado';
+          if (userOrdersFilter === 'completados') return order.status === 'Completado' || order.status === 'Entregado';
+          return true;
+        });
+
+        // Apply Search Filter (by ID prefix, customer name, phone, or product item name)
+        const q = ordersSearchQuery.trim().toLowerCase();
+        const displayOrders = tabFiltered.filter(order => {
+          if (!q) return true;
+          const matchId = order.id && order.id.toLowerCase().includes(q.replace('#klr-', ''));
+          const matchName = order.customer_name && order.customer_name.toLowerCase().includes(q);
+          const matchPhone = order.phone && order.phone.includes(q);
+          const matchItem = order.items && order.items.some(it => it.name && it.name.toLowerCase().includes(q));
+          return matchId || matchName || matchPhone || matchItem;
+        });
+
         return (
-          <main className="orders-page-wrapper animate-fade-in" style={{ minHeight: '70vh' }}>
-            {/* Page Header */}
-            <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-              <span style={{ background: 'var(--primary-light)', color: 'var(--primary-green)', padding: '6px 16px', borderRadius: '30px', fontSize: '0.82rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-                Logística y Envíos Bolivia
-              </span>
-              <h2 style={{ fontSize: '2rem', color: 'var(--primary-green)', fontWeight: 900, marginTop: '8px', marginBottom: '8px' }}>
-                Portal de Rastreo de Pedidos
-              </h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', margin: 0 }}>
-                Consulta el estado de despacho de tus suplementos Tiens en tiempo real.
-              </p>
-            </div>
-
-            <div className="premium-dashboard-grid">
+          <main className="orders-page-wrapper animate-fade-in" style={{ minHeight: '75vh', paddingBottom: '3.5rem' }}>
+            <div className="klr-orders-wrapper">
               
-              {/* MAIN CONTAINER: ORDERS / SEARCH RESULT */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-                
-                {/* 1. PUBLIC TRACKING SEARCH BAR (Always accessible if logged out, or as tool if logged in) */}
-                {(!user || publicOrderResult || publicSearchError) && (
-                  <div className="premium-panel-card" style={{ padding: '1.75rem' }}>
-                    <h2 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--primary-green)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                      Rastrear un Pedido Específico
-                    </h2>
-                    <p style={{ margin: '4px 0 1.25rem 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                      Ingresa el código de compra que recibiste por WhatsApp o correo para ver su despacho.
-                    </p>
+              {/* Header Title (Image 1) */}
+              <h1 className="klr-orders-header-title">
+                MIS PEDIDOS
+              </h1>
 
-                    <form onSubmit={handlePublicSearchOrder} style={{ display: 'flex', gap: '10px' }}>
-                      <div className="premium-input-wrapper" style={{ flexGrow: 1 }}>
-                        <input 
-                          type="text" 
-                          className="form-input" 
-                          placeholder="Ej: #KLR-A1B2C3D4 o el ID de tu pedido"
-                          value={publicSearchId}
-                          onChange={(e) => setPublicSearchId(e.target.value)}
-                          style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '12px', border: '1.5px solid var(--border-color)' }}
-                        />
-                      </div>
-                      <button 
-                        type="submit" 
-                        className="btn-dash-save"
-                        disabled={publicSearchLoading}
-                        style={{ padding: '0 1.5rem', height: '46px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem' }}
-                      >
-                        {publicSearchLoading ? (
-                          <div style={{ border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', width: '16px', height: '16px', animation: 'spin 1s linear infinite' }}></div>
-                        ) : 'Buscar'}
-                      </button>
-                    </form>
-
-                    {publicSearchError && (
-                      <div style={{ background: '#fef2f2', border: '1px solid #fee2e2', color: '#dc2626', padding: '0.85rem 1rem', borderRadius: '12px', fontSize: '0.85rem', marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        ⚠️ {publicSearchError}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* 2. PUBLIC SEARCH RESULT */}
-                {publicOrderResult && (
-                  <div className="premium-panel-card" style={{ border: '1.5px solid var(--primary-green)', background: '#fafcfa' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', marginBottom: '1rem' }}>
-                      <div>
-                        <span style={{ fontSize: '0.78rem', color: 'var(--primary-green)', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                          Resultado de Búsqueda
-                        </span>
-                        <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: 'var(--primary-green)' }}>
-                          Pedido #KLR-{publicOrderResult.id.substring(0,8).toUpperCase()}
-                        </h2>
-                      </div>
-                      <button 
-                        onClick={() => { setPublicOrderResult(null); setPublicSearchId(''); }}
-                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
-                      >
-                        Limpiar Búsqueda
-                      </button>
-                    </div>
-
-                    {/* Render order card detail */}
-                    {renderSingleOrderDetails(publicOrderResult)}
-                  </div>
-                )}
-
-                {/* 3. LOGGED-IN USERS ORDER LIST */}
-                {user && (
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem' }}>
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-                      </svg>
-                      <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0, color: 'var(--primary-green)' }}>Historial de tus Compras</h2>
-                    </div>
-
-                    {userOrdersLoading ? (
-                      <div className="premium-panel-card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-                        <div style={{ border: '3px solid rgba(0,0,0,0.1)', borderTop: '3px solid var(--accent-gold)', borderRadius: '50%', width: '36px', height: '36px', animation: 'spin 1s linear infinite', margin: '0 auto 15px auto' }}></div>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>Descargando tu historial de compras de forma segura...</p>
-                      </div>
-                    ) : userOrders.length === 0 ? (
-                      <div className="premium-panel-card" style={{ textAlign: 'center', padding: '3.5rem 2rem' }}>
-                        <div style={{ color: 'var(--accent-gold)', opacity: 0.15, marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
-                          <svg width="64" height="64" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>
-                          </svg>
-                        </div>
-                        <h3 style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--primary-green)', marginBottom: '8px' }}>Aún no tienes pedidos registrados</h3>
-                        <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '1.5rem', maxWidth: '380px', margin: '0 auto 1.5rem' }}>Explora nuestros combos de suplementos naturales en oferta y haz tu primer pedido por WhatsApp hoy.</p>
-                        <button 
-                          type="button" 
-                          onClick={() => setView("catalog")}
-                          className="btn-add-cart"
-                          style={{ padding: '12px 24px', width: 'auto', background: 'var(--primary-green)', border: 'none', color: 'white', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-                        >
-                          Explorar Catálogo de Combos
-                        </button>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        {userOrders.map(order => (
-                          <div key={order.id} className="premium-panel-card" style={{ padding: '1.5rem' }}>
-                            {renderSingleOrderDetails(order)}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+              {/* Live Search Input Bar (Image 1) */}
+              <div className="klr-search-container">
+                <span className="klr-search-icon-left">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                </span>
+                <input 
+                  type="text"
+                  className="klr-search-input-box"
+                  placeholder="Buscar por código (#KLR...), producto o celular..."
+                  value={ordersSearchQuery}
+                  onChange={(e) => setOrdersSearchQuery(e.target.value)}
+                />
+                {ordersSearchQuery && (
+                  <button 
+                    type="button" 
+                    className="klr-search-clear-btn"
+                    onClick={() => setOrdersSearchQuery("")}
+                    title="Limpiar búsqueda"
+                  >
+                    ✕
+                  </button>
                 )}
               </div>
 
-              {/* SIDEBAR COLUMNS: GREETINGS & INFORMATION */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                
-                {/* User Info card (Logged in) */}
-                {user ? (
-                  <div className="premium-panel-card" style={{ padding: '1.5rem', textAlign: 'center' }}>
-                    <div style={{ width: '70px', height: '70px', borderRadius: '50%', margin: '0 auto 12px auto', border: '3px solid var(--accent-gold)', overflow: 'hidden', background: '#f4f6f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {(profile?.avatar_url || user?.user_metadata?.avatar_url) ? (
-                        <img 
-                          src={resolveAssetUrl(profile?.avatar_url || user?.user_metadata?.avatar_url)} 
-                          alt="Avatar" 
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                        />
-                      ) : (
-                        <span style={{ fontSize: '1.6rem', fontWeight: 'bold', color: 'var(--primary-green)' }}>
-                          {(profile?.full_name || user?.user_metadata?.full_name || user?.email || "U")[0].toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--primary-green)', fontWeight: 900 }}>
-                      {profile?.full_name || user?.user_metadata?.full_name || "Cliente Kaldirev"}
-                    </h3>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{user.email}</span>
-                    
-                    <div style={{ margin: '1rem 0', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', padding: '10px 0' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', margin: '4px 0' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Membresía:</span>
-                        <strong style={{ color: 'var(--accent-gold)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                          Cliente Gold
-                        </strong>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', margin: '4px 0' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Pedidos hechos:</span>
-                        <strong>{userOrders.length} compras</strong>
-                      </div>
-                      {profile?.city && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', margin: '4px 0' }}>
-                          <span style={{ color: 'var(--text-muted)' }}>Ciudad:</span>
-                          <strong>{profile.city}</strong>
-                        </div>
-                      )}
-                    </div>
+              {/* Horizontal Filter Tabs with Counter & Active Gold Indicator (Image 1) */}
+              <div className="klr-orders-tabs-nav">
+                <button 
+                  type="button" 
+                  className={`klr-order-tab-btn ${userOrdersFilter === 'todos' ? 'active' : ''}`}
+                  onClick={() => setUserOrdersFilter('todos')}
+                >
+                  <span>Todos</span>
+                  <span className="klr-tab-count-badge">({userOrders.length})</span>
+                </button>
+                <button 
+                  type="button" 
+                  className={`klr-order-tab-btn ${userOrdersFilter === 'pendientes' ? 'active' : ''}`}
+                  onClick={() => setUserOrdersFilter('pendientes')}
+                >
+                  <span>En Proceso</span>
+                  <span className="klr-tab-count-badge">({inProcessOrders.length})</span>
+                </button>
+                <button 
+                  type="button" 
+                  className={`klr-order-tab-btn ${userOrdersFilter === 'en_camino' ? 'active' : ''}`}
+                  onClick={() => setUserOrdersFilter('en_camino')}
+                >
+                  <span>Enviados</span>
+                  <span className="klr-tab-count-badge">({shippedOrders.length})</span>
+                </button>
+                <button 
+                  type="button" 
+                  className={`klr-order-tab-btn ${userOrdersFilter === 'completados' ? 'active' : ''}`}
+                  onClick={() => setUserOrdersFilter('completados')}
+                >
+                  <span>Entregados</span>
+                  <span className="klr-tab-count-badge">({completedOrders.length})</span>
+                </button>
+              </div>
 
-                    <button 
-                      type="button" 
-                      onClick={() => setView("perfil")}
-                      className="btn-share"
-                      style={{ width: '100%', padding: '8px', fontSize: '0.8rem', background: '#fff', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                      Editar mis Datos
-                    </button>
+              {/* Orders List / Loading / Empty State */}
+              {userOrdersLoading ? (
+                <div className="premium-panel-card" style={{ textAlign: 'center', padding: '3.5rem 2rem', borderRadius: '20px' }}>
+                  <div style={{ border: '3px solid rgba(0,0,0,0.1)', borderTop: '3px solid var(--primary-green)', borderRadius: '50%', width: '36px', height: '36px', animation: 'spin 1s linear infinite', margin: '0 auto 15px auto' }}></div>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 }}>Cargando tus compras...</p>
+                </div>
+              ) : userOrders.length === 0 ? (
+                /* Empty state when no orders made yet on this device */
+                <div className="empty-orders-friendly-card" style={{ marginBottom: '1.5rem' }}>
+                  <div className="empty-orders-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
                   </div>
-                ) : (
-                  /* Welcome Info Card (Logged out) */
-                  <div className="premium-panel-card" style={{ padding: '1.5rem' }}>
-                    <h3 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', color: 'var(--primary-green)', fontWeight: 800 }}>
-                      ¿Quieres guardar tu historial?
-                    </h3>
-                    <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-dark)', lineHeight: '1.45', marginBottom: '1.25rem' }}>
-                      Regístrate gratis con tu correo o cuenta de Google para guardar tus direcciones de entrega por defecto y rastrear tus pedidos sin tener que ingresar códigos.
-                    </p>
-                    <button 
-                      type="button" 
-                      onClick={() => setView("perfil")}
-                      className="btn-add-cart"
-                      style={{ padding: '10px 16px', fontSize: '0.85rem' }}
-                    >
-                      Crear Cuenta / Ingresar
-                    </button>
+                  <h3 style={{ fontWeight: 900, fontSize: '1.25rem', color: 'var(--primary-green)', marginBottom: '8px' }}>
+                    {user ? 'Aún no tienes compras registradas' : 'No tienes pedidos recientes en este dispositivo'}
+                  </h3>
+                  <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '1.25rem', maxWidth: '400px', margin: '0 auto 1.25rem' }}>
+                    Descubre nuestros combos de bienestar natural Tiens con entrega rápida y pago contraentrega en Bolivia.
+                  </p>
+                  <button 
+                    type="button" 
+                    onClick={() => setView("catalog")}
+                    className="btn-friendly-shop"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                    Ver Catálogo y Ofertas
+                  </button>
+                </div>
+              ) : displayOrders.length === 0 ? (
+                /* Empty search query state */
+                <div className="premium-panel-card" style={{ textAlign: 'center', padding: '2.5rem 1.5rem', borderRadius: '18px', color: '#64748b', marginBottom: '1.5rem' }}>
+                  <p style={{ fontSize: '1.05rem', fontWeight: 700, margin: '0 0 6px 0', color: 'var(--primary-green)' }}>
+                    No se encontraron pedidos
+                  </p>
+                  <span style={{ fontSize: '0.86rem' }}>
+                    {ordersSearchQuery ? `No hay resultados para "${ordersSearchQuery}" en esta pestaña.` : 'No tienes pedidos en este estado.'}
+                  </span>
+                </div>
+              ) : (
+                /* List of cards (Image 1) */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+                  {displayOrders.map(order => renderKlrOrderCard(order))}
+                </div>
+              )}
+
+              {/* Public Guest Search Card (Rastreo de Invitados por Teléfono o Código) */}
+              <div className="friendly-order-search-card" style={{ marginTop: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                  <h3 style={{ margin: 0, fontSize: '0.98rem', color: 'var(--primary-green)', fontWeight: 800 }}>
+                    ¿Hiciste un pedido como invitado o desde otro celular?
+                  </h3>
+                </div>
+                <p style={{ margin: '0 0 10px 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  Ingresa tu número de celular o código para abrir los detalles de tu compra al instante:
+                </p>
+                <form onSubmit={handlePublicSearchOrder} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <input 
+                    type="text" 
+                    className="friendly-search-input"
+                    placeholder="Ej: 77123456 o #KLR-A1B2C3D4"
+                    value={publicSearchId}
+                    onChange={(e) => setPublicSearchId(e.target.value)}
+                  />
+                  <button 
+                    type="submit" 
+                    className="btn-friendly-search-submit"
+                    disabled={publicSearchLoading}
+                  >
+                    {publicSearchLoading ? 'Buscando...' : 'Buscar Pedido'}
+                  </button>
+                </form>
+
+                {publicSearchError && (
+                  <div style={{ background: '#fef2f2', border: '1px solid #fee2e2', color: '#dc2626', padding: '0.65rem 0.9rem', borderRadius: '10px', fontSize: '0.82rem', marginTop: '0.75rem' }}>
+                    ⚠️ {publicSearchError}
                   </div>
                 )}
-
-                {/* Live Support Card */}
-                <div className="premium-panel-card" style={{ padding: '1.5rem', background: '#f6fdf9', border: '1px solid #d1fae5' }}>
-                  <h3 style={{ margin: '0 0 6px 0', fontSize: '1rem', color: '#065f46', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', flexShrink: 0 }}></span>
-                    Asistencia Logística
-                  </h3>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#047857', lineHeight: '1.4', marginBottom: '1rem' }}>
-                    ¿Tienes dudas sobre el horario de entrega o el delivery? Chatea directamente con el operador de despacho de Kaldirev Bolivia.
-                  </p>
-                  <a 
-                    href={`https://wa.me/${config.whatsappNumber || '59163488086'}?text=Hola,%20necesito%20ayuda%20con%20el%20despacho%20de%20un%20pedido.`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-whatsapp-submit"
-                    style={{ background: '#25d366', color: '#fff', fontSize: '0.82rem', padding: '10px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', border: 'none', borderRadius: '10px', fontWeight: 'bold' }}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                    Contactar Soporte
-                  </a>
-                </div>
               </div>
 
             </div>
@@ -8712,43 +9455,43 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
           
           {/* About Us Hero Cover */}
           <div className="about-hero-section">
-            <span style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', padding: '5px 12px', borderRadius: '30px', fontSize: '0.78rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', padding: '5px 14px', borderRadius: '30px', fontSize: '0.78rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M2 22C2 22 6 12 12 12C12 12 16 16 22 2C22 2 12 6 12 12C12 12 8 16 2 22Z"></path></svg>
-              Transparencia y Propósito
+              Transparencia, Confianza & Salud
             </span>
-            <h2 style={{ fontSize: '2.2rem', fontWeight: 900, marginTop: '10px', marginBottom: '10px' }}>
+            <h2 style={{ fontSize: '2.2rem', fontWeight: 900, marginTop: '10px', marginBottom: '10px', color: '#ffffff', textShadow: '0 2px 10px rgba(0,0,0,0.35)' }}>
               Sobre Nosotros
             </h2>
             <p style={{ margin: '0 auto', maxWidth: '650px', fontSize: '0.98rem', opacity: 0.9, lineHeight: '1.5' }}>
-              Profesionalizando la distribución logística y el e-commerce de bienestar en Bolivia con sellos de seguridad y empaques ecológicos.
+              Profesionalizando la distribución logística y el e-commerce de bienestar natural en Bolivia con sellos de seguridad y empaques ecológicos.
             </p>
           </div>
 
-          {/* Navigation Tabs */}
-          <div style={{ display: 'flex', background: '#f4f6f0', borderRadius: '14px', padding: '6px', border: '1px solid var(--border-color)', marginBottom: '1.5rem', gap: '6px' }}>
+          {/* Navigation Tabs (Smooth touch scroll on mobile) */}
+          <div className="about-tabs-nav">
             <button 
               type="button" 
-              style={{ flex: 1, padding: '10px', border: 'none', borderRadius: '10px', background: infoActiveTab === 'mision' ? 'var(--primary-green)' : 'transparent', fontSize: '0.9rem', fontWeight: 700, color: infoActiveTab === 'mision' ? 'white' : 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.25s', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              className={`about-tab-btn ${infoActiveTab === 'mision' ? 'active' : ''}`}
               onClick={() => setInfoActiveTab('mision')}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
-              Nuestra Esencia
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+              <span>Nuestra Esencia</span>
             </button>
             <button 
               type="button" 
-              style={{ flex: 1, padding: '10px', border: 'none', borderRadius: '10px', background: infoActiveTab === 'ecologia' ? 'var(--primary-green)' : 'transparent', fontSize: '0.9rem', fontWeight: 700, color: infoActiveTab === 'ecologia' ? 'white' : 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.25s', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              className={`about-tab-btn ${infoActiveTab === 'ecologia' ? 'active' : ''}`}
               onClick={() => setInfoActiveTab('ecologia')}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-              Compromiso Ecológico
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+              <span>Compromiso Ecológico</span>
             </button>
             <button 
               type="button" 
-              style={{ flex: 1, padding: '10px', border: 'none', borderRadius: '10px', background: infoActiveTab === 'legal' ? 'var(--primary-green)' : 'transparent', fontSize: '0.9rem', fontWeight: 700, color: infoActiveTab === 'legal' ? 'white' : 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.25s', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              className={`about-tab-btn ${infoActiveTab === 'legal' ? 'active' : ''}`}
               onClick={() => setInfoActiveTab('legal')}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M12 22V2M12 5h8M12 19H4M12 12h10M12 12H2"></path></svg>
-              Deslinde y Cumplimiento
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M12 22V2M12 5h8M12 19H4M12 12h10M12 12H2"></path></svg>
+              <span>Deslinde y Cumplimiento</span>
             </button>
           </div>
 
@@ -8757,41 +9500,62 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             
             {infoActiveTab === 'mision' && (
               <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                
+                {/* Bolivia Trust & Impact Metrics Counter */}
+                <div className="about-stats-grid">
+                  <div className="about-stat-card">
+                    <span className="about-stat-number">+1,500</span>
+                    <span className="about-stat-label">Familias Bolivianas Atendidas</span>
+                  </div>
+                  <div className="about-stat-card">
+                    <span className="about-stat-number">100%</span>
+                    <span className="about-stat-label">Empaques Biodegradables</span>
+                  </div>
+                  <div className="about-stat-card">
+                    <span className="about-stat-number">9 Deptos</span>
+                    <span className="about-stat-label">Envíos a Nivel Nacional</span>
+                  </div>
+                  <div className="about-stat-card">
+                    <span className="about-stat-number">2-24 hrs</span>
+                    <span className="about-stat-label">Despacho Rápido Urbano</span>
+                  </div>
+                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-                  <div style={{ background: '#fafcfa', padding: '1.5rem', borderRadius: '16px', borderLeft: '4px solid var(--primary-green)', border: '1px solid var(--border-color)', borderLeftWidth: '5px' }}>
-                    <h2 style={{ color: 'var(--primary-green)', fontSize: '1.1rem', fontWeight: 800, margin: '0 0 8px 0' }}>Nuestra Misión</h2>
-                    <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-dark)', lineHeight: '1.5' }}>
-                      Proveer un canal logístico y digital estandarizado que modernice la distribución de suplementos de bienestar en Bolivia, garantizando a los consumidores entregas higiénicas, empaques responsables y total claridad comercial.
+                  <div style={{ background: '#fafcfa', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-color)', borderLeft: '5px solid var(--primary-green)' }}>
+                    <h2 style={{ color: 'var(--primary-green)', fontSize: '1.15rem', fontWeight: 800, margin: '0 0 8px 0' }}>Nuestra Misión</h2>
+                    <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-dark)', lineHeight: '1.55' }}>
+                      Proveer un canal logístico y digital de excelencia que modernice la distribución de suplementos de bienestar en Bolivia, garantizando a las familias bolivianas entregas higiénicas, empaques ecológicos y total claridad comercial.
                     </p>
                   </div>
 
-                  <div style={{ background: '#fafcfa', padding: '1.5rem', borderRadius: '16px', borderLeft: '4px solid var(--accent-gold)', border: '1px solid var(--border-color)', borderLeftWidth: '5px' }}>
-                    <h2 style={{ color: 'var(--primary-green)', fontSize: '1.1rem', fontWeight: 800, margin: '0 0 8px 0' }}>Nuestra Visión</h2>
-                    <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-dark)', lineHeight: '1.5' }}>
-                      Consolidarse como la plataforma de intermediación digital de suplementos independientes más confiable de Bolivia, destacando por nuestro rigor en la manipulación y la transparencia de cara al cliente final.
+                  <div style={{ background: '#fafcfa', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-color)', borderLeft: '5px solid var(--accent-gold)' }}>
+                    <h2 style={{ color: 'var(--primary-green)', fontSize: '1.15rem', fontWeight: 800, margin: '0 0 8px 0' }}>Nuestra Visión</h2>
+                    <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-dark)', lineHeight: '1.55' }}>
+                      Consolidarse como la plataforma de intermediación digital y logística de suplementos más confiable y transparente de Bolivia, destacando por nuestra seriedad operativa, rapidez y respeto por la naturaleza.
                     </p>
                   </div>
                 </div>
 
                 <div>
-                  <h2 style={{ color: 'var(--primary-green)', fontSize: '1.1rem', fontWeight: 800, marginBottom: '1rem', textAlign: 'center' }}>
+                  <h2 style={{ color: 'var(--primary-green)', fontSize: '1.2rem', fontWeight: 800, marginBottom: '1.25rem', textAlign: 'center' }}>
                     Nuestros Valores Fundamentales
                   </h2>
                   <div className="about-grid-cards">
                     <div className="about-value-card">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '8px' }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                      <strong style={{ display: 'block', color: 'var(--primary-green)', fontSize: '0.9rem', marginBottom: '4px' }}>Rigor y Ética</strong>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>Respetamos estrictamente los derechos de marcas registradas y promovemos una venta clara sin diagnósticos falsos.</span>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '8px' }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                      <strong style={{ display: 'block', color: 'var(--primary-green)', fontSize: '0.95rem', marginBottom: '4px' }}>Rigor y Ética</strong>
+                      <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.45' }}>Respetamos estrictamente los derechos de marcas registradas y promovemos una venta clara sin diagnósticos falsos.</span>
                     </div>
                     <div className="about-value-card">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '8px' }}><path d="M2 22C2 22 6 12 12 12C12 12 16 16 22 2C22 2 12 6 12 12C12 12 8 16 2 22Z"></path></svg>
-                      <strong style={{ display: 'block', color: 'var(--primary-green)', fontSize: '0.9rem', marginBottom: '4px' }}>Responsabilidad Verde</strong>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>Reducimos el uso de plásticos utilizando cajas reciclables y papel kraft de relleno en todas nuestras entregas.</span>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '8px' }}><path d="M2 22C2 22 6 12 12 12C12 12 16 16 22 2C22 2 12 6 12 12C12 12 8 16 2 22Z"></path></svg>
+                      <strong style={{ display: 'block', color: 'var(--primary-green)', fontSize: '0.95rem', marginBottom: '4px' }}>Responsabilidad Verde</strong>
+                      <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.45' }}>Eliminamos el uso de plásticos utilizando cajas de cartón corrugado reciclable y papel kraft en todos los envíos.</span>
                     </div>
                     <div className="about-value-card">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '8px' }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                      <strong style={{ display: 'block', color: 'var(--primary-green)', fontSize: '0.9rem', marginBottom: '4px' }}>Eficiencia Digital</strong>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>Facilitamos tu compra mediante integraciones de pago QR inmediato de transferencia bancaria y chat en un clic.</span>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '8px' }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                      <strong style={{ display: 'block', color: 'var(--primary-green)', fontSize: '0.95rem', marginBottom: '4px' }}>Eficiencia y Cercanía</strong>
+                      <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.45' }}>Facilitamos tu compra mediante pago QR inmediato, pago contra entrega y soporte directo por WhatsApp.</span>
                     </div>
                   </div>
                 </div>
@@ -8799,33 +9563,56 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             )}
 
             {infoActiveTab === 'ecologia' && (
-              <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', alignItems: 'center' }}>
-                <div style={{ textAlign: 'left' }}>
-                  <span style={{ background: '#e8f5e9', color: '#2e7d32', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
-                    Eco-Logística Bolivia
-                  </span>
-                  <h2 style={{ fontSize: '1.4rem', color: 'var(--primary-green)', fontWeight: 800, marginTop: '8px', marginBottom: '10px' }}>
-                    Empaques Biodegradables y Seguros
-                  </h2>
-                  <p style={{ fontSize: '0.88rem', color: 'var(--text-dark)', lineHeight: '1.5', marginBottom: '12px' }}>
-                    En <strong>Kaldirev</strong> creemos que cuidar tu salud interna no debe significar dañar nuestro entorno externo. Por eso, hemos diseñado un protocolo de despacho libre de envoltorios plásticos contaminantes.
-                  </p>
-                  <ul style={{ paddingLeft: '0', listStyle: 'none', fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}><span style={{ color: 'var(--primary-green)' }}>•</span> Cajas de cartón corrugado 100% reciclables y reutilizables.</li>
-                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}><span style={{ color: 'var(--primary-green)' }}>•</span> Cinta adhesiva de papel activada por agua (biodegradable).</li>
-                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}><span style={{ color: 'var(--primary-green)' }}>•</span> Etiquetas impresas en papel reciclado con tinta ecológica.</li>
-                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}><span style={{ color: 'var(--primary-green)' }}>•</span> Sellos de seguridad inviolables que garantizan que tu producto viene directo de origen.</li>
-                  </ul>
-                </div>
-                <div style={{ background: '#faf9f6', padding: '1.5rem', borderRadius: '16px', border: '1px dashed var(--accent-gold)', textAlign: 'center' }}>
-                  <div style={{ width: '42px', height: '42px', background: 'var(--primary-light)', color: 'var(--primary-green)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px auto' }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', alignItems: 'center' }}>
+                  <div style={{ textAlign: 'left' }}>
+                    <span style={{ background: '#e8f5e9', color: '#2e7d32', padding: '4px 12px', borderRadius: '14px', fontSize: '0.78rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
+                      Eco-Logística Responsable Bolivia
+                    </span>
+                    <h2 style={{ fontSize: '1.45rem', color: 'var(--primary-green)', fontWeight: 800, marginTop: '8px', marginBottom: '10px' }}>
+                      Empaques Biodegradables y Seguros
+                    </h2>
+                    <p style={{ fontSize: '0.88rem', color: 'var(--text-dark)', lineHeight: '1.55', marginBottom: '12px' }}>
+                      En <strong>Kaldirev</strong> creemos que cuidar tu salud interna no debe significar dañar nuestro medio ambiente. Por eso, implementamos un protocolo de despacho libre de envoltorios plásticos de un solo uso.
+                    </p>
+                    <ul style={{ paddingLeft: '0', listStyle: 'none', fontSize: '0.84rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}><span style={{ color: 'var(--primary-green)', fontWeight: 'bold' }}>✓</span> Cajas de cartón corrugado 100% reciclables y reutilizables.</li>
+                      <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}><span style={{ color: 'var(--primary-green)', fontWeight: 'bold' }}>✓</span> Relleno protector de papel kraft natural biodegradable (sin burbujas plásticas).</li>
+                      <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}><span style={{ color: 'var(--primary-green)', fontWeight: 'bold' }}>✓</span> Cinta adhesiva de papel activada por agua.</li>
+                      <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}><span style={{ color: 'var(--primary-green)', fontWeight: 'bold' }}>✓</span> Sellos de seguridad inviolables que garantizan producto intacto de origen.</li>
+                    </ul>
                   </div>
-                  <strong style={{ color: 'var(--primary-green)', display: 'block', fontSize: '0.95rem', marginBottom: '6px' }}>Nuestro Compromiso Local</strong>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-dark)', margin: 0, lineHeight: '1.4' }}>
-                    Coordinamos rutas de despacho optimizadas con mensajería local para reducir la huella de carbono de cada envío dentro de Santa Cruz, La Paz y Cochabamba.
-                  </p>
+
+                  <div style={{ background: '#faf9f6', padding: '1.75rem', borderRadius: '18px', border: '1.5px dashed var(--accent-gold)', textAlign: 'center' }}>
+                    <div style={{ width: '48px', height: '48px', background: 'var(--primary-light)', color: 'var(--primary-green)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                    </div>
+                    <strong style={{ color: 'var(--primary-green)', display: 'block', fontSize: '1rem', marginBottom: '6px' }}>Distribución Inteligente en Bolivia</strong>
+                    <p style={{ fontSize: '0.84rem', color: 'var(--text-dark)', margin: 0, lineHeight: '1.5' }}>
+                      Coordinamos rutas de despacho optimizadas con mensajería local en Santa Cruz de la Sierra, La Paz, Cochabamba y el resto del país, reduciendo tiempos de espera y emisiones.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Packaging comparison */}
+                <div className="eco-compare-grid">
+                  <div className="eco-compare-box eco-card-bad">
+                    <strong style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', fontSize: '0.92rem' }}>
+                      ❌ Despacho Convencional Común
+                    </strong>
+                    <p style={{ margin: 0, lineHeight: '1.5' }}>
+                      Bolsas plásticas de un solo uso, plástico de burbujas no reciclable y cintas plásticas que tardan más de 400 años en degradarse, contaminando la naturaleza boliviana.
+                    </p>
+                  </div>
+                  <div className="eco-compare-box eco-card-good">
+                    <strong style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', fontSize: '0.92rem' }}>
+                      🌿 Estándar Kaldirev Eco-Safe
+                    </strong>
+                    <p style={{ margin: 0, lineHeight: '1.5' }}>
+                      Cajas de cartón corrugado 100% reciclable, amortiguación interna con papel kraft reciclado, precintos de seguridad y sellos inviolables que protegen tu inversión y el planeta.
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
@@ -8833,31 +9620,31 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             {infoActiveTab === 'legal' && (
               <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', fontSize: '0.88rem', textAlign: 'left' }}>
                 <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
-                  <h2 style={{ color: '#d93025', fontSize: '1rem', margin: '0 0 6px 0', fontWeight: 800 }}>
+                  <h2 style={{ color: '#d93025', fontSize: '1.05rem', margin: '0 0 6px 0', fontWeight: 800 }}>
                     AVISO DE AUTONOMÍA Y COMPLIANCE
                   </h2>
-                  <p style={{ margin: 0, color: 'var(--text-dark)', lineHeight: '1.45' }}>
-                    <strong>Kaldirev</strong> es una red digital y logística independiente de distribución comercial. No formamos parte corporativa, ni somos representantes legales, filiales, ni sucursales directas de la corporación multinacional <strong>Tiens (Tianshi)</strong>. Adquirimos de manera legítima los productos originales para su venta e intermediación minorista en Bolivia.
+                  <p style={{ margin: 0, color: 'var(--text-dark)', lineHeight: '1.5' }}>
+                    <strong>Kaldirev</strong> es una plataforma digital y logística independiente de comercialización y distribución en Bolivia. No formamos parte corporativa, ni somos representantes legales exclusivos, filiales, ni sucursales directas de la corporación multinacional <strong>Tiens (Tianshi)</strong>. Adquirimos de manera legítima los productos originales para su intermediación y venta minorista autorizada.
                   </p>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '15px' }}>
                   <div>
-                    <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.85rem', color: 'var(--primary-green)' }}>Trademarks de Terceros</h5>
-                    <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                      Todas las marcas y logotipos como Tiens, BCP, Yape, PedidosYa, inDrive, etc., pertenecen de forma exclusiva a sus respectivos titulares legales. Su mención es meramente logística y referencial para el consumidor.
+                    <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.88rem', color: 'var(--primary-green)' }}>Trademarks de Terceros</h5>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.45' }}>
+                      Todas las marcas y logotipos como Tiens, BCP, Banco Unión, Yape, PedidosYa, inDrive, etc., pertenecen de forma exclusiva a sus respectivos titulares legales. Su mención en esta plataforma es meramente informativa, logística y referencial para el consumidor.
                     </p>
                   </div>
                   <div>
-                    <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.85rem', color: 'var(--primary-green)' }}>Deslinde Sanitario</h5>
-                    <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                      Los suplementos alimenticios Tiens son productos preventivos y coadyuvantes de bienestar. No son medicamentos, ni pretenden reemplazar terapias o prescripciones médicas autorizadas por profesionales de salud.
+                    <h5 style={{ margin: '0 0 6px 0', fontWeight: 700, fontSize: '0.88rem', color: 'var(--primary-green)' }}>Deslinde Sanitario</h5>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.45' }}>
+                      Los suplementos alimenticios Tiens son productos coadyuvantes y preventivos de nutrición y bienestar. No constituyen medicamentos ni pretenden sustituir tratamientos o prescripciones médicas autorizadas por profesionales de la salud.
                     </p>
                   </div>
                 </div>
 
-                <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', padding: '12px 14px', borderRadius: '12px', color: '#c2410c', fontSize: '0.8rem', lineHeight: '1.4' }}>
-                  <strong>Aviso Importante:</strong> Kaldirev prohíbe explícitamente a sus asesores y distribuidores formular diagnósticos médicos, prescribir tratamientos curativos definitivos, o alterar las dosificaciones oficiales establecidas por los registros sanitarios correspondientes (SENASAG / UNIMED).
+                <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', padding: '14px 16px', borderRadius: '14px', color: '#c2410c', fontSize: '0.82rem', lineHeight: '1.5' }}>
+                  <strong>Aviso Importante:</strong> Kaldirev prohíbe explícitamente a sus asesores formular diagnósticos médicos, asegurar curaciones mágicas, o alterar las dosificaciones oficiales de consumo establecidas por los registros sanitarios correspondientes (SENASAG / UNIMED).
                 </div>
               </div>
             )}
@@ -8866,338 +9653,941 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
         </main>
       )}
 
-      {/* ==================== VIEW 6: DEDICATED PROFILE PAGE ==================== */}
+      {/* ==================== VIEW 6: DEDICATED PROFILE PAGE (Matching media_1788631750357.png) ==================== */}
       {view === "perfil" && (
-        <main className="perfil-page-wrapper animate-fade-in" style={{ minHeight: '70vh' }}>
-          {/* Page Header */}
-          <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-            <span style={{ background: 'var(--primary-light)', color: 'var(--primary-green)', padding: '6px 16px', borderRadius: '30px', fontSize: '0.82rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-              Mi Cuenta Cliente
-            </span>
-            <h1 style={{ fontSize: '2rem', color: 'var(--primary-green)', fontWeight: 900, marginTop: '8px', marginBottom: '8px' }}>
-              {user ? "Panel de Control de Cliente" : "Mi Cuenta Kaldirev"}
-            </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', margin: 0 }}>
-              {user ? "Administra tus direcciones y haz seguimiento de tus compras de bienestar." : "Guarda tus direcciones de entrega por defecto y haz seguimiento de tus pedidos en Bolivia."}
-            </p>
-          </div>
-
-          {!user ? (
-            /* ==================== LOGIN VIEW ==================== */
-            <div className="premium-panel-card" style={{ maxWidth: '460px', margin: '0 auto', textAlign: 'center', padding: '2.5rem 2rem' }}>
-              {/* Logo / Badge */}
-              <div style={{ width: '60px', height: '60px', background: 'var(--primary-light)', color: 'var(--primary-green)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem auto', boxShadow: '0 4px 12px rgba(15, 61, 46, 0.08)' }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M2 22C2 22 6 12 12 12C12 12 16 16 22 2C22 2 12 6 12 12C12 12 8 16 2 22Z"></path></svg>
-              </div>
+        <main className="perfil-page-wrapper animate-fade-in" style={{ minHeight: '75vh', paddingBottom: '3.5rem' }}>
+          <div className="klr-profile-screen-container">
+            <div className="klr-profile-card-shell">
               
-              <h2 style={{ fontSize: '1.4rem', color: 'var(--primary-green)', fontWeight: 900, marginBottom: '6px' }}>
-                Acceder a mi Cuenta
-              </h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '1.75rem', lineHeight: '1.45' }}>
-                Ingresa con tu método preferido de forma rápida y segura.
-              </p>
-
-              {authError && (
-                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', padding: '10px 14px', borderRadius: '12px', fontSize: '0.82rem', marginBottom: '1.25rem', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  ⚠️ {authError}
-                </div>
-              )}
-
-              {/* Google Sign In */}
-              <button 
-                type="button" 
-                onClick={handleGoogleLogin}
-                className="btn-google-login"
-                style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1.5px solid var(--border-color)', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.25s', fontSize: '0.92rem', color: 'var(--text-dark)' }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = '#fafbfa'; e.currentTarget.style.borderColor = 'var(--primary-green)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.56-2.77c-.98.66-2.23 1.06-3.72 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                </svg>
-                Acceder con Google
-              </button>
-
-              <div style={{ display: 'flex', alignItems: 'center', margin: '1.5rem 0', color: '#bbb' }}>
-                <div style={{ flexGrow: 1, height: '1px', background: 'var(--border-color)' }}></div>
-                <span style={{ padding: '0 12px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>o ingresa con tu correo</span>
-                <div style={{ flexGrow: 1, height: '1px', background: 'var(--border-color)' }}></div>
-              </div>
-
-              {/* Email Form */}
-              <form onSubmit={handleEmailLogin} className="premium-input-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'left' }}>
-                <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Correo Electrónico</label>
-                  <input 
-                    type="email" 
-                    required 
-                    className="form-input" 
-                    placeholder="correo@ejemplo.com"
-                    value={authEmail} 
-                    onChange={(e) => setAuthEmail(e.target.value)} 
-                    style={{ width: '100%' }}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Contraseña</label>
-                  <input 
-                    type="password" 
-                    required 
-                    className="form-input" 
-                    placeholder="••••••••" 
-                    value={authPassword} 
-                    onChange={(e) => setAuthPassword(e.target.value)}
-                    style={{ width: '100%' }}
-                  />
-                </div>
-                
-                <button 
-                  type="submit" 
-                  className="btn-dash-save animate-pulse-slow" 
-                  style={{ width: '100%', padding: '12px', height: '46px', border: 'none', background: 'var(--primary-green)', color: 'white', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  disabled={authLoading}
-                >
-                  {authLoading ? (
-                    <div style={{ border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', width: '16px', height: '16px', animation: 'spin 1s linear infinite' }}></div>
-                  ) : "Iniciar Sesión"}
-                </button>
-              </form>
-
-              {/* Login Benefits list */}
-              <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem', textAlign: 'left' }}>
-                <strong style={{ fontSize: '0.82rem', color: 'var(--primary-green)', display: 'inline-flex', alignItems: 'center', gap: '5px', marginBottom: '8px' }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                  Beneficios de tener cuenta:
-                </strong>
-                <ul style={{ padding: 0, margin: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                  <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: 'var(--accent-gold)' }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                    Compra rápida en 1-clic (dirección precargada).
-                  </li>
-                  <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: 'var(--primary-green)' }}><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-                    Historial y rastreo de envíos en tiempo real.
-                  </li>
-                  <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: 'var(--accent-gold)' }}><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    Acceso a ofertas y cupones exclusivos.
-                  </li>
-                </ul>
-              </div>
-            </div>
-          ) : (
-            /* ==================== USER DASHBOARD VIEW ==================== */
-            <div className="premium-dashboard-grid animate-fade-in">
-              
-              {/* SIDEBAR: USER ACCOUNT OVERVIEW */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                
-                {/* Profile Card */}
-                <div className="premium-panel-card" style={{ padding: '1.75rem', textAlign: 'center' }}>
-                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', margin: '0 auto 12px auto', border: '3px solid var(--accent-gold)', overflow: 'hidden', background: '#f4f6f0', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
-                    {profile?.avatar_url ? (
-                      <img src={profile.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--primary-green)' }}>
-                        {profile?.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <h2 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--primary-green)', fontWeight: 900 }}>
-                    {profile?.full_name || "Cliente"}
-                  </h2>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-                    {user.email}
-                  </span>
-                  
-                  <span style={{ background: '#fff9db', color: '#7c581a', border: '1px solid #ebdcc9', fontSize: '0.72rem', fontWeight: 'bold', padding: '3px 10px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                    Cliente Prime Gold
-                  </span>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '1.5rem' }}>
+              {/* ==================== SUBVIEW 1: MAIN PROFILE DASHBOARD ==================== */}
+              {profileSubView === 'main' && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {/* 1. Top Bar */}
+                  <div className="klr-profile-top-bar">
                     <button 
                       type="button" 
+                      className="klr-profile-back-btn"
                       onClick={() => setView("catalog")}
-                      className="btn-share"
-                      style={{ width: '100%', padding: '10px', fontSize: '0.85rem', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                      title="Volver al Catálogo"
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                      Ir a la Tienda
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                      </svg>
                     </button>
-                    <button 
-                      type="button" 
-                      onClick={() => setView("pedidos")}
-                      className="btn-share"
-                      style={{ width: '100%', padding: '10px', fontSize: '0.85rem', background: '#fff', border: '1px solid var(--border-color)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-                      Rastrear Envíos
-                    </button>
-                  </div>
-                </div>
-
-                {/* Logout Card */}
-                <button 
-                  type="button" 
-                  style={{ width: '100%', padding: '12px', background: 'none', border: '2px solid #ff4d4d', color: '#ff4d4d', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                  onClick={handleLogout}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = '#fff55'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-                  Cerrar Sesión
-                </button>
-              </div>
-
-              {/* MAIN CONTENT: SHIPPINGS PRESETS FORM */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                
-                {/* Stats Overview Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1rem' }}>
-                  <div className="profile-stat-box">
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 'bold' }}>Total Pedidos</span>
-                    <strong style={{ fontSize: '1.6rem', color: 'var(--primary-green)', fontWeight: 900 }}>{userOrders.length}</strong>
+                    <h1 className="klr-profile-top-title">PERFIL DE USUARIO</h1>
+                    <div style={{ width: '38px' }}></div>
                   </div>
 
-                  <div className="profile-stat-box">
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 'bold' }}>Ciudad Local</span>
-                    <strong style={{ fontSize: '1.2rem', color: 'var(--primary-green)', fontWeight: 900, display: 'block', marginTop: '6px' }}>{formData.city}</strong>
-                  </div>
-                  <div className="profile-stat-box">
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 'bold' }}>Nivel Fidelidad</span>
-                    <strong style={{ fontSize: '1.2rem', color: 'var(--accent-gold)', fontWeight: 900, display: 'block', marginTop: '6px' }}>Gold VIP</strong>
-                  </div>
-                </div>
-
-                {/* Form Details Card */}
-                <div className="premium-panel-card" style={{ padding: '2rem' }}>
-                  <h2 style={{ margin: '0 0 4px 0', fontSize: '1.15rem', color: 'var(--primary-green)', fontWeight: 800 }}>
-                    Datos de Despacho Predeterminados
-                  </h2>
-                  <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                    Configura tus datos para que el sistema rellene tu formulario de compras automáticamente al hacer un pedido.
-                  </p>
-
-                  <form className="premium-input-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
-                      <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 'bold' }}>Nombre de Contacto</label>
-                        <input 
-                          type="text" 
-                          className="form-input" 
-                          placeholder="Tu nombre completo"
-                          value={formData.name} 
-                          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                          style={{ width: '100%' }}
-                        />
+                  {/* 2. User Avatar & Identity Header */}
+                  <div className="klr-profile-identity-section">
+                    <div className="klr-profile-avatar-box">
+                      <div className="klr-profile-avatar-ring">
+                        {profile?.avatar_url ? (
+                          <img src={profile.avatar_url} alt="Avatar" className="klr-profile-avatar-img" />
+                        ) : (
+                          <div className="klr-profile-avatar-fallback">
+                            {personalData.firstName?.charAt(0) || profile?.full_name?.charAt(0) || (user ? user.email.charAt(0).toUpperCase() : "A")}
+                          </div>
+                        )}
                       </div>
-
-                      <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 'bold' }}>Celular / WhatsApp</label>
-                        <input 
-                          type="tel" 
-                          className="form-input" 
-                          placeholder="Ej: 78945612"
-                          value={formData.phone} 
-                          onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                          style={{ width: '100%' }}
-                        />
+                      <div className="klr-profile-badge-pill">
+                        <span>Socio VIP</span>
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
-                      <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 'bold' }}>Ciudad Sucursal</label>
-                        <select 
-                          className="form-select" 
-                          value={formData.city} 
-                          onChange={(e) => handleCityChange(e.target.value)}
-                          style={{ width: '100%', height: '46px' }}
+                    <h2 className="klr-profile-username">
+                      {personalData.firstName ? `${personalData.firstName} ${personalData.lastName}` : (profile?.full_name || formData.name || "Ana García")}
+                    </h2>
+                    <span className="klr-profile-useremail">
+                      {user?.email || personalData.email || "contacto@ana.com"}
+                    </span>
+                  </div>
+
+                  {/* 3. Card Group 1: Action Rows */}
+                  <div className="klr-profile-card-group">
+                    {/* Mis Datos Personales */}
+                    <button 
+                      type="button" 
+                      className="klr-profile-row"
+                      onClick={() => setProfileSubView('personal')}
+                    >
+                      <div className="klr-profile-row-left">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        <span>Mis Datos Personales</span>
+                      </div>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="klr-profile-chevron"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+
+                    {/* Direcciones de Envío */}
+                    <button 
+                      type="button" 
+                      className="klr-profile-row"
+                      onClick={() => setProfileSubView('address')}
+                    >
+                      <div className="klr-profile-row-left">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                        <span>Direcciones de Envío ({userAddresses.length})</span>
+                      </div>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="klr-profile-chevron"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+
+                    {/* Métodos de Pago */}
+                    <button 
+                      type="button" 
+                      className="klr-profile-row"
+                      onClick={() => setProfileSubView('payment')}
+                    >
+                      <div className="klr-profile-row-left">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                        <span>Métodos de Pago (Visa **** 1234)</span>
+                      </div>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="klr-profile-chevron"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+                  </div>
+
+                  {/* 4. Card Group 2: Tus Pedidos Recientes Widget (Exact to Mockup) */}
+                  {(() => {
+                    const completedCount = userOrders.filter(o => o.status === 'Completado' || o.status === 'Entregado').length;
+                    const inProcessCount = userOrders.filter(o => o.status === 'Pendiente' || o.status === 'En Proceso' || o.status === 'En Camino' || o.status === 'Enviado').length;
+                    const latestOrder = userOrders.length > 0 ? userOrders[0] : null;
+
+                    return (
+                      <div className="klr-profile-orders-widget">
+                        <h3 className="klr-orders-widget-title">Tus Pedidos Recientes</h3>
+                        
+                        <div className="klr-orders-widget-grid">
+                          {/* Entregados */}
+                          <div 
+                            className="klr-widget-stat-col"
+                            onClick={() => { setSelectedOrderForDetail(null); setUserOrdersFilter('completados'); setView('pedidos'); }}
+                            style={{ cursor: 'pointer' }}
+                            title="Ver pedidos entregados"
+                          >
+                            <span className="klr-widget-num num-green">{completedCount}</span>
+                            <span className="klr-widget-lbl">Entregados ({completedCount})</span>
+                          </div>
+
+                          {/* En Proceso */}
+                          <div 
+                            className="klr-widget-stat-col"
+                            onClick={() => { setSelectedOrderForDetail(null); setUserOrdersFilter('pendientes'); setView('pedidos'); }}
+                            style={{ cursor: 'pointer' }}
+                            title="Ver pedidos en proceso"
+                          >
+                            <span className="klr-widget-num num-amber">{inProcessCount}</span>
+                            <span className="klr-widget-lbl">En Proceso ({inProcessCount})</span>
+                          </div>
+
+                          {/* Ver Historial Completo */}
+                          <button 
+                            type="button" 
+                            className="klr-widget-action-col"
+                            onClick={() => { setSelectedOrderForDetail(null); setUserOrdersFilter('todos'); setView('pedidos'); }}
+                            title="Ver todos mis pedidos"
+                          >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                            <span className="klr-widget-history-txt">Ver Historial Completo</span>
+                          </button>
+                        </div>
+
+                        {/* Bottom Status Row */}
+                        <div className="klr-widget-bottom-status">
+                          {latestOrder ? (
+                            <span style={{ color: 'var(--primary-green)', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 650 }}>
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--primary-green)', display: 'inline-block' }}></span>
+                              Último pedido #KLR-{latestOrder.id.substring(0, 8).toUpperCase()} ({latestOrder.status || 'Enviado'})
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>Listo para realizar tu primer pedido de bienestar</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* 5. Card Group 3: Settings Rows */}
+                  <div className="klr-profile-card-group">
+                    {/* Notificaciones with interactive Toggle Switch */}
+                    <div className="klr-profile-row" style={{ cursor: 'default' }}>
+                      <div className="klr-profile-row-left">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                        <span>Notificaciones</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: notificationStatus === 'granted' ? 'var(--primary-green)' : 'var(--text-muted)' }}>
+                          {notificationStatus === 'granted' ? 'Activado' : 'Desactivado'}
+                        </span>
+                        <button 
+                          type="button" 
+                          className={`klr-toggle-switch ${notificationStatus === 'granted' ? 'active' : ''}`}
+                          onClick={handleNotificationToggle}
+                          title="Toca para activar/desactivar notificaciones"
+                          aria-label="Toggle notificaciones"
                         >
-                          {branches.map(b => (
-                            <option key={b.id} value={b.name}>{b.name}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 'bold' }}>Dirección de Entrega</label>
-                        <input 
-                          type="text" 
-                          className="form-input" 
-                          placeholder="Calle, número de casa, barrio o referencias"
-                          value={formData.address} 
-                          onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                          style={{ width: '100%' }}
-                        />
+                          <span className="klr-toggle-knob"></span>
+                        </button>
                       </div>
                     </div>
 
+                    {/* Idioma */}
                     <button 
                       type="button" 
-                      className="btn-dash-save animate-pulse-slow" 
-                      style={{ width: '100%', padding: '12px', height: '46px', border: 'none', background: 'var(--primary-green)', color: 'white', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.25s', marginTop: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                      onClick={async () => {
-                        try {
-                          const updatedProfile = {
-                            ...profile,
-                            full_name: formData.name,
-                            phone: formData.phone,
-                            address: formData.address,
-                            city: formData.city,
-                            distributor_code: formData.distributorCode
-                          };
-                          const { error } = await supabase.from('profiles').upsert(updatedProfile);
-                          if (error) throw error;
-                          setProfile(updatedProfile);
-                          localStorage.setItem(`kaldirev_local_profile_${user.id}`, JSON.stringify(updatedProfile));
+                      className="klr-profile-row"
+                      onClick={() => {
+                        if (window.Swal) {
                           window.Swal.fire({
-                            title: '¡Guardado!',
-                            text: 'Datos actualizados de forma segura.',
-                            icon: 'success',
-                            confirmButtonColor: 'var(--primary-green)'
-                          });
-                        } catch (err) {
-                          console.warn("Could not save profile directly, fallback to local storage:", err);
-                          const fallbackProfile = {
-                            id: user.id,
-                            full_name: formData.name,
-                            phone: formData.phone,
-                            address: formData.address,
-                            city: formData.city,
-                            distributor_code: formData.distributorCode,
-                            role: profile?.role || 'publico',
-                            points: profile?.points || 0
-                          };
-                          setProfile(fallbackProfile);
-                          localStorage.setItem(`kaldirev_local_profile_${user.id}`, JSON.stringify(fallbackProfile));
-                          window.Swal.fire({
-                            title: '¡Guardado Local!',
-                            text: 'Datos guardados en este dispositivo (RLS activo).',
-                            icon: 'success',
+                            title: 'Idioma de la App',
+                            text: 'Configurado actualmente en Español (Bolivia).',
+                            icon: 'info',
                             confirmButtonColor: 'var(--primary-green)'
                           });
                         }
                       }}
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                      Guardar Cambios de Entrega
+                      <div className="klr-profile-row-left">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                        <span>Idioma</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+                        <span>Español</span>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="klr-profile-chevron"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                      </div>
+                    </button>
+
+                    {/* Seguridad */}
+                    <button 
+                      type="button" 
+                      className="klr-profile-row"
+                      onClick={() => setProfileSubView('security')}
+                    >
+                      <div className="klr-profile-row-left">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        <span>Seguridad</span>
+                      </div>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="klr-profile-chevron"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+                  </div>
+
+                  {/* 6. Card Group 4: Support & Logout */}
+                  <div className="klr-profile-card-group">
+                    {/* Ayuda y Soporte */}
+                    <a 
+                      href={`https://api.whatsapp.com/send?phone=${config.whatsappNumber || '59163488086'}&text=Hola%20Kaldirev,%20deseo%20asistencia%20con%20mi%20cuenta%20de%20cliente.`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="klr-profile-row"
+                    >
+                      <div className="klr-profile-row-left">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        <span>Ayuda y Soporte</span>
+                      </div>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="klr-profile-chevron"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </a>
+
+                    {/* Cerrar Sesión / Iniciar Sesión */}
+                    {user ? (
+                      <button 
+                        type="button" 
+                        className="klr-profile-row klr-logout-btn"
+                        onClick={handleLogout}
+                      >
+                        <div className="klr-profile-row-left">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                          <span>Cerrar Sesión</span>
+                        </div>
+                      </button>
+                    ) : (
+                      <button 
+                        type="button" 
+                        className="klr-profile-row klr-login-prompt-btn"
+                        onClick={() => setProfileSubView('login')}
+                      >
+                        <div className="klr-profile-row-left">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+                          <span style={{ color: 'var(--accent-gold)', fontWeight: 800 }}>Iniciar Sesión / Acceder</span>
+                        </div>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="klr-profile-chevron"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ==================== SUBVIEW 2: MIS DATOS PERSONALES (Exact to Left Mockup) ==================== */}
+              {profileSubView === 'personal' && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {/* Top Bar with PERFIL DE USUARIO */}
+                  <div className="klr-profile-top-bar">
+                    <button 
+                      type="button" 
+                      className="klr-profile-back-btn"
+                      onClick={() => setView("catalog")}
+                      title="Volver al Catálogo"
+                    >
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                      </svg>
+                    </button>
+                    <h1 className="klr-profile-top-title">PERFIL DE USUARIO</h1>
+                    <div style={{ width: '38px' }}></div>
+                  </div>
+
+                  {/* Avatar & Socio VIP Header */}
+                  <div className="klr-profile-identity-section">
+                    <div className="klr-profile-avatar-box">
+                      <div className="klr-profile-avatar-ring">
+                        {profile?.avatar_url ? (
+                          <img src={profile.avatar_url} alt="Avatar" className="klr-profile-avatar-img" />
+                        ) : (
+                          <div className="klr-profile-avatar-fallback">
+                            {personalData.firstName?.charAt(0) || "A"}
+                          </div>
+                        )}
+                      </div>
+                      <div className="klr-profile-badge-pill">
+                        <span>Socio VIP</span>
+                      </div>
+                    </div>
+                    <h2 className="klr-profile-username">
+                      {personalData.firstName ? `${personalData.firstName} ${personalData.lastName}` : "Ana García"}
+                    </h2>
+                  </div>
+
+                  {/* Subheader with back arrow to return to profile menu */}
+                  <div className="klr-subscreen-header">
+                    <button 
+                      type="button" 
+                      className="klr-subscreen-back-btn"
+                      onClick={() => setProfileSubView('main')}
+                      title="Volver al menú de perfil"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                      </svg>
+                    </button>
+                    <div className="klr-subscreen-title-wrap">
+                      <h2 className="klr-subscreen-title">Mis Datos Personales</h2>
+                      <span className="klr-subscreen-subtitle">Actualiza tu información de contacto</span>
+                    </div>
+                  </div>
+
+                  {/* Form with framed input fields matching mockup */}
+                  <form onSubmit={handleSavePersonalData} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    
+                    {/* Nombre */}
+                    <div className="klr-framed-field">
+                      <label className="klr-framed-label">Nombre</label>
+                      <input 
+                        type="text" 
+                        className="klr-framed-input"
+                        value={personalData.firstName}
+                        onChange={(e) => setPersonalData(prev => ({ ...prev, firstName: e.target.value }))}
+                        placeholder="Tu nombre"
+                        required
+                      />
+                      <div className="klr-framed-action-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                      </div>
+                    </div>
+
+                    {/* Apellido */}
+                    <div className="klr-framed-field">
+                      <label className="klr-framed-label">Apellido</label>
+                      <input 
+                        type="text" 
+                        className="klr-framed-input"
+                        value={personalData.lastName}
+                        onChange={(e) => setPersonalData(prev => ({ ...prev, lastName: e.target.value }))}
+                        placeholder="Tu apellido"
+                        required
+                      />
+                      <div className="klr-framed-action-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                      </div>
+                    </div>
+
+                    {/* Correo Electrónico */}
+                    <div className="klr-framed-field">
+                      <label className="klr-framed-label">Correo Electrónico</label>
+                      <div className="klr-framed-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                      </div>
+                      <input 
+                        type="email" 
+                        className="klr-framed-input"
+                        value={user?.email || personalData.email}
+                        onChange={(e) => setPersonalData(prev => ({ ...prev, email: e.target.value }))}
+                        disabled={!!user}
+                        style={{ opacity: user ? 0.8 : 1 }}
+                        required
+                      />
+                      <div className="klr-framed-action-icon" style={{ color: '#047857' }} title="Correo Verificado">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#047857" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                      </div>
+                    </div>
+
+                    {/* Teléfono con Bandera de Bolivia */}
+                    <div className="klr-framed-field">
+                      <label className="klr-framed-label">Teléfono</label>
+                      <div className="klr-framed-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                      </div>
+                      <div className="klr-flag-prefix">
+                        <span>+591</span>
+                      </div>
+                      <input 
+                        type="tel" 
+                        className="klr-framed-input"
+                        value={personalData.phone}
+                        onChange={(e) => setPersonalData(prev => ({ ...prev, phone: e.target.value }))}
+                        placeholder="78945612"
+                        required
+                      />
+                    </div>
+
+                    {/* Fecha de Nacimiento */}
+                    <div className="klr-framed-field">
+                      <label className="klr-framed-label">Fecha de Nacimiento</label>
+                      <div className="klr-framed-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                      </div>
+                      <input 
+                        type="date" 
+                        className="klr-framed-input"
+                        value={personalData.birthDate}
+                        onChange={(e) => setPersonalData(prev => ({ ...prev, birthDate: e.target.value }))}
+                      />
+                      <div className="klr-framed-action-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                      </div>
+                    </div>
+
+                    {/* Membresía Status Box */}
+                    <div className="klr-membership-info-box">
+                      <div className="klr-membership-row">
+                        <span className="klr-membership-lbl">Socio VIP</span>
+                        <span className="klr-membership-val" style={{ color: 'var(--accent-gold)' }}>Activo</span>
+                      </div>
+                      <div className="klr-membership-row">
+                        <span className="klr-membership-lbl">Desde</span>
+                        <span className="klr-membership-val">{personalData.membershipYear || '2021'}</span>
+                      </div>
+                      <div className="klr-membership-row">
+                        <span className="klr-membership-lbl">Status</span>
+                        <span className="klr-membership-val" style={{ color: '#047857' }}>Verificado</span>
+                      </div>
+                      <div className="klr-membership-row">
+                        <span className="klr-membership-lbl">Renovación</span>
+                        <span className="klr-membership-val">{personalData.renewalYear || '2026'}</span>
+                      </div>
+                    </div>
+
+                    {/* Action Button: Guardar Cambios */}
+                    <button type="submit" className="klr-btn-primary-action">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                      Guardar Cambios
+                    </button>
+
+                    {/* Cambiar Contraseña Link */}
+                    <button 
+                      type="button" 
+                      className="klr-link-secondary-btn"
+                      onClick={() => setProfileSubView('security')}
+                    >
+                      Cambiar Contraseña
                     </button>
                   </form>
                 </div>
+              )}
 
+              {/* ==================== SUBVIEW 3: DIRECCIONES DE ENVÍO (Exact to Right Mockup) ==================== */}
+              {profileSubView === 'address' && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {/* Subheader */}
+                  <div className="klr-subscreen-header">
+                    <button 
+                      type="button" 
+                      className="klr-subscreen-back-btn"
+                      onClick={() => { setEditingAddressId(null); setProfileSubView('main'); }}
+                      title="Volver al menú de perfil"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                      </svg>
+                    </button>
+                    <div className="klr-subscreen-title-wrap">
+                      <h2 className="klr-subscreen-title">Direcciones de Envío</h2>
+                      <span className="klr-subscreen-subtitle">({userAddresses.length} {userAddresses.length === 1 ? 'Dirección' : 'Direcciones'})</span>
+                    </div>
+                  </div>
 
-              </div>
+                  {/* Botón Añadir Nueva Dirección */}
+                  {!editingAddressId && (
+                    <button 
+                      type="button" 
+                      className="klr-btn-add-address"
+                      onClick={() => handleOpenEditAddress(null)}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                      + Añadir Nueva Dirección
+                    </button>
+                  )}
+
+                  {/* Formulario integrado (sin modal) al añadir o editar */}
+                  {editingAddressId && (
+                    <form onSubmit={handleSaveAddressForm} className="klr-address-form-box animate-fade-in">
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <h3 className="klr-address-form-title">
+                          {editingAddressId === 'new' ? 'Nueva Dirección de Entrega' : 'Editar Dirección'}
+                        </h3>
+                        <button 
+                          type="button" 
+                          onClick={() => setEditingAddressId(null)}
+                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.4rem', lineHeight: 1 }}
+                        >
+                          ×
+                        </button>
+                      </div>
+
+                      <div className="klr-framed-field">
+                        <label className="klr-framed-label">Nombre del Destinatario</label>
+                        <input 
+                          type="text" 
+                          className="klr-framed-input"
+                          value={addressForm.recipient}
+                          onChange={(e) => setAddressForm(prev => ({ ...prev, recipient: e.target.value }))}
+                          placeholder="Ej: Ana García"
+                          required
+                        />
+                      </div>
+
+                      <div className="klr-framed-field">
+                        <label className="klr-framed-label">Calle y Número</label>
+                        <input 
+                          type="text" 
+                          className="klr-framed-input"
+                          value={addressForm.street}
+                          onChange={(e) => setAddressForm(prev => ({ ...prev, street: e.target.value }))}
+                          placeholder="Ej: Av. San Martín #123"
+                          required
+                        />
+                      </div>
+
+                      <div className="klr-framed-field">
+                        <label className="klr-framed-label">Apt / Edificio / Referencia (Opcional)</label>
+                        <input 
+                          type="text" 
+                          className="klr-framed-input"
+                          value={addressForm.suite}
+                          onChange={(e) => setAddressForm(prev => ({ ...prev, suite: e.target.value }))}
+                          placeholder="Ej: Edificio El Laurel, 4A"
+                        />
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '10px' }}>
+                        <div className="klr-framed-field">
+                          <label className="klr-framed-label">Ciudad</label>
+                          <select 
+                            className="klr-framed-input"
+                            value={addressForm.city}
+                            onChange={(e) => setAddressForm(prev => ({ ...prev, city: e.target.value }))}
+                            style={{ background: '#ffffff', cursor: 'pointer' }}
+                          >
+                            {branches.map(b => (
+                              <option key={b.id} value={b.name}>{b.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="klr-framed-field">
+                          <label className="klr-framed-label">Código Postal</label>
+                          <input 
+                            type="text" 
+                            className="klr-framed-input"
+                            value={addressForm.postalCode}
+                            onChange={(e) => setAddressForm(prev => ({ ...prev, postalCode: e.target.value }))}
+                            placeholder="07300"
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                        <button type="submit" className="klr-btn-primary-action" style={{ padding: '11px', fontSize: '0.9rem' }}>
+                          Guardar Dirección
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => setEditingAddressId(null)}
+                          style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '14px', padding: '11px 18px', fontWeight: 700, color: '#475569', cursor: 'pointer' }}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {/* Lista de Tarjetas de Direcciones */}
+                  <div className="klr-addresses-list">
+                    {userAddresses.map((addr) => (
+                      <div key={addr.id} className={`klr-address-card ${addr.isDefault ? 'is-default' : ''}`}>
+                        <div className="klr-address-card-header">
+                          <div className="klr-address-recipient">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            <span>{addr.recipient}</span>
+                          </div>
+                          <button 
+                            type="button" 
+                            className="klr-icon-action-btn"
+                            onClick={() => handleOpenEditAddress(addr)}
+                            title="Editar dirección"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                          </button>
+                        </div>
+
+                        <div className="klr-address-card-body">
+                          <div className="klr-address-detail-row">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                            <span>{addr.street}</span>
+                          </div>
+
+                          {addr.suite && (
+                            <div className="klr-address-detail-row">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="22" x2="9" y2="22.01"></line><line x1="15" y1="22" x2="15" y2="22.01"></line><line x1="9" y1="6" x2="9" y2="6.01"></line><line x1="15" y1="6" x2="15" y2="6.01"></line><line x1="9" y1="10" x2="9" y2="10.01"></line><line x1="15" y1="10" x2="15" y2="10.01"></line><line x1="9" y1="14" x2="9" y2="14.01"></line><line x1="15" y1="14" x2="15" y2="14.01"></line><line x1="9" y1="18" x2="9" y2="18.01"></line><line x1="15" y1="18" x2="15" y2="18.01"></line></svg>
+                              <span>Apt/Suite: {addr.suite}</span>
+                            </div>
+                          )}
+
+                          <div className="klr-address-detail-row">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+                            <span>{addr.city} {addr.postalCode ? `• ${addr.postalCode}` : ''}</span>
+                          </div>
+
+                          <div className="klr-address-detail-row">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                            <span>{addr.country || 'Bolivia'}</span>
+                          </div>
+                        </div>
+
+                        <div className="klr-address-card-footer">
+                          {addr.isDefault ? (
+                            <span className="klr-address-badge-default">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                              Default Address
+                            </span>
+                          ) : (
+                            <button 
+                              type="button" 
+                              className="klr-address-btn-setdefault"
+                              onClick={() => handleSetDefaultAddress(addr.id)}
+                              title="Establecer como dirección de entrega predeterminada"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+                              Hacer Predeterminada
+                            </button>
+                          )}
+
+                          <div className="klr-address-actions-right">
+                            <button 
+                              type="button" 
+                              className="klr-icon-action-btn"
+                              onClick={() => handleOpenEditAddress(addr)}
+                              title="Editar"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                            </button>
+                            <button 
+                              type="button" 
+                              className="klr-icon-action-btn delete"
+                              onClick={() => handleDeleteAddress(addr.id)}
+                              title="Eliminar dirección"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ==================== SUBVIEW 4: MÉTODOS DE PAGO ==================== */}
+              {profileSubView === 'payment' && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div className="klr-subscreen-header">
+                    <button 
+                      type="button" 
+                      className="klr-subscreen-back-btn"
+                      onClick={() => setProfileSubView('main')}
+                      title="Volver al menú de perfil"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                      </svg>
+                    </button>
+                    <div className="klr-subscreen-title-wrap">
+                      <h2 className="klr-subscreen-title">Métodos de Pago</h2>
+                      <span className="klr-subscreen-subtitle">Opciones oficiales para tus compras de bienestar</span>
+                    </div>
+                  </div>
+
+                  {/* Tarjeta Virtual Kaldirev VIP */}
+                  <div style={{
+                    background: 'linear-gradient(135deg, #0e3e2f 0%, #155e45 100%)',
+                    color: '#ffffff',
+                    borderRadius: '20px',
+                    padding: '20px',
+                    boxShadow: '0 10px 25px rgba(14, 62, 47, 0.25)',
+                    border: '1.5px solid rgba(197, 160, 89, 0.4)',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.08em', color: 'var(--accent-gold)' }}>KALDIREV BIENESTAR</span>
+                      <span style={{ fontSize: '0.78rem', background: 'rgba(255,255,255,0.15)', padding: '3px 10px', borderRadius: '12px', fontWeight: 700 }}>Socio VIP</span>
+                    </div>
+                    <div style={{ fontSize: '1.25rem', letterSpacing: '0.15em', fontFamily: 'monospace', fontWeight: 700, marginBottom: '18px' }}>
+                      •••• •••• •••• 1234
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '0.82rem' }}>
+                      <div>
+                        <div style={{ fontSize: '0.68rem', color: '#94a3b8', textTransform: 'uppercase' }}>Titular</div>
+                        <div style={{ fontWeight: 800 }}>{personalData.firstName} {personalData.lastName}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.68rem', color: '#94a3b8', textTransform: 'uppercase' }}>Vence</div>
+                        <div style={{ fontWeight: 800 }}>12 / 28</div>
+                      </div>
+                      <div style={{ fontWeight: 900, fontStyle: 'italic', fontSize: '1.1rem', color: 'var(--accent-gold)' }}>
+                        VISA
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Métodos Activos en Tienda */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {/* Contraentrega */}
+                    <div style={{ background: '#ffffff', border: '1.5px solid var(--border-color)', borderRadius: '16px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <strong style={{ color: 'var(--primary-green)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.94rem' }}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                          Pago Contraentrega en Efectivo
+                        </strong>
+                        <span style={{ background: '#ecfdf5', color: '#047857', fontSize: '0.72rem', fontWeight: 800, padding: '3px 8px', borderRadius: '10px', border: '1px solid #a7f3d0' }}>
+                          Predeterminado
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.84rem', lineHeight: '1.4' }}>
+                        Pagas en efectivo o mediante QR cuando el repartidor llega a tu domicilio en Santa Cruz, La Paz, Cochabamba y demás ciudades de Bolivia.
+                      </p>
+                    </div>
+
+                    {/* QR Simple */}
+                    <div style={{ background: '#ffffff', border: '1.5px solid var(--border-color)', borderRadius: '16px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <strong style={{ color: 'var(--accent-gold)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.94rem' }}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                          Pago QR Simple Interbancario
+                        </strong>
+                        <span style={{ background: '#fef3c7', color: '#b45309', fontSize: '0.72rem', fontWeight: 800, padding: '3px 8px', borderRadius: '10px', border: '1px solid #fde68a' }}>
+                          Sin Comisiones
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.84rem', lineHeight: '1.4' }}>
+                        Transferencias interbancarias inmediatas desde Banco Unión, BCP, BNB, Banco Sol, Mercantil Santa Cruz con confirmación en WhatsApp.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button 
+                    type="button" 
+                    className="klr-btn-primary-action"
+                    onClick={() => setProfileSubView('main')}
+                  >
+                    Entendido y Volver al Perfil
+                  </button>
+                </div>
+              )}
+
+              {/* ==================== SUBVIEW 5: SEGURIDAD Y PRIVACIDAD ==================== */}
+              {profileSubView === 'security' && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div className="klr-subscreen-header">
+                    <button 
+                      type="button" 
+                      className="klr-subscreen-back-btn"
+                      onClick={() => setProfileSubView('main')}
+                      title="Volver al menú de perfil"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                      </svg>
+                    </button>
+                    <div className="klr-subscreen-title-wrap">
+                      <h2 className="klr-subscreen-title">Seguridad y Contraseña</h2>
+                      <span className="klr-subscreen-subtitle">Protección de acceso y privacidad</span>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div className="klr-framed-field">
+                      <label className="klr-framed-label">Nueva Contraseña</label>
+                      <div className="klr-framed-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                      </div>
+                      <input 
+                        type="password" 
+                        className="klr-framed-input"
+                        value={securityForm.newPassword}
+                        onChange={(e) => setSecurityForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                        placeholder="Mínimo 6 caracteres"
+                        required
+                      />
+                    </div>
+
+                    <div className="klr-framed-field">
+                      <label className="klr-framed-label">Confirmar Nueva Contraseña</label>
+                      <div className="klr-framed-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                      </div>
+                      <input 
+                        type="password" 
+                        className="klr-framed-input"
+                        value={securityForm.confirmPassword}
+                        onChange={(e) => setSecurityForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                        placeholder="Repite tu nueva contraseña"
+                        required
+                      />
+                    </div>
+
+                    <button type="submit" className="klr-btn-primary-action">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                      Actualizar Contraseña
+                    </button>
+                  </form>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
+                    <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '14px', border: '1.5px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary-green)" strokeWidth="2.3"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                      <div>
+                        <strong style={{ display: 'block', fontSize: '0.88rem', color: 'var(--primary-green)' }}>Encriptación SSL 256 bits</strong>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Conexión cifrada de extremo a extremo en cada transacción.</span>
+                      </div>
+                    </div>
+
+                    <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '14px', border: '1.5px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" strokeWidth="2.3"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                      <div>
+                        <strong style={{ display: 'block', fontSize: '0.88rem', color: 'var(--accent-gold)' }}>Políticas de Acceso Seguro RLS</strong>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Tus compras y direcciones solo son accesibles por ti.</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ==================== SUBVIEW 6: ACCEDER A MI CUENTA ==================== */}
+              {profileSubView === 'login' && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div className="klr-subscreen-header">
+                    <button 
+                      type="button" 
+                      className="klr-subscreen-back-btn"
+                      onClick={() => setProfileSubView('main')}
+                      title="Volver al menú de perfil"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                      </svg>
+                    </button>
+                    <div className="klr-subscreen-title-wrap">
+                      <h2 className="klr-subscreen-title">Acceder a mi Cuenta</h2>
+                      <span className="klr-subscreen-subtitle">Inicia sesión para sincronizar tus pedidos</span>
+                    </div>
+                  </div>
+
+                  {authError && (
+                    <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', padding: '10px 14px', borderRadius: '12px', fontSize: '0.82rem' }}>
+                      {authError}
+                    </div>
+                  )}
+
+                  {/* Google Sign In */}
+                  <button 
+                    type="button" 
+                    onClick={async () => {
+                      setProfileSubView('main');
+                      await handleGoogleLogin();
+                    }}
+                    className="btn-google-login"
+                    style={{ width: '100%', padding: '13px', borderRadius: '14px', border: '1.5px solid var(--border-color)', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.92rem', color: 'var(--text-dark)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.56-2.77c-.98.66-2.23 1.06-3.72 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                    </svg>
+                    Acceder con Google
+                  </button>
+
+                  <div style={{ display: 'flex', alignItems: 'center', margin: '0.25rem 0', color: 'var(--text-muted)' }}>
+                    <div style={{ flexGrow: 1, height: '1px', background: 'var(--border-color)' }}></div>
+                    <span style={{ padding: '0 10px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>o con tu correo electrónico</span>
+                    <div style={{ flexGrow: 1, height: '1px', background: 'var(--border-color)' }}></div>
+                  </div>
+
+                  <form 
+                    onSubmit={async (e) => {
+                      await handleEmailLogin(e);
+                      setProfileSubView('main');
+                    }} 
+                    style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}
+                  >
+                    <div className="klr-framed-field">
+                      <label className="klr-framed-label">Correo Electrónico</label>
+                      <div className="klr-framed-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                      </div>
+                      <input 
+                        type="email" 
+                        required 
+                        className="klr-framed-input" 
+                        placeholder="correo@ejemplo.com"
+                        value={authEmail} 
+                        onChange={(e) => setAuthEmail(e.target.value)} 
+                      />
+                    </div>
+
+                    <div className="klr-framed-field">
+                      <label className="klr-framed-label">Contraseña</label>
+                      <div className="klr-framed-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                      </div>
+                      <input 
+                        type="password" 
+                        required 
+                        className="klr-framed-input" 
+                        placeholder="••••••••" 
+                        value={authPassword} 
+                        onChange={(e) => setAuthPassword(e.target.value)}
+                      />
+                    </div>
+
+                    <button 
+                      type="submit" 
+                      className="klr-btn-primary-action"
+                      disabled={authLoading}
+                    >
+                      {authLoading ? 'Iniciando...' : 'Iniciar Sesión'}
+                    </button>
+                  </form>
+                </div>
+              )}
 
             </div>
-          )}
+          </div>
         </main>
       )}
       </div>
@@ -9503,8 +10893,8 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                   
                   <div className="checkout-steps">
                     <button 
-                      className="btn-checkout" 
-                      style={{ fontSize: '1.1rem', padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }} 
+                      className={`btn-checkout ${formData.paymentMethod !== 'Pago QR Directo' ? 'whatsapp' : ''}`}
+                      style={{ fontSize: '1.05rem', padding: '0.95rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }} 
                       onClick={handleCreateOrderCheckout}
                       disabled={isSubmittingOrder}
                     >
@@ -9926,6 +11316,53 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
         </div>
       )}
 
+      {/* FLOATING WHATSAPP ADVISOR (Sales Conversion Booster) */}
+      {/* FLOATING WHATSAPP ADVISOR (Optimized: Compact Round FAB on Mobile, Concierge Card on Desktop) */}
+      {view !== 'admin' && (
+        <aside
+          aria-label="Asistencia WhatsApp"
+          className="floating-whatsapp-advisor"
+        >
+          {/* Desktop Live Concierge Card */}
+          <div className="floating-wa-desktop-card">
+            <div className="wa-card-header">
+              <div className="wa-avatar-ring">
+                <span className="wa-agent-dot"></span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              </div>
+              <div className="wa-agent-meta">
+                <span className="wa-agent-name">Asesoría Kaldirev 🌿</span>
+                <span className="wa-agent-status">En línea • Respuesta inmediata</span>
+              </div>
+            </div>
+            <p className="wa-card-msg">
+              ¿Tienes consultas sobre combos Tiens o envíos a tu ciudad? ¡Escríbenos directamente!
+            </p>
+          </div>
+
+          <a
+            href={`https://wa.me/${config.whatsappNumber || '59163488086'}?text=${encodeURIComponent('Hola Kaldirev Bolivia, tengo una consulta sobre los suplementos naturales y promociones.')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="floating-wa-btn"
+            title="Consultar por WhatsApp con un Asesor de Salud"
+            aria-label="Chatear por WhatsApp con un Asesor"
+          >
+            <span className="wa-pulse-glow"></span>
+            <span className="wa-mobile-unread-badge" title="Asesor disponible">1</span>
+            
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" className="wa-main-svg">
+              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.249 8.477 3.517 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.739-1.446L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.625 1.451 5.436 0 9.86-4.42 9.864-9.856.002-2.63-1.023-5.101-2.887-6.967C16.38 1.916 13.91 1.012 11.285 1.012 5.848 1.012 1.425 5.435 1.422 10.873c-.001 1.5.399 2.969 1.157 4.298l-.997 3.642 3.73-.978c-.001.002-.001.002-.001.002zm12.338-7.989c-.334-.168-1.977-.975-2.28-1.087-.302-.111-.522-.168-.742.168-.22.33-.852 1.079-1.044 1.302-.192.223-.385.253-.718.084-.334-.168-1.409-.52-2.684-1.657-1.002-.894-1.677-2.002-1.874-2.337-.197-.335-.021-.516.146-.682.151-.15.334-.385.501-.58.167-.192.222-.334.334-.56.111-.223.056-.417-.028-.585-.084-.168-.742-1.787-1.016-2.45-.269-.65-.539-.562-.742-.573-.191-.01-.41-.01-.628-.01-.22 0-.577.082-.88.411-.303.33-1.154 1.128-1.154 2.75 0 1.622 1.18 3.19 1.346 3.414.167.223 2.323 3.548 5.626 4.974.786.34 1.398.543 1.877.697.79.25 1.509.215 2.078.13.633-.095 1.977-.807 2.254-1.59.277-.783.277-1.456.195-1.59-.082-.134-.302-.253-.633-.421z"/>
+            </svg>
+
+            <div className="wa-btn-label-desktop">
+              <span className="wa-label-title">WhatsApp Asesor</span>
+              <span className="wa-label-sub">Chatear en vivo ahora</span>
+            </div>
+          </a>
+        </aside>
+      )}
+
       {/* PWA BOTTOM NAVIGATION BAR (Mobile & App Tab Navigation) */}
       <div 
         className="pwa-bottom-navbar"
@@ -9963,13 +11400,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
           type="button" 
           className={view === 'pedidos' ? 'active-tab' : ''}
           onClick={() => {
-            if (user) {
-              setView("pedidos");
-              fetchUserOrders(user.id);
-            } else {
-              setView("perfil");
-              setAuthError("Inicia sesión para ver tu historial de pedidos.");
-            }
+            setSelectedOrderForDetail(null);
+            setView("pedidos");
+            fetchUserOrders(user ? user.id : null);
           }}
           style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', color: view === 'pedidos' ? 'var(--primary-green)' : '#888', flexGrow: 1 }}
         >
@@ -9998,6 +11431,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
           className={view === 'perfil' ? 'active-tab' : ''}
           onClick={() => {
             setView("perfil");
+            setProfileSubView('main');
             setAuthError("");
           }}
           style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', color: view === 'perfil' ? 'var(--primary-green)' : '#888', flexGrow: 1 }}
@@ -10133,89 +11567,6 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
               <button className="btn-add-cart" style={{ width: 'auto', padding: '0.5rem 1.5rem', background: 'var(--primary-green)', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => setIsInfoModalOpen(false)}>Entendido</button>
             </div>
 
-          </div>
-        </div>
-      )}
-
-      {/* SHOPIFY-STYLE DISCREET FLOATING INSTALL CARD */}
-      {showPwaBanner && (
-        <div 
-          className="shopify-pwa-floating-card animate-fade-in"
-          style={{
-            position: 'fixed',
-            bottom: '24px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 9999,
-            width: 'calc(100% - 32px)',
-            maxWidth: '430px',
-            background: 'linear-gradient(135deg, rgba(14, 45, 34, 0.96) 0%, rgba(8, 26, 19, 0.98) 100%)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            border: '1px solid rgba(82, 217, 160, 0.3)',
-            boxShadow: '0 12px 36px rgba(0, 0, 0, 0.5), 0 0 20px rgba(82, 217, 160, 0.12)',
-            borderRadius: '16px',
-            padding: '12px 14px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            color: 'white',
-            boxSizing: 'border-box'
-          }}
-        >
-          <img 
-            src="/isotipo-web.svg" 
-            alt="Kaldirev" 
-            style={{ width: '42px', height: '42px', borderRadius: '10px', objectFit: 'contain', flexShrink: 0 }}
-          />
-          <div style={{ flexGrow: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontWeight: 800, fontSize: '0.92rem', color: '#82f5c7', letterSpacing: '0.3px' }}>
-                App Kaldirev
-              </span>
-              <span style={{ fontSize: '0.65rem', background: 'rgba(82, 217, 160, 0.2)', color: '#82f5c7', padding: '1px 6px', borderRadius: '10px', fontWeight: 700 }}>
-                Gratis
-              </span>
-            </div>
-            <p style={{ margin: '2px 0 0 0', fontSize: '0.74rem', color: 'rgba(255,255,255,0.78)', lineHeight: 1.25 }}>
-              Instala en 1 clic para rastrear envíos y recibir ofertas exclusivas.
-            </p>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-            <button
-              type="button"
-              onClick={handleInstallPwa}
-              style={{
-                background: 'linear-gradient(135deg, #52d9a0 0%, #22c55e 100%)',
-                color: '#062318',
-                border: 'none',
-                padding: '7px 14px',
-                borderRadius: '20px',
-                fontWeight: 800,
-                fontSize: '0.78rem',
-                cursor: 'pointer',
-                boxShadow: '0 2px 10px rgba(34, 197, 94, 0.35)',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              Instalar
-            </button>
-            <button
-              type="button"
-              onClick={handleDismissPwa}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'rgba(255,255,255,0.5)',
-                fontSize: '1.2rem',
-                cursor: 'pointer',
-                padding: '2px 4px',
-                lineHeight: 1
-              }}
-              title="Cerrar"
-            >
-              ×
-            </button>
           </div>
         </div>
       )}
