@@ -2,8 +2,11 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="./favicon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./isotipo-192.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="./favicon.png" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="shortcut icon" href="./favicon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="google-site-verification" content="t0dwx4zKOiLFFAvODg5SWv6xRwBW5_fw9cseQ_pFGRA" />
     <title>Kaldirev | Suplementos Tiens en Empaques Ecológicos</title>
@@ -11,40 +14,57 @@
     <meta name="keywords" content="Tiens, Tiens Bolivia, Kaldirev, Cordycafe, Calcio Tiens, Suplementos Bolivia, Santa Cruz, Comprar Tiens, Nutrición" />
     <meta name="robots" content="index, follow" />
     
-    <link rel="canonical" href="https://infokaldirev.github.io/ecommerce/" />
+    <!-- Site Name & Canonical for Google Search -->
+    <meta name="application-name" content="Kaldirev" />
+    <meta name="apple-mobile-web-app-title" content="Kaldirev" />
+    <link rel="canonical" href="https://kaldirev.onrender.com/" />
     
-    <!-- Open Graph / Facebook -->
+    <!-- Open Graph / Facebook / WhatsApp -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://infokaldirev.github.io/ecommerce/" />
+    <meta property="og:site_name" content="Kaldirev" />
+    <meta property="og:url" content="https://kaldirev.onrender.com/" />
     <meta property="og:title" content="Kaldirev | Suplementos Tiens en Empaques Ecológicos" />
     <meta property="og:description" content="Kaldirev ofrece los mejores combos y packs de suplementos de salud y belleza de la marca Tiens. Envíos ecológicos en Bolivia." />
-    <meta property="og:image" content="https://infokaldirev.github.io/ecommerce/isotipo-512.png" />
+    <meta property="og:image" content="https://kaldirev.onrender.com/isotipo-512.png" />
     
     <!-- PWA Settings -->
     <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#0e2f23" />
-    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     
-    <!-- JSON-LD Structured Data for Google Search Rich Results -->
+    <!-- JSON-LD Structured Data for Google Search (Site Name & Social Media Links) -->
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Store",
-      "name": "Kaldirev Bolivia",
-      "url": "https://infokaldirev.github.io/ecommerce/",
-      "logo": "https://infokaldirev.github.io/ecommerce/isotipo-512.png",
-      "description": "Tienda online oficial de combos y suplementos nutricionales Tiens en Bolivia con empaques ecológicos y entrega rápida.",
-      "telephone": "+59163488086",
-      "priceRange": "$$",
-      "currenciesAccepted": "BOB",
-      "paymentAccepted": "Cash, QR Simple, Bank Transfer",
-      "address": {
-        "@type": "PostalAddress",
-        "addressLocality": "Santa Cruz de la Sierra",
-        "addressRegion": "Santa Cruz",
-        "addressCountry": "BO"
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Kaldirev",
+        "alternateName": ["Kaldirev Bolivia", "Kaldirev Bienestar", "Kaldirev Tienda"],
+        "url": "https://kaldirev.onrender.com/"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "Store",
+        "name": "Kaldirev Bolivia",
+        "url": "https://kaldirev.onrender.com/",
+        "logo": "https://kaldirev.onrender.com/isotipo-512.png",
+        "image": "https://kaldirev.onrender.com/isotipo-512.png",
+        "description": "Tienda online oficial de combos y suplementos nutricionales Tiens en Bolivia con empaques ecológicos y entrega rápida.",
+        "telephone": "+59163488086",
+        "priceRange": "$$",
+        "currenciesAccepted": "BOB",
+        "paymentAccepted": "Cash, QR Simple, Bank Transfer",
+        "sameAs": [
+          "https://www.tiktok.com/@kaldirev",
+          "https://www.instagram.com/kaldirev"
+        ],
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Santa Cruz de la Sierra",
+          "addressRegion": "Santa Cruz",
+          "addressCountry": "BO"
+        }
       }
-    }
+    ]
     </script>
     <script>
       if ('serviceWorker' in navigator) {

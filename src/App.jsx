@@ -8929,14 +8929,17 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 ¡Forma parte de nuestra comunidad activa!
               </p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', flexWrap: 'wrap' }}>
-                <a href="https://www.instagram.com/kaldirev?igsh=czF1enQ0d2VxcGh5" target="_blank" rel="noopener noreferrer" className="btn-share" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.65rem 1.25rem', fontSize: '0.9rem', border: '1px solid var(--border-color)' }}>
-                  📸 Instagram
+                <a href="https://www.instagram.com/kaldirev?igsh=czF1enQ0d2VxcGh5" target="_blank" rel="noopener noreferrer" className="btn-share" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '0.65rem 1.25rem', fontSize: '0.9rem', border: '1px solid var(--border-color)' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                  <span>Instagram</span>
                 </a>
-                <a href="https://www.tiktok.com/@kaldirev?_r=1&_t=ZS-98qrZwvHN6z" target="_blank" rel="noopener noreferrer" className="btn-share" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.65rem 1.25rem', fontSize: '0.9rem', border: '1px solid var(--border-color)' }}>
-                  🎵 TikTok
+                <a href="https://www.tiktok.com/@kaldirev?_r=1&_t=ZS-98qrZwvHN6z" target="_blank" rel="noopener noreferrer" className="btn-share" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '0.65rem 1.25rem', fontSize: '0.9rem', border: '1px solid var(--border-color)' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.298-.002.595.042.88.13V9.4a6.33 6.33 0 0 0-1-.08A6.34 6.34 0 0 0 3 15.66a6.34 6.34 0 0 0 10.86 4.46V11.31a8.16 8.16 0 0 0 5.73 2.27V10.1a4.84 4.84 0 0 1-2.45-.74 4.77 4.77 0 0 1-1.55-2.67z"/></svg>
+                  <span>TikTok</span>
                 </a>
-                <a href="https://www.facebook.com/share/1DNC7YMQ81/" target="_blank" rel="noopener noreferrer" className="btn-share" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.65rem 1.25rem', fontSize: '0.9rem', border: '1px solid var(--border-color)' }}>
-                  👥 Facebook
+                <a href="https://www.facebook.com/share/1DNC7YMQ81/" target="_blank" rel="noopener noreferrer" className="btn-share" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '0.65rem 1.25rem', fontSize: '0.9rem', border: '1px solid var(--border-color)' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+                  <span>Facebook</span>
                 </a>
               </div>
             </div>
