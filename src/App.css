@@ -4554,208 +4554,186 @@ footer {
 }
 
 /* ===================================================
-   FLOATING WHATSAPP ADVISOR (Responsive & Differentiated)
-   - Mobile: Ergonomic Circular FAB (56px), unread badge, above bottom nav
-   - Desktop: Modern Concierge live chat widget with status & rich pill
+   VISA / CRÉDITO BLOQUEADA (En Desarrollo)
+   =================================================== */
+.klr-visa-blocked-card-wrapper {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06);
+  border: 1.5px dashed #cbd5e1;
+  background: #f8fafc;
+}
+
+.klr-visa-locked-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(14, 62, 47, 0.88);
+  backdrop-filter: blur(5px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1.25rem 1.5rem;
+  color: #ffffff;
+  z-index: 2;
+}
+
+.klr-visa-locked-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent-gold);
+  margin-bottom: 8px;
+}
+
+.klr-visa-locked-title {
+  font-size: 1.08rem;
+  font-weight: 900;
+  color: #ffffff !important;
+  margin: 0 0 6px 0;
+  letter-spacing: -0.3px;
+}
+
+.klr-visa-locked-desc {
+  font-size: 0.82rem;
+  color: #e2e8f0;
+  line-height: 1.45;
+  margin: 0;
+  max-width: 340px;
+}
+
+/* ===================================================
+   FLOATING WHATSAPP BUTTON (Aesthetic Minimalist Luxury)
+   - Desktop: Minimal pill with green dot and clean typography
+   - Mobile: Discrete 48px circle, zero clutter, zero spam badges
    =================================================== */
 .floating-whatsapp-advisor {
   position: fixed;
-  bottom: 28px;
-  right: 28px;
+  bottom: 24px;
+  right: 24px;
   z-index: 998;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 10px;
-  pointer-events: none;
-}
-
-/* Desktop Concierge Card */
-.floating-wa-desktop-card {
-  background: #ffffff;
-  color: #0f172a;
-  padding: 12px 16px;
-  border-radius: 18px;
-  border-bottom-right-radius: 4px;
-  box-shadow: 0 10px 30px rgba(14, 62, 47, 0.12), 0 2px 8px rgba(0, 0, 0, 0.05);
-  border: 1.5px solid rgba(37, 211, 102, 0.35);
-  pointer-events: auto;
-  max-width: 275px;
-  animation: floatHintBounce 4s ease-in-out infinite;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.floating-wa-desktop-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 35px rgba(14, 62, 47, 0.18);
-}
-
-.wa-card-header {
-  display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 6px;
+  justify-content: flex-end;
 }
 
-.wa-avatar-ring {
-  position: relative;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: #ecfdf5;
-  color: #047857;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1.5px solid #a7f3d0;
-  flex-shrink: 0;
-}
-
-.wa-agent-dot {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 9px;
-  height: 9px;
-  background: #22c55e;
-  border-radius: 50%;
-  border: 1.5px solid #ffffff;
-  box-shadow: 0 0 4px #22c55e;
-}
-
-.wa-agent-meta {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.25;
-}
-
-.wa-agent-name {
-  font-size: 0.86rem;
-  font-weight: 850;
-  color: var(--primary-green);
-}
-
-.wa-agent-status {
-  font-size: 0.7rem;
-  color: #047857;
-  font-weight: 700;
-}
-
-.wa-card-msg {
-  font-size: 0.79rem;
-  line-height: 1.4;
-  color: #475569;
-  margin: 0;
-}
-
-/* Floating Action Button */
 .floating-wa-btn {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
-  color: #ffffff;
-  padding: 10px 22px 10px 14px;
+  gap: 10px;
+  background: #ffffff;
+  color: #0e3e2f;
+  padding: 8px 16px 8px 10px;
   border-radius: 50px;
-  box-shadow: 0 8px 25px rgba(37, 211, 102, 0.45);
+  border: 1px solid #d1fae5;
+  box-shadow: 0 4px 16px rgba(14, 62, 47, 0.08), 0 2px 6px rgba(0, 0, 0, 0.03);
   text-decoration: none;
-  font-weight: 800;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  position: relative;
-  pointer-events: auto;
-  border: 2px solid rgba(255, 255, 255, 0.4);
+  font-weight: 700;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: -0.2px;
 }
 .floating-wa-btn:hover {
-  transform: translateY(-3px) scale(1.03);
-  box-shadow: 0 12px 32px rgba(37, 211, 102, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(14, 62, 47, 0.14);
+  border-color: #a7f3d0;
+  color: #061d15;
+}
+
+.wa-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #25d366;
   color: #ffffff;
+  flex-shrink: 0;
+}
+
+.wa-status-dot {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 8px;
+  height: 8px;
+  background: #10b981;
+  border-radius: 50%;
+  border: 1.5px solid #ffffff;
 }
 
 .wa-main-svg {
-  flex-shrink: 0;
-  display: block;
+  width: 18px;
+  height: 18px;
 }
 
 .wa-btn-label-desktop {
   display: flex;
   flex-direction: column;
+  line-height: 1.15;
   text-align: left;
-  line-height: 1.2;
 }
 
 .wa-label-title {
-  font-size: 0.92rem;
-  font-weight: 850;
-  letter-spacing: 0.01em;
-  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.86rem;
+  color: #0e3e2f;
 }
 
 .wa-label-sub {
-  font-size: 0.72rem;
-  opacity: 0.95;
+  font-size: 0.68rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  color: #059669;
 }
 
-.wa-mobile-unread-badge {
-  display: none;
-}
-
-.wa-pulse-glow {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  border-radius: inherit;
-  border: 2px solid #25d366;
-  opacity: 0.8;
-  animation: waPulse 2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
-  pointer-events: none;
-}
-
-/* Mobile Specific (Celular: Clean, ergonomic 56px round FAB above navigation) */
+/* Mobile specific: Clean 48px circle, no clutter */
 @media (max-width: 768px) {
   .floating-whatsapp-advisor {
-    bottom: 78px;
+    bottom: 76px;
     right: 14px;
-    gap: 0;
-  }
-  .floating-wa-desktop-card {
-    display: none;
   }
   .floating-wa-btn {
-    width: 56px;
-    height: 56px;
     padding: 0;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     justify-content: center;
-    box-shadow: 0 6px 22px rgba(37, 211, 102, 0.55), 0 2px 8px rgba(0, 0, 0, 0.15);
-    border: 2.5px solid #ffffff;
+    background: #25d366;
+    border: 2px solid #ffffff;
+    box-shadow: 0 4px 16px rgba(37, 211, 102, 0.4), 0 2px 6px rgba(0, 0, 0, 0.1);
   }
   .floating-wa-btn:hover {
-    transform: scale(1.06);
+    transform: scale(1.05);
+  }
+  .wa-icon-wrap {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+  }
+  .wa-main-svg {
+    width: 26px;
+    height: 26px;
+    color: #ffffff;
+  }
+  .wa-status-dot {
+    display: none;
   }
   .wa-btn-label-desktop {
     display: none;
-  }
-  .wa-main-svg {
-    width: 30px;
-    height: 30px;
-  }
-  .wa-mobile-unread-badge {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: absolute;
-    top: -2px;
-    right: -2px;
-    width: 20px;
-    height: 20px;
-    background: #ef4444;
-    color: #ffffff;
-    border-radius: 50%;
-    font-size: 0.72rem;
-    font-weight: 900;
-    border: 2px solid #ffffff;
-    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.5);
-    animation: waBadgePop 0.4s ease-out;
   }
 }
 

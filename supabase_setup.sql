@@ -277,44 +277,44 @@ select setval('product_images_id_seq', (select max(id) from product_images));
 insert into public.combos (id, name, slug, price_bs, original_price_bs, cost_price_bs, description, badge, tagline, pinned, image_url, category, bullets, dosage, package_detail, is_active) values
   (1, 'Kit Energía Diaria (Salud Ósea, Articular e Inmunológica)', 'kit-energia-diaria', 751.4, 865.0, 580.0,
    'Trilogía sinérgica para la regeneración del cartílago, remineralización ósea profunda y fortalecimiento inmune celular integral.',
-   'Combo Especial', 'Huesos fuertes, articulaciones flexibles y defensas al máximo', true, 'products/kit_energia_diaria.jpg', 'Bienestar',
+   'Combo Especial', 'Huesos fuertes, articulaciones flexibles y defensas al máximo', true, 'https://res.cloudinary.com/hsfhcaic/image/upload/v1788530786/tienda/d2bjkmccrxqkcsgjtuxw.webp', 'Bienestar',
    array['Regenera cartílagos y tejido conectivo con Glucosamina', 'Alta absorción ósea con Calcio Nutritivo patentado', 'Equilibrio hormonal e inmunológico con Zinc orgánico', 'Tratamiento completo mensual'],
    'Tomar según indicación diaria de cada suplemento.', 'Pack completo de frascos y cajas originales selladas.', true),
 
   (2, 'Kit Bienestar & Huesos (Trilogía Familiar de Calcio Tiens)', 'kit-bienestar-huesos', 861.9, 990.1, 680.0,
    'Solución integral de calcio para cada etapa familiar: adultos, niños en crecimiento y personas que requieren control glucémico.',
-   'Combo Especial', 'Nutrición ósea y metabólica integral para toda la familia', true, 'products/kit_bienestar_huesos.jpg', 'Saludable',
+   'Combo Especial', 'Nutrición ósea y metabólica integral para toda la familia', true, 'https://res.cloudinary.com/hsfhcaic/image/upload/v1788530808/tienda/fgedawvef79tqocct505.webp', 'Saludable',
    array['Calcio Adultos de alta absorción (95%)', 'Calcio Infantil con taurina y lecitina para el desarrollo cerebral', 'Calcio Dietético especial con polvo de calabaza', 'Cuidado integral para toda la familia'],
    '1 sobre al día según edad antes de dormir o por la mañana.', 'Trilogía de cajas originales selladas de fábrica.', true),
 
   (3, 'Kit Antojo Saludable (Digestión, Control de Grasas y Flora Intestinal)', 'kit-antojo-saludable', 1406.6, 1620.0, 1100.0,
    'Tratamiento intensivo de depuración gástrica, absorción selectiva de lípidos y restauración prebiótica de la microbiota intestinal.',
-   'Combo Especial', 'Digestión ligera, bloqueo de grasas y regeneración de la flora intestinal', true, 'products/kit_antojo_saludable.jpg', 'Energía',
+   'Combo Especial', 'Digestión ligera, bloqueo de grasas y regeneración de la flora intestinal', true, 'https://res.cloudinary.com/hsfhcaic/image/upload/v1788530825/tienda/va3bytsmpwqwg998wm7f.webp', 'Energía',
    array['Chitosa para atrapar y eliminar grasas ingeridas', 'Jarabe FOS para alimentar y regenerar la flora intestinal', 'Té Tianshi desintoxicante y antioxidante', 'Efecto vientre plano y digestión óptima'],
    'Té en ayunas, Jarabe FOS a media tarde y Chitosa antes de comidas principales.', 'Pack completo de suplementos en presentación original.', true),
 
   (4, 'Reto Detox 7 Días', 'reto-detox-7-dias', 55.0, 75.0, 35.0,
    'Desinflama el abdomen, elimina toxinas acumuladas y combate el tránsito lento desde el primer día sin causar dolor ni cólicos.',
-   'Más Vendido', 'Limpieza digestiva y colon • 7 Sobres de Té', false, 'products/kit_antojo_saludable.jpg', 'Bienestar',
+   'Más Vendido', 'Limpieza digestiva y colon • 7 Sobres de Té', false, 'https://res.cloudinary.com/hsfhcaic/image/upload/v1788530854/tienda/nstyaguvlrg3scmfopzo.png', 'Bienestar',
    array['Alivia la pesadez y acidez después de comidas pesadas.', 'Regula la digestión de forma 100% natural.', 'Rinde para 7 litros de infusión herbal.', 'Incluye 7 sobres individuales sellados herméticamente.'],
    '1 sobre diario infusionado en 1 litro de agua tibia, tomado a lo largo de la mañana o en ayunas.', 'Empaque Kraft ecológico termosellado con 7 sobres individuales de Té Tiens.', true),
 
-  (5, 'Pack Energía & Rendimiento 5 Días', 'pack-energia-5-dias', 95.0, 125.0, 60.4,
+  (5, 'Pack Energía y Vitalidad (4 Días)', 'pack-energia-4-dias', 75.0, 100.0, 48.32,
    'Energía natural sostenida para jornadas largas de trabajo o estudio, sin taquicardia ni irritación estomacal.',
-   'Energía Total', 'CordyCafé sin gastritis • 5 Sobres', false, 'products/kit_energia_diaria.jpg', 'Energía',
-   array['Contiene extracto de Cordyceps para aumentar rendimiento físico y mental.', 'Cero acidez (ideal para personas con gastritis).', 'Reemplaza el café común con un tónico revitalizante.', 'Incluye 5 sobres individuales de CordyCafé gourmet.'],
-   '1 sobre disuelto en una taza de agua caliente a media mañana o al inicio de la jornada laboral.', 'Empaque Kraft ecológico termosellado con 5 sobres individuales de CordyCafé Tiens.', true),
+   'Energía Total', 'CordyCafé sin gastritis • 4 Sobres', false, 'https://res.cloudinary.com/hsfhcaic/image/upload/v1788530871/tienda/y5x46pzsksyfcfx3r5wq.png', 'Energía',
+   array['Contiene extracto de Cordyceps para aumentar rendimiento físico y mental.', 'Cero acidez (ideal para personas con gastritis).', 'Reemplaza el café común con un tónico revitalizante.', 'Incluye 4 sobres individuales de CordyCafé gourmet.'],
+   '1 sobre disuelto en una taza de agua caliente a media mañana o al inicio de la jornada laboral.', 'Empaque Kraft ecológico termosellado con 4 sobres individuales de CordyCafé Tiens.', true),
 
-  (6, 'Kit Calcio Nutritivo 5 Días', 'kit-calcio-5-dias', 145.0, 180.0, 100.0,
-   'Fórmula de calcio de alta absorción (95%) para aliviar dolores de rodillas, espalda, calambres y desgaste articular.',
-   'Alta Absorción', 'Huesos fuertes y cero dolor articular • 5 Sobres', false, 'products/kit_bienestar_huesos.jpg', 'Bienestar',
-   array['Tasa de absorción del 95% patentada sin generar cálculos renales.', 'Fortalece masa ósea y alivia contracturas musculares.', 'Ideal para personas con alta exigencia física o adultos mayores.', 'Incluye 5 sobres individuales de Calcio Nutritivo Tiens.'],
-   '1 sobre diario disuelto en agua tibia (nunca hirviendo) antes de dormir o con el desayuno.', 'Empaque Kraft ecológico termosellado con 5 sobres individuales de Calcio Nutritivo Tiens.', true),
+  (6, 'Pack Movilidad Total — Huesos & Digestión (4 Días)', 'pack-movilidad-total', 120.0, 160.0, 80.0,
+   'Tratamiento dual para regenerar hueso y articulación con Calcio de alta absorción (95%) mientras el Té aporta hidratación activa y previene el estreñimiento.',
+   'Alta Absorción', 'Huesos fuertes y digestión activa • 3 Calcios + 4 Tés', false, 'https://res.cloudinary.com/hsfhcaic/image/upload/v1788530887/tienda/nuhfxacpvoffegcmuyfl.png', 'Bienestar',
+   array['3 sobres de Calcio Nutritivo patentado (95% absorción) + 4 sobres de Té Tianshi.', 'El Calcio regenera hueso/articulación y previene dolores articulares.', 'El Té aporta hidratación activa y previene el estreñimiento.', 'Total 7 sobres individuales termosellados.'],
+   'Té en infusión durante el día + Calcio disuelto en agua tibia antes de dormir.', 'Empaque Kraft ecológico termosellado con 3 sobres de Calcio y 4 sobres de Té Tiens.', true),
 
-  (7, 'Combo Doble Acción 5 Días', 'combo-doble-accion-5-dias', 135.0, 160.0, 85.4,
+  (7, 'Combo Dual Pro (10 Tomas)', 'combo-dual-pro', 135.0, 175.0, 85.4,
    'El tratamiento combinado para limpiar el organismo por la mañana y mantener el rendimiento al máximo durante todo el día.',
-   'Mayor Ahorro', 'Digestión limpia + Energía total • 10 Sobres', false, 'products/kit_energia_diaria.jpg', 'Saludable',
-   array['5 sobres de Té Digestivo + 5 sobres de CordyCafé.', 'Ahorras 15 Bs comprándolos juntos en lugar de individuales.', 'Doble beneficio: Digestión ligera por la mañana y energía prolongada por la tarde.', 'Total 10 sobres fraccionados termosellados.'],
+   'Mayor Ahorro', 'Digestión limpia + Energía total • 10 Sobres', false, 'https://res.cloudinary.com/hsfhcaic/image/upload/v1788530871/tienda/y5x46pzsksyfcfx3r5wq.png', 'Saludable',
+   array['5 sobres de Té Digestivo + 5 sobres de CordyCafé.', 'Ahorras comprándolos juntos en lugar de individuales.', 'Doble beneficio: Digestión ligera por la mañana y energía prolongada por la tarde.', 'Total 10 sobres fraccionados termosellados.'],
    'Té herbal durante la mañana + CordyCafé después del almuerzo.', 'Empaque Kraft ecológico con 5 sobres de Té Tianshi y 5 sobres de CordyCafé.', true)
 on conflict (id) do update set
   name = excluded.name,
@@ -342,10 +342,12 @@ insert into public.combo_products (combo_id, product_id, quantity) values
   (2, 4, 1),
   (3, 3, 1),
   (4, 3, 7),  -- Reto Detox: 7 Sobres de Té
-  (5, 1, 5),  -- Pack Energía: 5 Sobres CordyCafé
-  (6, 2, 5),  -- Kit Calcio: 5 Sobres Calcio Nutritivo
-  (7, 3, 5),  -- Combo Doble Acción: 5 Sobres Té
-  (7, 1, 5)   -- Combo Doble Acción: 5 Sobres CordyCafé
+  (5, 1, 4),  -- Pack Energía: 4 Sobres CordyCafé
+  (6, 2, 3),  -- Pack Movilidad: 3 Sobres Calcio Nutritivo
+  (6, 3, 4),  -- Pack Movilidad: 4 Sobres Té Tianshi
+  (7, 3, 5),  -- Combo Dual Pro: 5 Sobres Té
+  (7, 1, 5),  -- Combo Dual Pro: 5 Sobres CordyCafé
+  (1, 1, 1)
 on conflict (combo_id, product_id) do update set quantity = excluded.quantity;
 
 -- 7. Seed Branches

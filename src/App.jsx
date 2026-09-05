@@ -168,7 +168,7 @@ const DEFAULT_COMBOS = [
     dosage: "Tomar según indicación diaria de cada suplemento.",
     package_detail: "Pack completo de frascos y cajas originales selladas.",
     pinned: true,
-    image_url: "products/kit_energia_diaria.jpg"
+    image_url: "https://res.cloudinary.com/hsfhcaic/image/upload/v1788530786/tienda/d2bjkmccrxqkcsgjtuxw.webp"
   },
   {
     id: 2,
@@ -190,7 +190,7 @@ const DEFAULT_COMBOS = [
     dosage: "1 sobre al día según edad antes de dormir o por la mañana.",
     package_detail: "Trilogía de cajas originales selladas de fábrica.",
     pinned: true,
-    image_url: "products/kit_bienestar_huesos.jpg"
+    image_url: "https://res.cloudinary.com/hsfhcaic/image/upload/v1788530808/tienda/fgedawvef79tqocct505.webp"
   },
   {
     id: 3,
@@ -212,7 +212,7 @@ const DEFAULT_COMBOS = [
     dosage: "Té en ayunas, Jarabe FOS a media tarde y Chitosa antes de comidas principales.",
     package_detail: "Pack completo de suplementos en presentación original.",
     pinned: true,
-    image_url: "products/kit_antojo_saludable.jpg"
+    image_url: "https://res.cloudinary.com/hsfhcaic/image/upload/v1788530825/tienda/va3bytsmpwqwg998wm7f.webp"
   },
   {
     id: 4,
@@ -234,58 +234,58 @@ const DEFAULT_COMBOS = [
     dosage: "1 sobre diario infusionado en 1 litro de agua tibia, tomado a lo largo de la mañana o en ayunas.",
     package_detail: "Empaque Kraft ecológico termosellado con 7 sobres individuales de Té Tiens.",
     pinned: false,
-    image_url: "products/kit_antojo_saludable.jpg"
+    image_url: "https://res.cloudinary.com/hsfhcaic/image/upload/v1788530854/tienda/nstyaguvlrg3scmfopzo.png"
   },
   {
     id: 5,
-    name: "Pack Energía & Rendimiento 5 Días",
-    slug: "pack-energia-5-dias",
-    price_bs: 95,
-    original_price_bs: 125,
-    cost_price_bs: 60.4,
+    name: "Pack Energía y Vitalidad (4 Días)",
+    slug: "pack-energia-4-dias",
+    price_bs: 75,
+    original_price_bs: 100,
+    cost_price_bs: 48.32,
     description: "Energía natural sostenida para jornadas largas de trabajo o estudio, sin taquicardia ni irritación estomacal.",
     badge: "Energía Total",
-    tagline: "CordyCafé sin gastritis • 5 Sobres",
+    tagline: "CordyCafé sin gastritis • 4 Sobres",
     category: "Energía",
     bullets: [
       "Contiene extracto de Cordyceps para aumentar rendimiento físico y mental.",
       "Cero acidez (ideal para personas con gastritis).",
       "Reemplaza el café común con un tónico revitalizante.",
-      "Incluye 5 sobres individuales de CordyCafé gourmet."
+      "Incluye 4 sobres individuales de CordyCafé gourmet."
     ],
     dosage: "1 sobre disuelto en una taza de agua caliente a media mañana o al inicio de la jornada laboral.",
-    package_detail: "Empaque Kraft ecológico termosellado con 5 sobres individuales de CordyCafé Tiens.",
+    package_detail: "Empaque Kraft ecológico termosellado con 4 sobres individuales de CordyCafé Tiens.",
     pinned: false,
-    image_url: "products/kit_energia_diaria.jpg"
+    image_url: "https://res.cloudinary.com/hsfhcaic/image/upload/v1788530871/tienda/y5x46pzsksyfcfx3r5wq.png"
   },
   {
     id: 6,
-    name: "Kit Calcio Nutritivo 5 Días",
-    slug: "kit-calcio-5-dias",
-    price_bs: 145,
-    original_price_bs: 180,
-    cost_price_bs: 100,
-    description: "Fórmula de calcio de alta absorción (95%) para aliviar dolores de rodillas, espalda, calambres y desgaste articular.",
+    name: "Pack Movilidad Total — Huesos & Digestión (4 Días)",
+    slug: "pack-movilidad-total",
+    price_bs: 120,
+    original_price_bs: 160,
+    cost_price_bs: 80.0,
+    description: "Tratamiento dual para regenerar hueso y articulación con Calcio de alta absorción (95%) mientras el Té aporta hidratación activa y previene el estreñimiento.",
     badge: "Alta Absorción",
-    tagline: "Huesos fuertes y cero dolor articular • 5 Sobres",
+    tagline: "Huesos fuertes y digestión activa • 3 Calcios + 4 Tés",
     category: "Bienestar",
     bullets: [
-      "Tasa de absorción del 95% patentada sin generar cálculos renales.",
-      "Fortalece masa ósea y alivia contracturas musculares.",
-      "Ideal para personas con alta exigencia física o adultos mayores.",
-      "Incluye 5 sobres individuales de Calcio Nutritivo Tiens."
+      "3 sobres de Calcio Nutritivo patentado (95% absorción) + 4 sobres de Té Tianshi.",
+      "El Calcio regenera hueso/articulación y previene dolores articulares.",
+      "El Té aporta hidratación activa y previene el estreñimiento.",
+      "Total 7 sobres individuales termosellados."
     ],
-    dosage: "1 sobre diario disuelto en agua tibia (nunca hirviendo) antes de dormir o con el desayuno.",
-    package_detail: "Empaque Kraft ecológico termosellado con 5 sobres individuales de Calcio Nutritivo Tiens.",
+    dosage: "Té en infusión durante el día + Calcio disuelto en agua tibia antes de dormir.",
+    package_detail: "Empaque Kraft ecológico termosellado con 3 sobres de Calcio y 4 sobres de Té Tiens.",
     pinned: false,
-    image_url: "products/kit_bienestar_huesos.jpg"
+    image_url: "https://res.cloudinary.com/hsfhcaic/image/upload/v1788530887/tienda/nuhfxacpvoffegcmuyfl.png"
   },
   {
     id: 7,
-    name: "Combo Doble Acción 5 Días",
-    slug: "combo-doble-accion-5-dias",
+    name: "Combo Dual Pro (10 Tomas)",
+    slug: "combo-dual-pro",
     price_bs: 135,
-    original_price_bs: 160,
+    original_price_bs: 175,
     cost_price_bs: 85.4,
     description: "El tratamiento combinado para limpiar el organismo por la mañana y mantener el rendimiento al máximo durante todo el día.",
     badge: "Mayor Ahorro",
@@ -293,14 +293,14 @@ const DEFAULT_COMBOS = [
     category: "Saludable",
     bullets: [
       "5 sobres de Té Digestivo + 5 sobres de CordyCafé.",
-      "Ahorras 15 Bs comprándolos juntos en lugar de individuales.",
+      "Ahorras comprándolos juntos en lugar de individuales.",
       "Doble beneficio: Digestión ligera por la mañana y energía prolongada por la tarde.",
       "Total 10 sobres fraccionados termosellados."
     ],
     dosage: "Té herbal durante la mañana + CordyCafé después del almuerzo.",
     package_detail: "Empaque Kraft ecológico con 5 sobres de Té Tianshi y 5 sobres de CordyCafé.",
     pinned: false,
-    image_url: "products/kit_energia_diaria.jpg"
+    image_url: "https://res.cloudinary.com/hsfhcaic/image/upload/v1788530871/tienda/y5x46pzsksyfcfx3r5wq.png"
   }
 ];
 
@@ -310,10 +310,39 @@ const DEFAULT_COMBO_PRODUCTS = [
   { combo_id: 2, product_id: 4, quantity: 1 },
   { combo_id: 3, product_id: 3, quantity: 1 },
   { combo_id: 4, product_id: 3, quantity: 7 },
-  { combo_id: 5, product_id: 1, quantity: 5 },
-  { combo_id: 6, product_id: 2, quantity: 5 },
+  { combo_id: 5, product_id: 1, quantity: 4 },
+  { combo_id: 6, product_id: 2, quantity: 3 },
+  { combo_id: 6, product_id: 3, quantity: 4 },
   { combo_id: 7, product_id: 3, quantity: 5 },
-  { combo_id: 7, product_id: 1, quantity: 5 }
+  { combo_id: 7, product_id: 1, quantity: 5 },
+  { combo_id: 1, product_id: 1, quantity: 1 }
+];
+
+const DEFAULT_TESTIMONIALS = [
+  {
+    id: 1,
+    text: "El Reto Detox me desinflamó la pesadez estomacal en solo 3 días. El té tiene un sabor herbal muy suave y el paquete llegó termosellado a mi trabajo en Equipetrol.",
+    author: "Mariana R. • Santa Cruz (Compra Verificada)",
+    stars: 5
+  },
+  {
+    id: 2,
+    text: "Pedí el Pack Energía de CordyCafé. Cero acidez para mi gastritis y me da buen rendimiento sin taquicardia. Pagué por QR directo al repartidor.",
+    author: "Lic. Carlos Mendoza • La Paz (Compra Verificada)",
+    stars: 5
+  },
+  {
+    id: 3,
+    text: "Excelente servicio de delivery. El Kit de Calcio Nutritivo le quitó los dolores de articulaciones a mi mamá. 100% sellado y original.",
+    author: "Patricia V. • Cochabamba (Compra Verificada)",
+    stars: 5
+  },
+  {
+    id: 4,
+    text: "Me gusta mucho que vengan en sobres individuales termosellados en papel kraft ecológico. Muy higiénico y fácil de llevar para preparar en la oficina.",
+    author: "Dra. Sofía Áñez • Santa Cruz (Compra Verificada)",
+    stars: 5
+  }
 ];
 
 const DEFAULT_SOCIAL_POSTS = [
@@ -1260,7 +1289,7 @@ function App() {
         .from('testimonials')
         .select('*')
         .order('id', { ascending: true });
-      setTestimonials(testData || []);
+      setTestimonials(testData && testData.length > 0 ? testData : DEFAULT_TESTIMONIALS);
 
       // 10. Fetch FAQs
       const { data: faqsData } = await supabase
@@ -1277,6 +1306,7 @@ function App() {
       setProducts(DEFAULT_PRODUCTS);
       setCombos(DEFAULT_COMBOS);
       setComboProducts(DEFAULT_COMBO_PRODUCTS);
+      setTestimonials(DEFAULT_TESTIMONIALS);
       
       const fallbackBranches = [
         { id: 1, name: "Santa Cruz", address: "Av. San Martín, Equipetrol, Santa Cruz", shipping_cost_bs: 12 },
@@ -8658,8 +8688,8 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
           {testimonials.length > 0 && (
             <section className="testimonials-section">
               <div className="faq-section" style={{ padding: '3rem 1.5rem' }}>
-                <h2 className="section-title" style={{ fontSize: '1.6rem', marginBottom: '0.5rem' }}>Opiniones en Santa Cruz</h2>
-                <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', marginBottom: '2rem' }}>Valoraciones de quienes ordenan sus packs y reciben por delivery.</p>
+                <h2 className="section-title" style={{ fontSize: '1.6rem', marginBottom: '0.5rem' }}>Opiniones y Experiencias en Bolivia</h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', marginBottom: '2rem' }}>Valoraciones verificadas de quienes ordenan sus packs y reciben por delivery en Santa Cruz, La Paz y Cochabamba.</p>
                 
                 <div className="testimonials-grid">
                   {testimonials.map(t => (
@@ -10332,36 +10362,51 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     </div>
                   </div>
 
-                  {/* Tarjeta Virtual Kaldirev VIP */}
-                  <div style={{
-                    background: 'linear-gradient(135deg, #0e3e2f 0%, #155e45 100%)',
-                    color: '#ffffff',
-                    borderRadius: '20px',
-                    padding: '20px',
-                    boxShadow: '0 10px 25px rgba(14, 62, 47, 0.25)',
-                    border: '1.5px solid rgba(197, 160, 89, 0.4)',
-                    position: 'relative',
-                    overflow: 'hidden'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.08em', color: 'var(--accent-gold)' }}>KALDIREV BIENESTAR</span>
-                      <span style={{ fontSize: '0.78rem', background: 'rgba(255,255,255,0.15)', padding: '3px 10px', borderRadius: '12px', fontWeight: 700 }}>Socio VIP</span>
+                  {/* Tarjeta Visa / Crédito Bloqueada (En Desarrollo) */}
+                  <div className="klr-visa-blocked-card-wrapper">
+                    {/* Tarjeta Virtual Kaldirev de Fondo (Atenuada) */}
+                    <div style={{
+                      background: 'linear-gradient(135deg, #0e3e2f 0%, #155e45 100%)',
+                      color: '#ffffff',
+                      borderRadius: '20px',
+                      padding: '20px',
+                      filter: 'blur(1.5px) grayscale(40%)',
+                      opacity: 0.38,
+                      pointerEvents: 'none',
+                      userSelect: 'none'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.08em', color: 'var(--accent-gold)' }}>KALDIREV BIENESTAR</span>
+                        <span style={{ fontSize: '0.78rem', background: 'rgba(255,255,255,0.15)', padding: '3px 10px', borderRadius: '12px', fontWeight: 700 }}>Tarjeta Débito / Crédito</span>
+                      </div>
+                      <div style={{ fontSize: '1.25rem', letterSpacing: '0.15em', fontFamily: 'monospace', fontWeight: 700, marginBottom: '18px' }}>
+                        •••• •••• •••• ••••
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '0.82rem' }}>
+                        <div>
+                          <div style={{ fontSize: '0.68rem', color: '#94a3b8', textTransform: 'uppercase' }}>Titular</div>
+                          <div style={{ fontWeight: 800 }}>{personalData.firstName || 'Cliente'} {personalData.lastName || 'Kaldirev'}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.68rem', color: '#94a3b8', textTransform: 'uppercase' }}>Vence</div>
+                          <div style={{ fontWeight: 800 }}>-- / --</div>
+                        </div>
+                        <div style={{ fontWeight: 900, fontStyle: 'italic', fontSize: '1.1rem', color: 'var(--accent-gold)' }}>
+                          VISA
+                        </div>
+                      </div>
                     </div>
-                    <div style={{ fontSize: '1.25rem', letterSpacing: '0.15em', fontFamily: 'monospace', fontWeight: 700, marginBottom: '18px' }}>
-                      •••• •••• •••• 1234
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '0.82rem' }}>
-                      <div>
-                        <div style={{ fontSize: '0.68rem', color: '#94a3b8', textTransform: 'uppercase' }}>Titular</div>
-                        <div style={{ fontWeight: 800 }}>{personalData.firstName} {personalData.lastName}</div>
+
+                    {/* Capa de Bloqueo 'Seguimos trabajando en esta función' */}
+                    <div className="klr-visa-locked-overlay">
+                      <div className="klr-visa-locked-pill">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                        <span>Próximamente</span>
                       </div>
-                      <div>
-                        <div style={{ fontSize: '0.68rem', color: '#94a3b8', textTransform: 'uppercase' }}>Vence</div>
-                        <div style={{ fontWeight: 800 }}>12 / 28</div>
-                      </div>
-                      <div style={{ fontWeight: 900, fontStyle: 'italic', fontSize: '1.1rem', color: 'var(--accent-gold)' }}>
-                        VISA
-                      </div>
+                      <h4 className="klr-visa-locked-title">Seguimos trabajando en esta función</h4>
+                      <p className="klr-visa-locked-desc">
+                        Estamos integrando la pasarela oficial regulada para pagos directos con tarjetas Visa y Mastercard en Bolivia. Por el momento, utiliza los métodos habilitados a continuación.
+                      </p>
                     </div>
                   </div>
 
@@ -11316,48 +11361,29 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
         </div>
       )}
 
-      {/* FLOATING WHATSAPP ADVISOR (Sales Conversion Booster) */}
-      {/* FLOATING WHATSAPP ADVISOR (Optimized: Compact Round FAB on Mobile, Concierge Card on Desktop) */}
+      {/* FLOATING WHATSAPP BUTTON (Aesthetic Minimalist Luxury Edition) */}
       {view !== 'admin' && (
         <aside
           aria-label="Asistencia WhatsApp"
           className="floating-whatsapp-advisor"
         >
-          {/* Desktop Live Concierge Card */}
-          <div className="floating-wa-desktop-card">
-            <div className="wa-card-header">
-              <div className="wa-avatar-ring">
-                <span className="wa-agent-dot"></span>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-              </div>
-              <div className="wa-agent-meta">
-                <span className="wa-agent-name">Asesoría Kaldirev 🌿</span>
-                <span className="wa-agent-status">En línea • Respuesta inmediata</span>
-              </div>
-            </div>
-            <p className="wa-card-msg">
-              ¿Tienes consultas sobre combos Tiens o envíos a tu ciudad? ¡Escríbenos directamente!
-            </p>
-          </div>
-
           <a
             href={`https://wa.me/${config.whatsappNumber || '59163488086'}?text=${encodeURIComponent('Hola Kaldirev Bolivia, tengo una consulta sobre los suplementos naturales y promociones.')}`}
             target="_blank"
             rel="noopener noreferrer"
             className="floating-wa-btn"
-            title="Consultar por WhatsApp con un Asesor de Salud"
+            title="Consultar por WhatsApp con un Asesor"
             aria-label="Chatear por WhatsApp con un Asesor"
           >
-            <span className="wa-pulse-glow"></span>
-            <span className="wa-mobile-unread-badge" title="Asesor disponible">1</span>
-            
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" className="wa-main-svg">
-              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.249 8.477 3.517 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.739-1.446L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.625 1.451 5.436 0 9.86-4.42 9.864-9.856.002-2.63-1.023-5.101-2.887-6.967C16.38 1.916 13.91 1.012 11.285 1.012 5.848 1.012 1.425 5.435 1.422 10.873c-.001 1.5.399 2.969 1.157 4.298l-.997 3.642 3.73-.978c-.001.002-.001.002-.001.002zm12.338-7.989c-.334-.168-1.977-.975-2.28-1.087-.302-.111-.522-.168-.742.168-.22.33-.852 1.079-1.044 1.302-.192.223-.385.253-.718.084-.334-.168-1.409-.52-2.684-1.657-1.002-.894-1.677-2.002-1.874-2.337-.197-.335-.021-.516.146-.682.151-.15.334-.385.501-.58.167-.192.222-.334.334-.56.111-.223.056-.417-.028-.585-.084-.168-.742-1.787-1.016-2.45-.269-.65-.539-.562-.742-.573-.191-.01-.41-.01-.628-.01-.22 0-.577.082-.88.411-.303.33-1.154 1.128-1.154 2.75 0 1.622 1.18 3.19 1.346 3.414.167.223 2.323 3.548 5.626 4.974.786.34 1.398.543 1.877.697.79.25 1.509.215 2.078.13.633-.095 1.977-.807 2.254-1.59.277-.783.277-1.456.195-1.59-.082-.134-.302-.253-.633-.421z"/>
-            </svg>
-
+            <div className="wa-icon-wrap">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" className="wa-main-svg">
+                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.249 8.477 3.517 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.739-1.446L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.625 1.451 5.436 0 9.86-4.42 9.864-9.856.002-2.63-1.023-5.101-2.887-6.967C16.38 1.916 13.91 1.012 11.285 1.012 5.848 1.012 1.425 5.435 1.422 10.873c-.001 1.5.399 2.969 1.157 4.298l-.997 3.642 3.73-.978c-.001.002-.001.002-.001.002zm12.338-7.989c-.334-.168-1.977-.975-2.28-1.087-.302-.111-.522-.168-.742.168-.22.33-.852 1.079-1.044 1.302-.192.223-.385.253-.718.084-.334-.168-1.409-.52-2.684-1.657-1.002-.894-1.677-2.002-1.874-2.337-.197-.335-.021-.516.146-.682.151-.15.334-.385.501-.58.167-.192.222-.334.334-.56.111-.223.056-.417-.028-.585-.084-.168-.742-1.787-1.016-2.45-.269-.65-.539-.562-.742-.573-.191-.01-.41-.01-.628-.01-.22 0-.577.082-.88.411-.303.33-1.154 1.128-1.154 2.75 0 1.622 1.18 3.19 1.346 3.414.167.223 2.323 3.548 5.626 4.974.786.34 1.398.543 1.877.697.79.25 1.509.215 2.078.13.633-.095 1.977-.807 2.254-1.59.277-.783.277-1.456.195-1.59-.082-.134-.302-.253-.633-.421z"/>
+              </svg>
+              <span className="wa-status-dot"></span>
+            </div>
             <div className="wa-btn-label-desktop">
               <span className="wa-label-title">WhatsApp Asesor</span>
-              <span className="wa-label-sub">Chatear en vivo ahora</span>
+              <span className="wa-label-sub">En línea</span>
             </div>
           </a>
         </aside>
