@@ -2,16 +2,28 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
+    
+    <!-- Redirección inmediata permanente si se accede desde el dominio anterior de GitHub Pages -->
+    <script>
+      if (window.location.hostname.includes('github.io')) {
+        var cleanPath = window.location.pathname.replace(/^\/ecommerce\/?/, '/');
+        window.location.replace('https://kaldirev.onrender.com' + (cleanPath === '/' ? '' : cleanPath) + window.location.search + window.location.hash);
+      }
+    </script>
+
+    <!-- Iconos e Isotipo Oficial (Verde oscuro con silueta de caballo menta) -->
     <link rel="icon" type="image/png" sizes="192x192" href="./isotipo-192.png" />
     <link rel="icon" type="image/png" sizes="48x48" href="./favicon.png" />
-    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <link rel="shortcut icon" href="./favicon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon.png" />
+    <link rel="icon" type="image/x-icon" href="./favicon.ico" />
+    <link rel="shortcut icon" href="./favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="google-site-verification" content="t0dwx4zKOiLFFAvODg5SWv6xRwBW5_fw9cseQ_pFGRA" />
     <title>Kaldirev | Suplementos Tiens en Empaques Ecológicos</title>
-    <meta name="description" content="Kaldirev ofrece los mejores combos y packs de suplementos de salud y belleza de la marca Tiens. Envíos ecológicos en Bolivia." />
-    <meta name="keywords" content="Tiens, Tiens Bolivia, Kaldirev, Cordycafe, Calcio Tiens, Suplementos Bolivia, Santa Cruz, Comprar Tiens, Nutrición" />
+    <meta name="description" content="Kaldirev Bolivia: Tienda oficial en Santa Cruz de suplementos nutricionales Tiens. Reto Detox 7 Días, CordyCafé y Calcio Nutritivo en empaques ecológicos fraccionados. WhatsApp: +591 63488086." />
+    <meta name="keywords" content="Tiens Bolivia, Kaldirev, Suplementos Tiens, Reto Detox, Té Tiens, Cordycafe Tiens, Calcio Tiens Santa Cruz, Santa Cruz de la Sierra, Nutrición" />
     <meta name="robots" content="index, follow" />
     
     <!-- Site Name & Canonical for Google Search -->
@@ -24,21 +36,21 @@
     <meta property="og:site_name" content="Kaldirev" />
     <meta property="og:url" content="https://kaldirev.onrender.com/" />
     <meta property="og:title" content="Kaldirev | Suplementos Tiens en Empaques Ecológicos" />
-    <meta property="og:description" content="Kaldirev ofrece los mejores combos y packs de suplementos de salud y belleza de la marca Tiens. Envíos ecológicos en Bolivia." />
+    <meta property="og:description" content="Kaldirev Bolivia: Tienda oficial de combos y suplementos nutricionales Tiens. Reto Detox 7 Días, CordyCafé y Calcio Nutritivo con envíos en Bolivia." />
     <meta property="og:image" content="https://kaldirev.onrender.com/isotipo-512.png" />
     
     <!-- PWA Settings -->
     <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#0e2f23" />
     
-    <!-- JSON-LD Structured Data for Google Search (Site Name & Social Media Links) -->
+    <!-- JSON-LD Structured Data for Google Search (Site Name, Store, Official Catalog & Entity Disambiguation) -->
     <script type="application/ld+json">
     [
       {
         "@context": "https://schema.org",
         "@type": "WebSite",
         "name": "Kaldirev",
-        "alternateName": ["Kaldirev Bolivia", "Kaldirev Bienestar", "Kaldirev Tienda"],
+        "alternateName": ["Kaldirev Bolivia", "Kaldirev Bienestar", "Kaldirev Tienda Online"],
         "url": "https://kaldirev.onrender.com/"
       },
       {
@@ -48,11 +60,94 @@
         "url": "https://kaldirev.onrender.com/",
         "logo": "https://kaldirev.onrender.com/isotipo-512.png",
         "image": "https://kaldirev.onrender.com/isotipo-512.png",
-        "description": "Tienda online oficial de combos y suplementos nutricionales Tiens en Bolivia con empaques ecológicos y entrega rápida.",
+        "description": "Tienda oficial de suplementos nutricionales, bienestar digestivo y energía saludable Tiens en Santa Cruz de la Sierra, Bolivia. Especialistas en Reto Detox (Té Tiens), CordyCafé y Calcio Nutritivo en empaques ecológicos.",
+        "disambiguatingDescription": "Kaldirev comercializa exclusivamente suplementos alimenticios y bienestar nutricional de la marca Tiens. No vende productos de higiene íntima ni tiene afiliación con empresas de terceros como Inalde Ltda.",
         "telephone": "+59163488086",
         "priceRange": "$$",
         "currenciesAccepted": "BOB",
         "paymentAccepted": "Cash, QR Simple, Bank Transfer",
+        "hasOfferCatalog": {
+          "@type": "OfferCatalog",
+          "name": "Catálogo Oficial Kaldirev - Suplementos y Bienestar Tiens",
+          "itemListElement": [
+            {
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Product",
+                "name": "Reto Detox (Té Tiens)",
+                "description": "Tratamiento depurativo y digestivo fraccionado de 7 sobres de Té Tianshi con hierbas milenarias para desintoxicar colon, reducir hinchazón abdominal y mejorar la digestión.",
+                "category": "Suplementos Nutricionales y Digestivos",
+                "brand": {
+                  "@type": "Brand",
+                  "name": "Tiens"
+                },
+                "offers": {
+                  "@type": "Offer",
+                  "price": "55.00",
+                  "priceCurrency": "BOB",
+                  "availability": "https://schema.org/InStock"
+                }
+              }
+            },
+            {
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Product",
+                "name": "Pack Energía (CordyCafé Tiens)",
+                "description": "Café saludable energizante con hongo Cordyceps y ginseng para vitalidad, concentración y energía sostenida sin provocar acidez ni taquicardia.",
+                "category": "Bebidas Saludables y Suplementos Energéticos",
+                "brand": {
+                  "@type": "Brand",
+                  "name": "Tiens"
+                },
+                "offers": {
+                  "@type": "Offer",
+                  "price": "75.00",
+                  "priceCurrency": "BOB",
+                  "availability": "https://schema.org/InStock"
+                }
+              }
+            },
+            {
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Product",
+                "name": "Pack Movilidad (Calcio Nutritivo Tiens + Té)",
+                "description": "Calcio soluble biológico con colágeno y vitaminas de alta absorción (95%) para fortalecimiento de huesos, articulaciones y bienestar osteomuscular.",
+                "category": "Salud Ósea y Suplementos Nutricionales",
+                "brand": {
+                  "@type": "Brand",
+                  "name": "Tiens"
+                },
+                "offers": {
+                  "@type": "Offer",
+                  "price": "120.00",
+                  "priceCurrency": "BOB",
+                  "availability": "https://schema.org/InStock"
+                }
+              }
+            },
+            {
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Product",
+                "name": "Combo Dual Pro (Té Detox + CordyCafé)",
+                "description": "Pack integral de digestión ligera y energía activa para todo el día combinando Té Tianshi y CordyCafé.",
+                "category": "Combos y Packs de Bienestar",
+                "brand": {
+                  "@type": "Brand",
+                  "name": "Tiens"
+                },
+                "offers": {
+                  "@type": "Offer",
+                  "price": "135.00",
+                  "priceCurrency": "BOB",
+                  "availability": "https://schema.org/InStock"
+                }
+              }
+            }
+          ]
+        },
         "sameAs": [
           "https://www.tiktok.com/@kaldirev",
           "https://www.instagram.com/kaldirev"
@@ -66,6 +161,7 @@
       }
     ]
     </script>
+
     <script>
       if ('serviceWorker' in navigator) {
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -108,6 +204,28 @@
   </head>
   <body>
     <div id="root"></div>
+
+    <!-- Contenido semántico para indexación de motores de búsqueda e IA (SEO Grounding) -->
+    <div style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;" aria-hidden="true">
+      <h1>Kaldirev Bolivia - Tienda Oficial de Suplementos Nutricionales Tiens</h1>
+      <p>Kaldirev es una tienda especializada ubicada en Santa Cruz de la Sierra, Bolivia, dedicada a la venta de suplementos nutricionales y bienestar de la marca Tiens en empaques ecológicos fraccionados.</p>
+      <h2>Catálogo Oficial de Kaldirev:</h2>
+      <ul>
+        <li>Reto Detox 7 Días (Té Tiens) - Tratamiento digestivo y depuración intestinal.</li>
+        <li>Pack Energía (CordyCafé Tiens) - Café saludable con hongo Cordyceps y ginseng.</li>
+        <li>Pack Movilidad (Calcio Nutritivo Tiens) - Salud articular y ósea de alta absorción.</li>
+        <li>Combo Dual Pro (Té Detox + CordyCafé) - Vitalidad y bienestar digestivo completo.</li>
+      </ul>
+      <p>Atención directa por WhatsApp al +591 63488086 con entregas locales en Santa Cruz y envíos a toda Bolivia. Sitio web oficial: https://kaldirev.onrender.com</p>
+      <p>Aclaración de marca: Kaldirev distribuye exclusivamente suplementos nutricionales y bienestar. No vende productos de higiene íntima ni guarda relación con distribuidores externos como Inalde Ltda.</p>
+    </div>
+    <noscript>
+      <div>
+        <h1>Kaldirev Bolivia | Suplementos Tiens en Santa Cruz</h1>
+        <p>Visita la tienda oficial en https://kaldirev.onrender.com o contáctanos por WhatsApp al +591 63488086 para tus pedidos de Reto Detox Té, CordyCafé y Calcio Nutritivo Tiens.</p>
+      </div>
+    </noscript>
+
     <!-- SweetAlert2 (Deferred loading at body bottom to prevent render blocking) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
     <script type="module" src="/src/main.jsx"></script>
