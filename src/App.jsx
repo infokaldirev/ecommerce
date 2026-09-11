@@ -4407,7 +4407,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
               </svg>
             </div>
-            <h2>Kaldirev Administrador</h2>
+            <h2><span className="brand-kaldi">Kaldi</span><span className="brand-rev">rev</span> Administrador</h2>
             <p>Ingresa la contraseña maestra para desbloquear la base de datos de Kaldirev Bolivia.</p>
             
             <form onSubmit={handleVerifyPasscode}>
@@ -4443,7 +4443,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 <img src={resolveAssetUrl('isotipo-512.png')} alt="Kaldirev" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '10px' }} />
               </div>
               <div className="logo-text">
-                <span className="logo-title" style={{ color: 'white', fontSize: '1.25rem' }}>Kaldirev</span>
+                <span className="logo-title" style={{ fontSize: '1.25rem' }}><span className="brand-kaldi">Kaldi</span><span className="brand-rev">rev</span></span>
                 <span className="logo-subtitle" style={{ color: 'var(--accent-gold)' }}>Dark Store</span>
               </div>
             </div>
@@ -7742,7 +7742,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             />
             <div className="smart-pwa-text">
               <div className="smart-pwa-title-row">
-                <span className="smart-pwa-title">App Kaldirev</span>
+                <span className="smart-pwa-title">App <span className="brand-kaldi">Kaldi</span><span className="brand-rev">rev</span></span>
                 <span className="smart-pwa-badge">Gratis</span>
               </div>
               <span className="smart-pwa-desc">Compras en 1 clic y rastreo de envíos</span>
@@ -7765,7 +7765,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             <img src={resolveAssetUrl('isotipo-512.png')} alt="Kaldirev" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} />
           </div>
           <div className="logo-text">
-            <span className="logo-title" style={{ fontSize: '1.45rem', fontWeight: 900 }}>Kaldirev</span>
+            <span className="logo-title" style={{ fontSize: '1.45rem', fontWeight: 900 }}><span className="brand-kaldi">Kaldi</span><span className="brand-rev">rev</span></span>
             <span className="logo-subtitle" style={{ fontSize: '0.72rem', letterSpacing: '0.5px' }}>Bienestar & Energía</span>
           </div>
         </div>
@@ -8050,7 +8050,9 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                 </svg>
                 Envío Sostenible Kraft Termosellado
               </span>
-              <h1 className="hero-title" style={{ fontSize: '2.5rem', fontWeight: 800 }}>Kaldirev • Bienestar & Energía</h1>
+              <h1 className="hero-title" style={{ fontSize: '2.5rem', fontWeight: 800 }}>
+                <span className="brand-kaldi">Kaldi</span><span className="brand-rev">rev</span> • Bienestar & Energía
+              </h1>
               <p className="hero-description" style={{ fontSize: '1.2rem', lineHeight: '1.5' }}>
                 Combos exclusivos empacados con sello de seguridad. Pedidos rápidos por WhatsApp y delivery en Santa Cruz de la Sierra.
               </p>
@@ -11113,7 +11115,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             </button>
 
             <div className="auth-modal-header">
-              <h2>Kaldirev Bolivia</h2>
+              <h2><span className="brand-kaldi">Kaldi</span><span className="brand-rev">rev</span> Bolivia</h2>
               <p>Únete o ingresa para registrar tus datos de envío e historial de compras.</p>
             </div>
 
@@ -11298,7 +11300,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
       <footer>
         <div className="footer-grid">
           <div className="footer-info-col">
-            <h3>Kaldirev</h3>
+            <h3><span className="brand-kaldi">Kaldi</span><span className="brand-rev">rev</span></h3>
             <p className="footer-info-desc">
               Bienestar & Energía. Packs exclusivos de suplementos en Santa Cruz de la Sierra, Bolivia. Empacado con termosellado manual de seguridad.
             </p>

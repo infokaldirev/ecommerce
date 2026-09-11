@@ -129,8 +129,41 @@ header {
   font-size: 1.35rem;
   font-weight: 900;
   color: var(--primary-green);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  display: inline-flex;
+  align-items: baseline;
+}
+
+/* Two-tone brand identity ("Kaldi" + "rev") */
+.brand-name {
+  display: inline-flex;
+  align-items: baseline;
+  text-transform: none !important;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+
+.brand-kaldi {
+  color: var(--primary-green, #0e3e2f);
+  font-weight: inherit;
+  transition: color 0.2s ease;
+}
+
+.brand-rev {
+  color: var(--accent-gold, #c5a059);
+  font-weight: inherit;
+  transition: color 0.2s ease;
+}
+
+/* On dark backgrounds, Kaldi is crisp white and rev stays warm gold */
+.sidebar-logo .brand-kaldi,
+.footer-info-col .brand-kaldi,
+.hero-banner .brand-kaldi,
+.smart-pwa-banner .brand-kaldi,
+.admin-card .brand-kaldi,
+.brand-on-dark .brand-kaldi {
+  color: #ffffff !important;
 }
 
 .logo-subtitle {
@@ -651,7 +684,8 @@ header {
 }
 
 .sidebar-logo .logo-title {
-  font-size: 2.2rem !important;
+  font-size: 1.35rem;
+  letter-spacing: -0.01em;
 }
 
 .sidebar-nav-btn {
@@ -1384,8 +1418,11 @@ footer {
 
 .footer-info-col h3 {
   color: white;
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   margin-bottom: 0.75rem;
+  display: inline-flex;
+  align-items: baseline;
+  text-transform: none;
 }
 
 .footer-tags {
