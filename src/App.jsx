@@ -548,32 +548,17 @@ function App() {
   const [userAddresses, setUserAddresses] = useState(() => {
     try {
       const saved = localStorage.getItem('kaldirev_user_addresses');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const filtered = parsed.filter(a => a && a.recipient !== 'Ana García' && a.recipient !== 'Ana García (Casa)');
+          if (filtered.length > 0) return filtered;
+        }
+      }
     } catch (e) {
       console.warn("Addresses load error:", e);
     }
-    return [
-      {
-        id: 'addr-1',
-        recipient: 'Ana García',
-        street: 'Av. San Martín 123',
-        suite: 'Edificio El Laurel, 4A',
-        city: 'Santa Cruz de la Sierra',
-        postalCode: '07300',
-        country: 'Bolivia',
-        isDefault: true
-      },
-      {
-        id: 'addr-2',
-        recipient: 'Ana García (Casa)',
-        street: 'Calle Los Pinos #45',
-        suite: '',
-        city: 'Montero',
-        postalCode: '',
-        country: 'Bolivia',
-        isDefault: false
-      }
-    ];
+    return [];
   });
   const [editingAddressId, setEditingAddressId] = useState(null); // null | 'new' | string id
   const [addressForm, setAddressForm] = useState({
@@ -585,18 +570,28 @@ function App() {
     country: 'Bolivia'
   });
   const [personalData, setPersonalData] = useState(() => {
-    const fullName = (typeof window !== 'undefined' && localStorage.getItem('kaldirev_saved_name')) || 'Ana García';
-    const parts = fullName.trim().split(' ');
-    const firstName = (typeof window !== 'undefined' && localStorage.getItem('kaldirev_profile_fname')) || parts[0] || 'Ana';
-    const lastName = (typeof window !== 'undefined' && localStorage.getItem('kaldirev_profile_lname')) || parts.slice(1).join(' ') || 'García';
+    let fullName = (typeof window !== 'undefined' && localStorage.getItem('kaldirev_saved_name')) || '';
+    if (fullName === 'Ana García') fullName = '';
+    const parts = fullName.trim().split(' ').filter(Boolean);
+    let firstName = (typeof window !== 'undefined' && localStorage.getItem('kaldirev_profile_fname')) || parts[0] || '';
+    if (firstName === 'Ana') firstName = '';
+    let lastName = (typeof window !== 'undefined' && localStorage.getItem('kaldirev_profile_lname')) || parts.slice(1).join(' ') || '';
+    if (lastName === 'García') lastName = '';
+    let email = (typeof window !== 'undefined' && localStorage.getItem('kaldirev_profile_email')) || '';
+    if (email === 'contacto@ana.com') email = '';
+    let phone = (typeof window !== 'undefined' && localStorage.getItem('kaldirev_saved_phone')) || '';
+    if (phone === '78945612') phone = '';
+    let birthDate = (typeof window !== 'undefined' && localStorage.getItem('kaldirev_profile_bdate')) || '';
+    if (birthDate === '1995-08-15') birthDate = '';
+
     return {
       firstName,
       lastName,
-      email: (typeof window !== 'undefined' && localStorage.getItem('kaldirev_profile_email')) || 'contacto@ana.com',
-      phone: (typeof window !== 'undefined' && localStorage.getItem('kaldirev_saved_phone')) || '78945612',
-      birthDate: (typeof window !== 'undefined' && localStorage.getItem('kaldirev_profile_bdate')) || '1995-08-15',
-      membershipYear: '2021',
-      renewalYear: '2024'
+      email,
+      phone,
+      birthDate,
+      membershipYear: '',
+      renewalYear: ''
     };
   });
   const [securityForm, setSecurityForm] = useState({
@@ -689,6 +684,17 @@ function App() {
 
   // Initialize Auth session & listen to changes
   useEffect(() => {
+    // Sanitizar residuos de Ana García en navegadores de prueba
+    try {
+      if (localStorage.getItem('kaldirev_saved_name') === 'Ana García') localStorage.removeItem('kaldirev_saved_name');
+      if (localStorage.getItem('kaldirev_profile_fname') === 'Ana') localStorage.removeItem('kaldirev_profile_fname');
+      if (localStorage.getItem('kaldirev_profile_lname') === 'García') localStorage.removeItem('kaldirev_profile_lname');
+      if (localStorage.getItem('kaldirev_profile_email') === 'contacto@ana.com') localStorage.removeItem('kaldirev_profile_email');
+      if (localStorage.getItem('kaldirev_saved_phone') === '78945612') localStorage.removeItem('kaldirev_saved_phone');
+      const savedAddrs = localStorage.getItem('kaldirev_user_addresses');
+      if (savedAddrs && savedAddrs.includes('Ana García')) localStorage.removeItem('kaldirev_user_addresses');
+    } catch (e) {}
+
     const mockUser = localStorage.getItem('kaldirev_mock_user');
     if (mockUser) {
       try {
@@ -1741,7 +1747,7 @@ function App() {
     } else {
       setEditingAddressId('new');
       setAddressForm({
-        recipient: personalData.firstName ? `${personalData.firstName} ${personalData.lastName}` : (formData.name || 'Ana García'),
+        recipient: personalData.firstName ? `${personalData.firstName} ${personalData.lastName}`.trim() : (formData.name || ''),
         street: '',
         suite: '',
         city: formData.city || 'Santa Cruz de la Sierra',
@@ -9719,21 +9725,46 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           <img src={profile.avatar_url} alt="Avatar" className="klr-profile-avatar-img" />
                         ) : (
                           <div className="klr-profile-avatar-fallback">
-                            {personalData.firstName?.charAt(0) || profile?.full_name?.charAt(0) || (user ? user.email.charAt(0).toUpperCase() : "A")}
+                            {personalData.firstName?.charAt(0) || profile?.full_name?.charAt(0) || (user ? user.email.charAt(0).toUpperCase() : (
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            ))}
                           </div>
                         )}
                       </div>
                       <div className="klr-profile-badge-pill">
-                        <span>Socio VIP</span>
+                        <span>{user ? (profile?.role === 'admin' ? 'Administrador' : 'Cliente') : 'Modo Invitado'}</span>
                       </div>
                     </div>
 
                     <h2 className="klr-profile-username">
-                      {personalData.firstName ? `${personalData.firstName} ${personalData.lastName}` : (profile?.full_name || formData.name || "Ana García")}
+                      {personalData.firstName ? `${personalData.firstName} ${personalData.lastName}`.trim() : (profile?.full_name || formData.name || (user ? user.email.split('@')[0] : "Invitado"))}
                     </h2>
                     <span className="klr-profile-useremail">
-                      {user?.email || personalData.email || "contacto@ana.com"}
+                      {user?.email || personalData.email || "Sin sesión iniciada"}
                     </span>
+                    {!user && (
+                      <button
+                        type="button"
+                        onClick={() => setProfileSubView('login')}
+                        style={{
+                          marginTop: '8px',
+                          padding: '6px 16px',
+                          borderRadius: '20px',
+                          border: 'none',
+                          background: 'var(--primary-green)',
+                          color: '#ffffff',
+                          fontWeight: 700,
+                          fontSize: '0.82rem',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+                        Iniciar Sesión / Registrarse
+                      </button>
+                    )}
                   </div>
 
                   {/* 3. Card Group 1: Action Rows */}
@@ -9772,7 +9803,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     >
                       <div className="klr-profile-row-left">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-                        <span>Métodos de Pago (Visa **** 1234)</span>
+                        <span>Métodos de Pago</span>
                       </div>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="klr-profile-chevron"><polyline points="9 18 15 12 9 6"></polyline></svg>
                     </button>
@@ -9965,7 +9996,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     <div style={{ width: '38px' }}></div>
                   </div>
 
-                  {/* Avatar & Socio VIP Header */}
+                  {/* Avatar & Identidad Header */}
                   <div className="klr-profile-identity-section">
                     <div className="klr-profile-avatar-box">
                       <div className="klr-profile-avatar-ring">
@@ -9973,16 +10004,18 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           <img src={profile.avatar_url} alt="Avatar" className="klr-profile-avatar-img" />
                         ) : (
                           <div className="klr-profile-avatar-fallback">
-                            {personalData.firstName?.charAt(0) || "A"}
+                            {personalData.firstName?.charAt(0) || profile?.full_name?.charAt(0) || (user ? user.email.charAt(0).toUpperCase() : (
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            ))}
                           </div>
                         )}
                       </div>
                       <div className="klr-profile-badge-pill">
-                        <span>Socio VIP</span>
+                        <span>{user ? (profile?.role === 'admin' ? 'Administrador' : 'Cliente') : 'Modo Invitado'}</span>
                       </div>
                     </div>
                     <h2 className="klr-profile-username">
-                      {personalData.firstName ? `${personalData.firstName} ${personalData.lastName}` : "Ana García"}
+                      {personalData.firstName ? `${personalData.firstName} ${personalData.lastName}`.trim() : (profile?.full_name || (user ? user.email.split('@')[0] : "Invitado"))}
                     </h2>
                   </div>
 
@@ -10098,20 +10131,16 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     {/* Membresía Status Box */}
                     <div className="klr-membership-info-box">
                       <div className="klr-membership-row">
-                        <span className="klr-membership-lbl">Socio VIP</span>
-                        <span className="klr-membership-val" style={{ color: 'var(--accent-gold)' }}>Activo</span>
+                        <span className="klr-membership-lbl">Tipo de Cuenta</span>
+                        <span className="klr-membership-val" style={{ color: user ? 'var(--accent-gold)' : 'var(--text-muted)' }}>
+                          {user ? (profile?.role === 'admin' ? 'Administrador' : 'Cliente Registrado') : 'Invitado'}
+                        </span>
                       </div>
                       <div className="klr-membership-row">
-                        <span className="klr-membership-lbl">Desde</span>
-                        <span className="klr-membership-val">{personalData.membershipYear || '2021'}</span>
-                      </div>
-                      <div className="klr-membership-row">
-                        <span className="klr-membership-lbl">Status</span>
-                        <span className="klr-membership-val" style={{ color: '#047857' }}>Verificado</span>
-                      </div>
-                      <div className="klr-membership-row">
-                        <span className="klr-membership-lbl">Renovación</span>
-                        <span className="klr-membership-val">{personalData.renewalYear || '2026'}</span>
+                        <span className="klr-membership-lbl">Estado</span>
+                        <span className="klr-membership-val" style={{ color: user ? '#047857' : 'var(--text-muted)' }}>
+                          {user ? 'Verificado' : 'Sin registrar'}
+                        </span>
                       </div>
                     </div>
 
@@ -10189,7 +10218,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           className="klr-framed-input"
                           value={addressForm.recipient}
                           onChange={(e) => setAddressForm(prev => ({ ...prev, recipient: e.target.value }))}
-                          placeholder="Ej: Ana García"
+                          placeholder="Ej: Juan Pérez"
                           required
                         />
                       </div>
@@ -10261,6 +10290,13 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
 
                   {/* Lista de Tarjetas de Direcciones */}
                   <div className="klr-addresses-list">
+                    {userAddresses.length === 0 && !editingAddressId && (
+                      <div style={{ textAlign: 'center', padding: '2.5rem 1rem', background: '#f8fafc', borderRadius: '16px', border: '1.5px dashed var(--border-color)', color: 'var(--text-muted)' }}>
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ margin: '0 auto 8px', display: 'block', opacity: 0.6 }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                        <p style={{ margin: '0 0 4px', fontWeight: 700, color: 'var(--text-dark)' }}>No tienes direcciones guardadas</p>
+                        <span style={{ fontSize: '0.84rem' }}>Toca en "+ Añadir Nueva Dirección" para guardar tu lugar de entrega.</span>
+                      </div>
+                    )}
                     {userAddresses.map((addr) => (
                       <div key={addr.id} className={`klr-address-card ${addr.isDefault ? 'is-default' : ''}`}>
                         <div className="klr-address-card-header">
