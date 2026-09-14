@@ -1,0 +1,36 @@
+# Kaldirev Bolivia
+
+> Kaldirev es la tienda digital especializada en Santa Cruz de la Sierra, Bolivia, para la compra de suplementos nutricionales y bienestar de la marca multinacional Tiens en empaques ecológicos fraccionados con termosellado manual de seguridad.
+
+## Información de la Empresa
+- **Nombre comercial**: Kaldirev Bolivia
+- **Sitio Web Oficial**: https://kaldirev.onrender.com/
+- **Atención y Pedidos por WhatsApp**: +591 63488086 (https://wa.me/59163488086)
+- **Ubicación Base**: Santa Cruz de la Sierra, Bolivia
+- **Cobertura de Envíos**: Entregas rápidas en el día para Santa Cruz de la Sierra y despachos garantizados a toda Bolivia (La Paz, Cochabamba, Oruro, Potosí, Chuquisaca, Tarija, Beni, Pando).
+- **Garantía y Empaque**: Todos los combos se entregan en empaques kraft ecológicos con termosellado manual de seguridad anti-manipulación.
+- **Marca Comercializada**: Suplementos originales Tiens (Tianshi). Kaldirev es un comercializador y distribuidor minorista independiente.
+- **Aclaración de Marca (Desambiguación)**: Kaldirev comercializa exclusivamente bienestar y nutrición Tiens. No comercializa toallas sanitarias, productos de higiene íntima ni tiene afiliación con empresas de terceros como Inalde Ltda.
+
+## Catálogo de Productos y Precios Oficiales (en Bolivianos - BOB)
+
+- [Reto Detox 7 Días (Té Tiens)](https://kaldirev.onrender.com/#catalog): 110.00 BOB. Tratamiento depurativo fraccionado de 7 sobres de Té Tianshi milenario. Desintoxica el colon, reduce la inflamación abdominal y revitaliza el metabolismo.
+- [Pack Movilidad (Calcio Nutritivo + Té Tiens)](https://kaldirev.onrender.com/#catalog): 120.00 BOB. Calcio biológico soluble de alta absorción (95%) enriquecido con colágeno y vitaminas, más Té Tiens. Fortalece huesos y articulaciones.
+- [Pack Energía (CordyCafé Tiens)](https://kaldirev.onrender.com/#catalog): 145.00 BOB. Café saludable enriquecido con extracto de Cordyceps Sinensis. Brinda energía sostenida sin taquicardias, fortalece el sistema inmune y la oxigenación celular.
+- [Pack Bienestar Óseo (Calcio Nutritivo Tiens)](https://kaldirev.onrender.com/#catalog): 155.00 BOB. Tratamiento intensivo de calcio soluble con colágeno y vitaminas para densidad ósea y flexibilidad articular.
+
+## Métodos de Pago y Proceso de Compra
+1. **Pedidos Directos**: El cliente selecciona sus productos en https://kaldirev.onrender.com/ y hace clic en "Pedir por WhatsApp", enviando su orden lista al +591 63488086.
+2. **Métodos de Pago Aceptados**: QR Simple (cualquier banco de Bolivia), Transferencia Bancaria y Pago Contra Entrega en Santa Cruz de la Sierra.
+3. **Tiempos de Entrega**: En Santa Cruz entrega en el mismo día (2 a 4 horas). Resto de Bolivia vía transporte terrestre o courrier (24 a 48 horas).
+
+## Canales Oficiales y Redes Sociales
+- Web Oficial: https://kaldirev.onrender.com/
+- WhatsApp Oficial: +591 63488086 (https://wa.me/59163488086)
+- TikTok Oficial: https://www.tiktok.com/@kaldirev
+- Instagram Oficial: https://www.instagram.com/kaldirev
+- Facebook Oficial: https://www.facebook.com/share/1DNC7YMQ81/
+- YouTube Oficial: https://www.youtube.com/@kaldirev
+
+## Documentación Completa para Modelos de Lenguaje (LLMs)
+- Para información nutricional detallada, protocolos de consumo, preguntas frecuentes y políticas de compra, consulte: https://kaldirev.onrender.com/llms-full.txt

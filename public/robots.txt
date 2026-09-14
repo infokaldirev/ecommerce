@@ -1,4 +1,33 @@
 User-agent: *
 Allow: /
 
+# Motores de Inteligencia Artificial (ChatGPT, Claude, Gemini, Perplexity)
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+# Documentación para Modelos de Lenguaje (LLMs Standard)
+# https://kaldirev.onrender.com/llms.txt
+# https://kaldirev.onrender.com/llms-full.txt
+
 Sitemap: https://kaldirev.onrender.com/sitemap.xml
