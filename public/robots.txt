@@ -1,6 +1,56 @@
 User-agent: *
 Allow: /
 
+# Motores de Búsqueda Principales
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Baiduspider
+Allow: /
+
+User-agent: YandexBot
+Allow: /
+
+# Rastreadores e Indexadores de Redes Sociales (TikTok, Instagram, Facebook, Twitter/X, Pinterest, WhatsApp)
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Facebot
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: Pinterestbot
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: TikTokBot
+Allow: /
+
+User-agent: WhatsApp
+Allow: /
+
+User-agent: TelegramBot
+Allow: /
+
 # Motores de Inteligencia Artificial (ChatGPT, Claude, Gemini, Perplexity)
 User-agent: GPTBot
 Allow: /

@@ -1,9 +1,120 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <!-- Página Principal / Tienda Oficial Kaldirev Bolivia -->
   <url>
     <loc>https://kaldirev.onrender.com/</loc>
-    <lastmod>2026-09-08</lastmod>
+    <lastmod>2026-09-19</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://kaldirev.onrender.com/isotipo-512.png</image:loc>
+      <image:title>Kaldirev | Tienda Oficial Tiens en Bolivia - Salud y Cuidado Personal</image:title>
+      <image:caption>Tienda oficial de suplementos nutricionales y cuidado personal Tiens en Santa Cruz de la Sierra, Bolivia</image:caption>
+    </image:image>
+  </url>
+
+  <!-- Categorías de Productos Públicas -->
+  <url>
+    <loc>https://kaldirev.onrender.com/?category=energia</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kaldirev.onrender.com/?category=bienestar</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kaldirev.onrender.com/?category=saludable</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kaldirev.onrender.com/?category=cafe</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://kaldirev.onrender.com/?category=belleza</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Suplementos y Kits Clave -->
+  <url>
+    <loc>https://kaldirev.onrender.com/?product=reto-detox-7-dias</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/hsfhcaic/image/upload/v1788530854/tienda/nstyaguvlrg3scmfopzo.png</image:loc>
+      <image:title>Reto Detox 7 Días Té Tiens Bolivia - Kaldirev</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://kaldirev.onrender.com/?product=cordycafe-tiens</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/dv6d41ect/image/upload/v1758840055/A75_vzmmrq.png</image:loc>
+      <image:title>Cordycafe Tiens Café Saludable con Cordyceps - Kaldirev Santa Cruz</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://kaldirev.onrender.com/?product=calcio-nutritivo</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/dv6d41ect/image/upload/v1758840051/A01_zf5hc8.png</image:loc>
+      <image:title>Calcio Nutritivo Tiens Alta Absorción - Kaldirev Bolivia</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://kaldirev.onrender.com/?product=pack-movilidad-total</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/hsfhcaic/image/upload/v1788530887/tienda/nuhfxacpvoffegcmuyfl.png</image:loc>
+      <image:title>Pack Movilidad Total Calcio y Té Tiens - Kaldirev</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://kaldirev.onrender.com/?product=combo-dual-pro</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/hsfhcaic/image/upload/v1788530871/tienda/y5x46pzsksyfcfx3r5wq.png</image:loc>
+      <image:title>Combo Dual Pro Té Detox y CordyCafé Tiens - Kaldirev</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://kaldirev.onrender.com/?product=toallas-airiz-tiens</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Documentación LLMs Context -->
+  <url>
+    <loc>https://kaldirev.onrender.com/llms.txt</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://kaldirev.onrender.com/llms-full.txt</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
   </url>
 </urlset>

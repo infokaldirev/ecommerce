@@ -131,6 +131,27 @@ const DEFAULT_PRODUCTS = [
     badge: "Antiedad",
     tagline: "Juventud y firmeza en tu rostro",
     pinned: true
+  },
+  {
+    id: 7,
+    name: "Toallas Sanitarias Airiz Tiens (Oxígeno Activo e Ion Negativo)",
+    slug: "toallas-airiz-tiens",
+    price_bs: 95,
+    original_price_bs: 120,
+    category_id: 5,
+    description: "Toallas higiénicas femeninas de tecnología patentada con oxígeno activo e iones negativos para máxima absorción, frescura natural, neutralización de olores y protección íntima.",
+    bullets: [
+      "Tecnología patentada de Oxígeno Activo e Ion Negativo",
+      "Alta capacidad de absorción y diseño anatómico ultra cómodo",
+      "Previene irritaciones y equilibra el pH íntimo de forma natural",
+      "Empaque individual sellado herméticamente al 100%"
+    ],
+    dosage: "Uso continuo durante el ciclo menstrual para máxima frescura, protección y alivio.",
+    package_detail: "Empaque de aluminio aluminizado hermético y reutilizable con sello de seguridad.",
+    badge: "Cuidado Íntimo",
+    tagline: "Frescura natural y protección con oxígeno activo",
+    pinned: true,
+    is_active: true
   }
 ];
 
@@ -144,7 +165,8 @@ const DEFAULT_PRODUCT_IMAGES = [
   { id: 7, product_id: 4, url: 'https://res.cloudinary.com/dv6d41ect/image/upload/v1758840051/A03_huuq0n.png', position: 0, is_video: false },
   { id: 8, product_id: 4, url: 'https://res.cloudinary.com/dv6d41ect/video/upload/v1775017763/video-1055317540999190_ian3cg.mp4', position: 1, is_video: true },
   { id: 9, product_id: 5, url: 'products/belleza_antienvejecimiento.png', position: 0, is_video: false },
-  { id: 10, product_id: 6, url: 'products/belleza_antienvejecimiento.png', position: 0, is_video: false }
+  { id: 10, product_id: 6, url: 'products/belleza_antienvejecimiento.png', position: 0, is_video: false },
+  { id: 11, product_id: 7, url: 'https://res.cloudinary.com/dv6d41ect/image/upload/v1758840055/A75_vzmmrq.png', position: 0, is_video: false }
 ];
 
 const DEFAULT_COMBOS = [
@@ -964,6 +986,59 @@ function App() {
     }
     return resolveAssetUrl('isotipo-512.png');
   };
+
+  // Helper to generate SEO-optimized alt text with brand and location keywords
+  const getProductAlt = (name, category = '') => {
+    const cleanName = (name || '').trim();
+    if (!cleanName) return 'Kaldirev | Tienda Oficial Tiens en Bolivia - Salud y Cuidado Personal';
+    const lowerName = cleanName.toLowerCase();
+    
+    if (lowerName.includes('airiz') || lowerName.includes('toalla')) {
+      return `${cleanName} - Toallas Sanitarias Tiens Oxígeno Activo | Kaldirev Santa Cruz Bolivia`;
+    }
+    if (lowerName.includes('cordycafe') || lowerName.includes('café') || lowerName.includes('cafe')) {
+      return `${cleanName} - Café Saludable Tiens con Cordyceps | Kaldirev Santa Cruz Bolivia`;
+    }
+    if (lowerName.includes('calcio')) {
+      return `${cleanName} - Calcio Nutritivo Tiens Alta Absorción | Kaldirev Santa Cruz Bolivia`;
+    }
+    if (lowerName.includes('detox') || lowerName.includes('té') || lowerName.includes('te')) {
+      return `${cleanName} - Reto Detox Té Tiens Depurativo Digestivo | Kaldirev Santa Cruz Bolivia`;
+    }
+    if (category) {
+      return `${cleanName} (${category}) - Tiens Oficial | Kaldirev Santa Cruz Bolivia`;
+    }
+    return `${cleanName} - Suplemento y Cuidado Personal Tiens Oficial | Kaldirev Santa Cruz Bolivia`;
+  };
+
+  // SEO Deep-Linking URL reader (supports sitemap.xml routes like ?category=... or ?product=...)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const catParam = searchParams.get('category');
+      if (catParam && categoriesList.length > 0) {
+        const found = categoriesList.find(c => (c.slug && c.slug.toLowerCase() === catParam.toLowerCase()) || (c.name && c.name.toLowerCase() === catParam.toLowerCase()));
+        if (found) setActiveCategory(found.name);
+      }
+      const prodParam = searchParams.get('product');
+      if (prodParam && (combos.length > 0 || products.length > 0)) {
+        const matchedCombo = combos.find(c => (c.slug && c.slug.toLowerCase() === prodParam.toLowerCase()) || (c.name && c.name.toLowerCase().includes(prodParam.toLowerCase())));
+        if (matchedCombo) {
+          setSelectedCombo(matchedCombo);
+          setView("details");
+        } else {
+          const matchedProd = products.find(p => (p.slug && p.slug.toLowerCase() === prodParam.toLowerCase()) || (p.name && p.name.toLowerCase().includes(prodParam.toLowerCase())));
+          if (matchedProd) {
+            setSelectedCombo(matchedProd);
+            setView("details");
+          }
+        }
+      }
+    } catch (e) {
+      console.debug("Deep-link parse info:", e);
+    }
+  }, [categoriesList, combos, products]);
 
   // Dynamic Image Preloading Algorithm to speed up image rendering (Added by Antigravity)
   useEffect(() => {
@@ -3261,7 +3336,7 @@ function App() {
           <div className="klr-thumbnails-strip">
             {displayItems.map((item, idx) => (
               <div key={idx} className="klr-thumb-box" title={`${item.name} (${item.quantity}x)`}>
-                <img src={getOrderItemThumbnail(item)} alt={item.name} loading="lazy" />
+                <img src={getOrderItemThumbnail(item)} alt={getProductAlt(item.name)} loading="lazy" />
               </div>
             ))}
             {remainingCount > 0 && (
@@ -3461,7 +3536,7 @@ function App() {
               <div key={idx} className="klr-detail-item-row">
                 <div className="klr-detail-item-left">
                   <div className="klr-detail-item-thumb">
-                    <img src={getOrderItemThumbnail(item)} alt={item.name} loading="lazy" />
+                    <img src={getOrderItemThumbnail(item)} alt={getProductAlt(item.name)} loading="lazy" />
                   </div>
                   <div>
                     <div className="klr-detail-item-title">{item.name}</div>
@@ -4440,7 +4515,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
           <div>
             <div className="sidebar-logo">
               <div className="logo-mark" style={{ width: '40px', height: '40px', overflow: 'hidden', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px', boxShadow: '0 3px 10px rgba(0,0,0,0.25)', flexShrink: 0 }}>
-                <img src={resolveAssetUrl('isotipo-512.png')} alt="Kaldirev" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '10px' }} />
+                <img src={resolveAssetUrl('isotipo-512.png')} alt="Kaldirev | Tienda Oficial Tiens en Bolivia - Salud y Cuidado Personal" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '10px' }} />
               </div>
               <div className="logo-text">
                 <span className="logo-title" style={{ fontSize: '1.25rem' }}><span className="brand-kaldi">Kaldi</span><span className="brand-rev">rev</span></span>
@@ -5473,7 +5548,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                     if (isVideoUrl(mainImg)) {
                                       return <video src={resolveAssetUrl(mainImg)} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
                                     } else {
-                                      return <img src={resolveAssetUrl(mainImg)} alt={editingProduct.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />;
+                                      return <img src={resolveAssetUrl(mainImg)} alt={getProductAlt(editingProduct.name)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />;
                                     }
                                   } else {
                                     return (
@@ -5588,7 +5663,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                           isVideoUrl(mainImg) ? (
                                             <video src={resolveAssetUrl(mainImg)} autoPlay loop muted playsInline style={{ width: '45px', height: '45px', objectFit: 'cover', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} />
                                           ) : (
-                                            <img src={resolveAssetUrl(mainImg)} alt={prod.name} style={{ width: '45px', height: '45px', objectFit: 'contain', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} loading="lazy" />
+                                            <img src={resolveAssetUrl(mainImg)} alt={getProductAlt(prod.name)} style={{ width: '45px', height: '45px', objectFit: 'contain', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} loading="lazy" />
                                           )
                                         ) : (
                                           <span className="badge-normal" style={{ fontSize: '0.65rem' }}>Sin foto</span>
@@ -6256,7 +6331,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                     if (isVideoUrl(mainImg)) {
                                       return <video src={resolveAssetUrl(mainImg)} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
                                     } else {
-                                      return <img src={resolveAssetUrl(mainImg)} alt={editingCombo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />;
+                                      return <img src={resolveAssetUrl(mainImg)} alt={getProductAlt(editingCombo.name)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />;
                                     }
                                   } else {
                                     return (
@@ -6370,7 +6445,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                         isVideoUrl(getComboImage(combo.id)) ? (
                                           <video src={resolveAssetUrl(getComboImage(combo.id))} autoPlay loop muted playsInline style={{ width: '45px', height: '45px', objectFit: 'cover', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} />
                                         ) : (
-                                          <img src={resolveAssetUrl(getComboImage(combo.id))} alt={combo.name} style={{ width: '45px', height: '45px', objectFit: 'contain', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} loading="lazy" />
+                                          <img src={resolveAssetUrl(getComboImage(combo.id))} alt={getProductAlt(combo.name, combo.category)} style={{ width: '45px', height: '45px', objectFit: 'contain', borderRadius: '6px', background: '#faf9f6', border: '1px solid var(--border-color)' }} loading="lazy" />
                                         )
                                       ) : (
                                         <span className="badge-normal" style={{ fontSize: '0.65rem' }}>Sin foto</span>
@@ -7114,7 +7189,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                           <tr key={product.id}>
                             <td style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               {getProductImage(product.id) && (
-                                <img src={getProductImage(product.id)} alt="" style={{ width: '30px', height: '30px', objectFit: 'cover', borderRadius: '4px' }} loading="lazy" />
+                                <img src={getProductImage(product.id)} alt={getProductAlt(product.name)} style={{ width: '30px', height: '30px', objectFit: 'cover', borderRadius: '4px' }} loading="lazy" />
                               )}
                               <strong>{product.name}</strong>
                             </td>
@@ -7644,7 +7719,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                             <div key={post.id} style={{ display: 'flex', gap: '12px', padding: '10px', background: '#faf9f6', borderRadius: '8px', border: '1px solid #eee', alignItems: 'center' }}>
                               <img 
                                 src={post.image_url} 
-                                alt="Thumb" 
+                                alt={`Kaldirev ${post.platform} - Santa Cruz Bolivia`} 
                                 style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '6px', background: '#eee' }} 
                                 loading="lazy" 
                               />
@@ -7737,8 +7812,8 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
             </button>
             <img 
               src={resolveAssetUrl('isotipo-512.png')} 
-              alt="App Kaldirev" 
-              className="smart-pwa-icon"
+              alt="App Kaldirev | Tienda Oficial Tiens en Bolivia" 
+              className="smart-pwa-icon" 
             />
             <div className="smart-pwa-text">
               <div className="smart-pwa-title-row">
@@ -7762,7 +7837,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
       <header>
         <div className="logo-container" onClick={() => { setActiveCategory("Todos"); setSearchTerm(""); closeComboDetails(); setView("catalog"); }}>
           <div className="logo-mark" style={{ width: '48px', height: '48px', borderRadius: '12px', overflow: 'hidden', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.18)', flexShrink: 0 }}>
-            <img src={resolveAssetUrl('isotipo-512.png')} alt="Kaldirev" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} />
+            <img src={resolveAssetUrl('isotipo-512.png')} alt="Kaldirev | Tienda Oficial Tiens en Bolivia - Salud y Cuidado Personal" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} />
           </div>
           <div className="logo-text">
             <span className="logo-title" style={{ fontSize: '1.45rem', fontWeight: 900 }}><span className="brand-kaldi">Kaldi</span><span className="brand-rev">rev</span></span>
@@ -8261,7 +8336,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                               isVideoUrl(getComboImage(combo.id)) ? (
                                 <video src={resolveAssetUrl(getComboImage(combo.id))} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                               ) : (
-                                <img src={resolveAssetUrl(getComboImage(combo.id))} alt={combo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />
+                                <img src={resolveAssetUrl(getComboImage(combo.id))} alt={getProductAlt(combo.name, combo.category)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />
                               )
                             ) : (
                               <div className="product-image-placeholder">
@@ -8401,7 +8476,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                                 if (isVideoUrl(mainImg)) {
                                   return <video src={resolveAssetUrl(mainImg)} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
                                 } else {
-                                  return <img src={resolveAssetUrl(mainImg)} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />;
+                                  return <img src={resolveAssetUrl(mainImg)} alt={getProductAlt(product.name, categoriesList.find(cat => cat.id === product.category_id)?.name)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />;
                                 }
                               } else {
                                 return (
@@ -8556,13 +8631,13 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                               isVideoUrl(getComboImage(combo.id)) ? (
                                 <video src={resolveAssetUrl(getComboImage(combo.id))} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                               ) : (
-                                <img src={resolveAssetUrl(getComboImage(combo.id))} alt={combo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />
+                                <img src={resolveAssetUrl(getComboImage(combo.id))} alt={getProductAlt(combo.name, combo.category)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />
                               )
                             ) : combo.image_url ? (
                               isVideoUrl(combo.image_url) ? (
                                 <video src={combo.image_url} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                               ) : (
-                                <img src={combo.image_url} alt={combo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />
+                                <img src={combo.image_url} alt={getProductAlt(combo.name, combo.category)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />
                               )
                             ) : (
                               <div className="product-image-placeholder">
@@ -9038,7 +9113,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                     } else if (media.type === 'image') {
                       return (
                         <div key={index} className="details-main-media-box" style={{ overflow: 'hidden', borderRadius: '12px', background: selectedCombo.bg_color || '#faf9f6', border: '1px solid var(--border-color)', aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <img src={resolveAssetUrl(media.url)} alt={selectedCombo.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />
+                          <img src={resolveAssetUrl(media.url)} alt={getProductAlt(selectedCombo.name, selectedCombo.category)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} loading="lazy" />
                         </div>
                       );
                     }
@@ -10874,7 +10949,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                   <div className="cart-recommendations" style={{ display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'left' }}>
                     {products.slice(0, 3).map(prod => (
                       <div key={prod.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#f8fafc', padding: '8px 12px', borderRadius: '10px', border: '1px solid #ebdcc9' }}>
-                        <img src={resolveAssetUrl(getProductImage(prod.id))} alt="" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+                        <img src={resolveAssetUrl(getProductImage(prod.id))} alt={getProductAlt(prod.name)} style={{ width: '40px', height: '40px', objectFit: 'contain' }} loading="lazy" />
                         <div style={{ flexGrow: 1 }}>
                           <div style={{ fontSize: '0.82rem', fontWeight: 'bold', color: 'var(--text-dark)' }}>{prod.name}</div>
                           <div style={{ fontSize: '0.8rem', color: 'var(--accent-gold)', fontWeight: 'bold' }}>Bs. {parseFloat(prod.price_bs).toFixed(1)}</div>
@@ -10899,7 +10974,7 @@ Por favor, confírmenme el despacho y el horario aproximado de entrega. ¡Muchas
                         isVideoUrl(item.image_url) ? (
                           <video src={resolveAssetUrl(item.image_url)} muted style={{ width: '45px', height: '65px', objectFit: 'contain', borderRadius: '4px' }} />
                         ) : (
-                          <img src={resolveAssetUrl(item.image_url)} alt={item.name} style={{ width: '45px', height: '65px', objectFit: 'contain' }} />
+                          <img src={resolveAssetUrl(item.image_url)} alt={getProductAlt(item.name)} style={{ width: '45px', height: '65px', objectFit: 'contain' }} loading="lazy" />
                         )
                       ) : (
                         <div className="doypack-illustration" style={{ width: '30px', height: '45px', borderRadius: '4px', borderWidth: '1px' }}>
